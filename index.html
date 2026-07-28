@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.54">
+<meta name="trpg-app-version" content="6.55">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2027,7 +2027,7 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
 .preview-shell.is-style-adjusting { contain: layout paint; }
 
 
-/* v6.54 — converter and exported log share the selected fixed theme. */
+/* v6.55 — converter and exported log share the selected fixed theme. */
 .theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -2116,11 +2116,10 @@ html[data-theme="light"] .other-title { background: #edf2f6; color: rgba(15,23,4
 html[data-theme="light"] .other-row { border-bottom-color: rgba(15,23,42,.09); }
 html[data-theme="light"] .other-text { color: rgba(15,23,42,.78); }
 html[data-theme="light"] .text { color: #273244; }
-html[data-theme="light"] .name {
-  color: #334155;
-  color: color-mix(in srgb, var(--name-color, #334155) 46%, #172033 54%);
+html[data-theme="light"] .name,
+html[data-theme="light"] .other-name {
+  color: var(--light-name-color, var(--name-color, #334155));
 }
-html[data-theme="light"] .other-name { color: var(--name-color, #334155); }
 html[data-theme="light"] .empty-state { background: rgba(255,255,255,.72); }
 html[data-theme="light"] .log-row,
 html[data-theme="light"] .log-row.group-tone-a { background: #ffffff; border-bottom-color: rgba(15,23,42,.1); }
@@ -2909,6 +2908,77 @@ function safeCssColor(value) {
   probe.style.color = "";
   probe.style.color = candidate;
   return probe.style.color || "#dddddd";
+}
+
+const lightNameColorCache = new Map();
+
+function cssColorToRgb(value) {
+  const color = safeCssColor(value);
+  const hex = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    const raw = hex[1].length === 3
+      ? hex[1].split("").map(char => char + char).join("")
+      : hex[1];
+    return [
+      Number.parseInt(raw.slice(0, 2), 16),
+      Number.parseInt(raw.slice(2, 4), 16),
+      Number.parseInt(raw.slice(4, 6), 16)
+    ];
+  }
+  const rgb = color.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+  if (rgb) return rgb.slice(1, 4).map(value => Math.max(0, Math.min(255, Math.round(Number(value) || 0))));
+
+  const probe = document.createElement("span");
+  probe.style.cssText = `position:absolute;left:-9999px;color:${color}`;
+  document.documentElement.appendChild(probe);
+  const computed = getComputedStyle(probe).color;
+  probe.remove();
+  const computedRgb = computed.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+  return computedRgb
+    ? computedRgb.slice(1, 4).map(value => Math.max(0, Math.min(255, Math.round(Number(value) || 0))))
+    : null;
+}
+
+function relativeLuminance(rgb) {
+  if (!rgb) return 0;
+  const [r, g, b] = rgb.map(channel => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrastAgainstWhite(rgb) {
+  return 1.05 / (relativeLuminance(rgb) + 0.05);
+}
+
+function lightThemeNameColor(value) {
+  const original = safeCssColor(value || "#dddddd");
+  if (lightNameColorCache.has(original)) return lightNameColorCache.get(original);
+  const rgb = cssColorToRgb(original);
+  if (!rgb || contrastAgainstWhite(rgb) >= 1.15) {
+    lightNameColorCache.set(original, original);
+    return original;
+  }
+
+  // Only colors that are nearly indistinguishable from white are adjusted.
+  // Keep the original hue as much as possible and add just enough slate tone
+  // to make the name faintly legible on the light log background.
+  const anchor = [100, 116, 139];
+  let adjusted = rgb;
+  for (let mix = 0.04; mix <= 0.28; mix += 0.02) {
+    adjusted = rgb.map((channel, index) => Math.round(channel * (1 - mix) + anchor[index] * mix));
+    if (contrastAgainstWhite(adjusted) >= 1.32) break;
+  }
+  const result = `rgb(${adjusted[0]}, ${adjusted[1]}, ${adjusted[2]})`;
+  lightNameColorCache.set(original, result);
+  return result;
+}
+
+function nameColorStyle(value) {
+  const original = safeCssColor(value || "#dddddd");
+  const light = lightThemeNameColor(original);
+  return `--name-color:${escapeHtml(original)};--light-name-color:${escapeHtml(light)}`;
 }
 
 function normalizeText(value) {
@@ -7099,7 +7169,7 @@ function compactOtherText(value) {
 function renderOtherRow(message, interactive = false) {
   const bgmTrigger = bgmTriggerForMessage(message);
   return `<article class="other-row" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
-    <strong class="other-name" style="--name-color:${escapeHtml(safeCssColor(message.color || "#dddddd"))}">${escapeHtml(message.name)}</strong>
+    <strong class="other-name" style="${nameColorStyle(message.color)}">${escapeHtml(message.name)}</strong>
     ${bgmLink(bgmTrigger)}
     ${interactive ? `<div class="other-actions${hasManualSplit(message.id, "other", message.uid) ? " has-split" : ""}">${splitButton(message, "other")}${bgmButton(message)}</div>` : ""}
     <div class="other-text">${escapeHtml(compactOtherText(message.text)).replace(/\n/g, "<br>")}</div>
@@ -7146,7 +7216,7 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
   const contentHtml = grouped
     ? `<div class="grouped-line"><div class="text">${escapeHtml(message.text).replace(/\n/g, "<br>")}</div>${groupedLink ? `<div class="grouped-line-tools">${groupedLink}</div>` : ""}</div>`
     : `<div class="meta">
-        <strong class="name" style="--name-color:${escapeHtml(safeCssColor(message.color || "#dddddd"))}">${escapeHtml(message.name)}</strong>
+        <strong class="name" style="${nameColorStyle(message.color)}">${escapeHtml(message.name)}</strong>
         ${tabTag}
         ${label ? `<span class="expr-tag">${escapeHtml(label)}</span>` : ""}
         ${bgmLink(bgmTrigger)}
@@ -7564,6 +7634,7 @@ function compactTableIndex(map, values, value) {
 function createCompactLogPayload(rows, useSide) {
   const names = [];
   const colors = [];
+  const lightColors = [];
   const images = [];
   const tabs = [];
   const texts = [];
@@ -7592,6 +7663,7 @@ function createCompactLogPayload(rows, useSide) {
     const label = showLabels ? expressionLabel(row) : "";
     const nameIndex = compactTableIndex(nameMap, names, name);
     const colorIndex = compactTableIndex(colorMap, colors, color);
+    if (lightColors[colorIndex] == null) lightColors[colorIndex] = lightThemeNameColor(color);
     const imageIndex = compactTableIndex(imageMap, images, image);
     const tabIndex = compactTableIndex(tabMap, tabs, tab);
     const textIndex = compactTableIndex(textMap, texts, text);
@@ -7621,6 +7693,7 @@ function createCompactLogPayload(rows, useSide) {
     g: el("groupRows").checked ? 1 : 0,
     n: names,
     c: colors,
+    h: lightColors,
     i: images,
     t: tabs,
     x: texts,
@@ -7644,6 +7717,7 @@ function compactExportRuntime(root) {
     const data = JSON.parse(source.textContent || "{}");
     const names = Array.isArray(data.n) ? data.n : [];
     const colors = Array.isArray(data.c) ? data.c : [];
+    const lightColors = Array.isArray(data.h) ? data.h : [];
     const images = Array.isArray(data.i) ? data.i : [];
     const tabs = Array.isArray(data.t) ? data.t : [];
     const texts = Array.isArray(data.x) ? data.x : [];
@@ -7688,7 +7762,9 @@ function compactExportRuntime(root) {
       const tab = String(tabs[Number(encodedRows[cursor + 1]) || 0] ?? "main");
       const profile = profiles[Number(encodedRows[cursor + 2]) || 0] || [];
       const name = String(names[Number(profile[0]) || 0] ?? "system");
-      const color = String(colors[Number(profile[1]) || 0] ?? "#dddddd");
+      const colorIndex = Number(profile[1]) || 0;
+      const color = String(colors[colorIndex] ?? "#dddddd");
+      const lightColor = String(lightColors[colorIndex] ?? color);
       const imageIndex = Number(profile[2]) || 0;
       const image = String(images[imageIndex] ?? "");
       const labelIndex = Number(profile[3]);
@@ -7708,7 +7784,7 @@ function compactExportRuntime(root) {
       const isSystem = !isOther && !isSystemLine && !isExtraTab && (!image || name.toLowerCase() === "system");
       if (!isOther && !grouped) mainGroupOrdinal += 1;
       const record = {
-        id, uid, order: rowOrder, tab, lowerTab, name, color, imageIndex, image, label, text,
+        id, uid, order: rowOrder, tab, lowerTab, name, color, lightColor, imageIndex, image, label, text,
         kind: isOther ? "other" : "main",
         isOther, isExtraTab, isSystemLine, isSystem, grouped,
         groupTone: Math.max(0, mainGroupOrdinal) % 2,
@@ -7748,12 +7824,12 @@ function compactExportRuntime(root) {
       const link = bgmLink(record.id);
       const content = record.grouped
         ? `<div class="grouped-line"><div class="text">${withBreaks(record.text)}</div>${link ? `<div class="grouped-line-tools">${link}</div>` : ""}</div>`
-        : `<div class="meta"><strong class="name" style="--name-color:${esc(record.color)}">${esc(record.name)}</strong>${tabTag}${expressionTag}${link}</div><div class="text">${withBreaks(record.text)}</div>`;
+        : `<div class="meta"><strong class="name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${expressionTag}${link}</div><div class="text">${withBreaks(record.text)}</div>`;
       return `<article class="log-row${record.isSystem ? " is-system" : ""}${record.isExtraTab ? " is-extra-tab" : ""}${record.grouped ? " is-continuation" : ""}${record.hasContinuation ? " has-continuation" : ""}${tone}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}">${renderAvatar(record)}<div class="message">${content}</div></article>`;
     }
 
     function renderOtherRecord(record, logicalIndex, isLast, highlighted, synced) {
-      return `<article class="other-row${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)}">${esc(record.name)}</strong>${bgmLink(record.id)}<div class="other-text">${withBreaks(record.text)}</div></article>`;
+      return `<article class="other-row${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${bgmLink(record.id)}<div class="other-text">${withBreaks(record.text)}</div></article>`;
     }
 
     class HeightTree {
@@ -8618,7 +8694,7 @@ body{background:#edf1f5;color:#172033}
 .other-wrap{background:#f7f9fb;border-color:rgba(15,23,42,.12)}
 .other-row{border-bottom-color:rgba(15,23,42,.09)}
 .other-row.is-sync-target{background:rgba(37,99,166,.09)}
-.other-name{color:var(--name-color,#334155)}
+.other-name{color:var(--light-name-color,var(--name-color,#334155))}
 .other-text{color:rgba(15,23,42,.78)}
 .log-row,.log-row.is-odd{background:#fff;border-bottom-color:rgba(15,23,42,.1)}
 .log-row:nth-child(even),.log-row.is-even{background:#f4f7f9}
@@ -8629,7 +8705,7 @@ body{background:#edf1f5;color:#172033}
 .log-row.is-extra-tab:hover{background:rgba(37,99,166,.08)}
 .avatar{background:rgba(15,23,42,.07);border-color:rgba(15,23,42,.12);color:rgba(15,23,42,.38)}
 .tab-avatar{color:#245a8b;background:rgba(37,99,166,.09);border-color:rgba(37,99,166,.2)}
-.name{color:#334155;color:color-mix(in srgb,var(--name-color,#334155) 46%,#172033 54%)}
+.name{color:var(--light-name-color,var(--name-color,#334155))}
 .tag{color:rgba(15,23,42,.42)}
 .is-extra-tab .tag{color:rgba(37,99,166,.78)}
 .expr-tag{color:rgba(15,23,42,.58);background:rgba(15,23,42,.045);border-color:rgba(15,23,42,.1)}
