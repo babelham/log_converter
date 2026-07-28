@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<title>TRPG 로그 변환기 v6.38</title>
+<meta name="trpg-app-version" content="6.40">
+<title>TRPG 로그 변환기</title>
 <style>
 :root {
   color-scheme: dark;
@@ -1406,7 +1407,7 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
 }
 
 
-/* v6.38 dialog viewport fix: keep the guide body scrollable without clipping its final card */
+/* dialog viewport fix: keep the guide body scrollable without clipping its final card */
 .app-dialog {
   display:flex;
   flex-direction:column;
@@ -1436,8 +1437,8 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
   .dialog-body { padding:14px 14px 32px; }
 }
 
-/* v6.38 unified runtime and overlap-aware CCFOLIA expression collector with direct TXT export */
-/* v6.38 BGM picker narrow-width containment: truncate long titles without horizontal modal scrolling */
+/* unified runtime and overlap-aware CCFOLIA expression collector with direct TXT export */
+/* BGM picker narrow-width containment: truncate long titles without horizontal modal scrolling */
 .sidebar { padding-bottom:86px; }
 .brand { margin-bottom:8px; padding-bottom:10px; }
 .brand h1 { font-size:21px; }
@@ -1477,7 +1478,7 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
 }
 
 
-/* v6.38 persistent converter BGM player: keep one player across pages. */
+/* persistent converter BGM player: keep one player across pages. */
 .workspace {
   position: relative;
 }
@@ -1568,7 +1569,7 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
   }
 }
 
-/* v6.38 compact export controls and navigable BGM trigger list */
+/* compact export controls and navigable BGM trigger list */
 .advanced-export {
   border: 1px solid var(--line-soft);
   border-radius: 8px;
@@ -1617,30 +1618,84 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
   text-align: center;
   font-size: 11px;
 }
-.bgm-trigger-item {
-  display: block;
-  width: 100%;
+.bgm-trigger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
-  min-height: 31px;
-  padding: 6px 8px;
-  overflow: hidden;
+  min-height: 34px;
+  padding: 3px 4px;
   border: 1px solid transparent;
   border-radius: 6px;
   background: rgba(255,255,255,.025);
-  color: var(--muted);
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
+  transition: border-color .12s ease, background-color .12s ease;
 }
-.bgm-trigger-item:hover,
-.bgm-trigger-item:focus-visible {
-  color: var(--text);
+.bgm-trigger-row:hover,
+.bgm-trigger-row:focus-within {
   border-color: rgba(143,199,255,.3);
   background: rgba(143,199,255,.09);
 }
-.bgm-trigger-item strong { color: rgba(143,199,255,.92); font-weight: 800; }
-.bgm-trigger-item.is-missing { opacity: .56; cursor: default; }
+.bgm-trigger-jump {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(56px, .48fr);
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 26px;
+  padding: 3px 4px;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  font-size: 11px;
+}
+.bgm-trigger-jump:hover,
+.bgm-trigger-jump:focus-visible {
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+}
+.bgm-trigger-jump:disabled {
+  opacity: .56;
+  cursor: default;
+}
+.bgm-trigger-id {
+  color: rgba(143,199,255,.92);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.bgm-trigger-chat,
+.bgm-trigger-track {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bgm-trigger-track {
+  color: rgba(255,255,255,.42);
+  text-align: right;
+}
+.bgm-trigger-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.bgm-trigger-edit {
+  min-width: 27px;
+  min-height: 26px;
+  padding: 2px 5px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--quiet);
+  font-size: 10px;
+}
+.bgm-trigger-edit:hover,
+.bgm-trigger-edit:focus-visible {
+  color: #cfe8ff;
+  border-color: rgba(143,199,255,.28);
+  background: rgba(143,199,255,.1);
+}
 .log-row.is-bgm-jump-target,
 .system-line.is-bgm-jump-target,
 .other-row.is-bgm-jump-target {
@@ -1658,7 +1713,7 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
   <aside class="sidebar">
     <section class="brand">
       <div class="brand-kicker">
-        <span id="versionBadge" class="version-badge">WEB v6.38</span>
+        <span id="versionBadge" class="version-badge">WEB</span>
       </div>
       <h1>TRPG 로그 변환기</h1>
       <div class="brand-actions">
@@ -1987,7 +2042,7 @@ const el = id => document.getElementById(id);
 const orderFile = el("orderFile");
 const otherFile = el("otherFile");
 const jsonFile = el("jsonFile");
-const APP_VERSION = "6.34";
+const APP_VERSION = document.querySelector('meta[name="trpg-app-version"]')?.content?.trim() || "dev";
 const PREFERENCE_STORAGE_KEY = "trpg-log-converter:last-preferences";
 const PREFERENCE_FIELDS = [
   "fontSize", "lineHeight", "avatarSize", "pageSize",
@@ -2046,7 +2101,7 @@ function debounce(fn, wait = 150) {
   debounced.cancel = () => { clearTimeout(timer); timer = 0; };
   return debounced;
 }
-/* 북마크릿 배포 원본 v6.38: 아래 문자열과 TXT는 동일 원본에서 생성 */
+/* 북마크릿 배포 원본: 아래 문자열과 TXT는 동일 원본에서 생성 */
 const KKUL_ROOM_HELPER_BOOKMARKLET = "javascript:(function () { const ACTIVE_KEY = \"__kkulRoomHelperActive\"; if (window[ACTIVE_KEY]) { alert(\"이미 도우미가 실행 중입니다.\\n기존 패널의 [완료] 또는 닫기를 먼저 눌러주세요.\"); return; } window[ACTIVE_KEY] = true; const FONT = \"'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif\"; const BLUE = \"#2563eb\"; const BORDER = \"#e2e8f0\"; const TEXT = \"#0f172a\"; const MUTED = \"#64748b\"; let stopped = false; let rafId = 0; let intervalId = 0; let direction = 0; let touchY = 0; let sequence = 0; let activeTabName = \"\"; let manualTabName = \"\"; let pendingTabName = \"\"; let tabSwitchStartedAt = 0; let tabSwitchTimer = 0; let transitionFingerprint = \"\"; let lastVisibleFingerprint = \"\"; let collectionArmed = true; let collectionDeadline = Date.now() + 900; let armFromFingerprint = \"\"; const seenViewportFingerprints = new Set(); const collectedTabs = new Set(); const records = []; const recordByStableKey = new Map(); const lastUnkeyedBatchByTab = new Map(); const unreliableStableKeys = new Set(); const panel = document.createElement(\"div\"); panel.style.cssText = \"position:fixed;left:20px;bottom:20px;z-index:2147483647;background:#fff;padding:14px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28);font-family:\" + FONT + \";min-width:220px;max-width:320px;border:1px solid \" + BORDER + \";\"; const title = document.createElement(\"div\"); title.style.cssText = \"font-size:13px;font-weight:700;color:\" + TEXT + \";margin-bottom:4px;\"; title.textContent = \"코코포리아 표정 수집\"; const count = document.createElement(\"div\"); count.style.cssText = \"font-size:18px;font-weight:700;color:\" + BLUE + \";margin-bottom:5px;\"; count.textContent = \"탐색 중…\"; const guide = document.createElement(\"div\"); guide.style.cssText = \"font-size:11px;color:\" + MUTED + \";margin-bottom:10px;line-height:1.5;white-space:pre-line;\"; guide.textContent = \"북마크릿은 켜 둔 채, 원하는 탭으로 직접 이동하고 채팅을 위로 스크롤해 주세요. 화면 밖의 가상 버퍼는 수집하지 않습니다.\"; const actions = document.createElement(\"div\"); actions.style.cssText = \"display:flex;gap:6px;\"; const finishButton = document.createElement(\"button\"); finishButton.textContent = \"완료\"; finishButton.style.cssText = \"flex:1;padding:8px;cursor:pointer;font-size:13px;background:\" + BLUE + \";color:#fff;border:none;border-radius:6px;font-weight:700;font-family:\" + FONT + \";\"; finishButton.onmouseover = function () { finishButton.style.background = \"#1d4ed8\"; }; finishButton.onmouseout = function () { finishButton.style.background = BLUE; }; const closeButton = document.createElement(\"button\"); closeButton.textContent = \"닫기\"; closeButton.style.cssText = \"padding:8px 12px;cursor:pointer;font-size:13px;background:#fff;color:\" + TEXT + \";border:1px solid \" + BORDER + \";border-radius:6px;font-family:\" + FONT + \";\"; actions.appendChild(finishButton); actions.appendChild(closeButton); panel.appendChild(title); panel.appendChild(count); panel.appendChild(guide); panel.appendChild(actions); document.body.appendChild(panel); function cleanMultiline(value) { return String(value || \"\") .replace(/\\u00a0/g, \" \") .replace(/[ \\t]+/g, \" \") .replace(/\\s*\\n\\s*/g, \"\\n\") .trim(); } function cleanInline(value) { return cleanMultiline(value).replace(/\\s+/g, \" \").trim(); } function cleanCollectedMessageText(value) { return cleanMultiline(value).replace(/\\s*(?:\\[(?:편집\\s*완료|편집됨|edited|編集済み)\\]|[（(](?:edited|編集済み)[）)])\\s*$/i, \"\").trim(); } function cleanMessageName(value) { const name = cleanInline(value); const separator = name.lastIndexOf(\" - \"); if (separator < 1) return name; const suffix = name.slice(separator + 3).trim(); const clock = \"(?:(?:오전|오후|午前|午後|AM|PM)\\\\s*)?\\\\d{1,2}:\\\\d{2}(?::\\\\d{2})?\"; const isDate = new RegExp(\"^(?:\\\\d{4}[.\\\\/-]\\\\d{1,2}[.\\\\/-]\\\\d{1,2}|\\\\d{1,2}[.\\\\/-]\\\\d{1,2})(?:\\\\s+\" + clock + \")?$\", \"i\").test(suffix); const isRelative = new RegExp(\"^(?:今日|昨日|一昨日|오늘|어제|그제|today|yesterday)(?:\\\\s+\" + clock + \")?$\", \"i\").test(suffix); const isWeekday = new RegExp(\"^(?:(?:先々週|先週|今週|지난주|저번주|이번주|last\\\\s+week|previous\\\\s+week|this\\\\s+week)\\\\s*(?:の)?\\\\s*)?(?:月曜(?:日)?|火曜(?:日)?|水曜(?:日)?|木曜(?:日)?|金曜(?:日)?|土曜(?:日)?|日曜(?:日)?|월요일|화요일|수요일|목요일|금요일|토요일|일요일|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\\\s+\" + clock + \"$\", \"i\").test(suffix); const isTime = new RegExp(\"^\" + clock + \"$\", \"i\").test(suffix); return isDate || isRelative || isWeekday || isTime ? name.slice(0, separator).trim() : name; } function detectTime(value) { const text = cleanInline(value); if (!text || text.length > 90) return \"\"; return /(\\d{1,2}:\\d{2}(?::\\d{2})?|\\d{4}[.\\/-]\\d{1,2}[.\\/-]\\d{1,2}|오전|오후|午前|午後|AM|PM)/i.test(text) ? text : \"\"; } function isVisible(node) { if (!node || !node.getBoundingClientRect) return false; const style = getComputedStyle(node); if (style.display === \"none\" || style.visibility === \"hidden\") return false; const rect = node.getBoundingClientRect(); return rect.width > 0 && rect.height > 0; } function backgroundImageUrl(value) { const match = String(value || \"\").match(/url\\([\"']?(.*?)[\"']?\\)/i); return match ? match[1] : \"\"; } function findMessageRoot(node) { if (!node) return null; const closest = node.closest('.MuiListItem-root,[role=\"listitem\"],[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset]'); if (closest) return closest; let current = node; for (let depth = 0; depth < 7 && current && current !== document.body; depth += 1, current = current.parentElement) { if (current.querySelector && current.querySelector('img,.MuiAvatar-root,.MuiListItemAvatar-root,[class*=\"Avatar\"]')) return current; } return null; } function findRows() { const found = new Set(); document.querySelectorAll('[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset],.MuiListItem-root,[role=\"listitem\"]').forEach(function (node) { if (node.querySelector('.MuiListItemText-primary,.MuiListItemText-secondary,[class*=\"ListItemText-primary\"],[class*=\"ListItemText-secondary\"]')) found.add(node); }); document.querySelectorAll('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]').forEach(function (node) { const root = findMessageRoot(node); if (root) found.add(root); }); const rows = Array.from(found).filter(isVisible); const canonical = rows.filter(function (node) { return !rows.some(function (other) { return other !== node && node.contains(other) && other.querySelector && other.querySelector('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]'); }); }); canonical.sort(function (a, b) { const ar = a.getBoundingClientRect(); const br = b.getBoundingClientRect(); return ar.top - br.top || ar.left - br.left || (ar.width * ar.height) - (br.width * br.height); }); return canonical.filter(function (node, index, array) { const rect = node.getBoundingClientRect(); for (let cursor = index - 1; cursor >= 0; cursor -= 1) { const other = array[cursor]; const otherRect = other.getBoundingClientRect(); if (rect.top - otherRect.bottom > 8) break; const overlapY = Math.max(0, Math.min(rect.bottom, otherRect.bottom) - Math.max(rect.top, otherRect.top)); const overlapX = Math.max(0, Math.min(rect.right, otherRect.right) - Math.max(rect.left, otherRect.left)); if (overlapY >= Math.min(rect.height, otherRect.height) * 0.8 && overlapX >= Math.min(rect.width, otherRect.width) * 0.8) return false; } return true; }); } function normalizeBuiltInTabLabel(value) { const label = cleanInline(value).replace(/\\s*[（(]\\d+[）)]\\s*$/, \"\").trim(); const compact = label.replace(/\\s+/g, \"\"); const match = compact.match(/^(main|메인|メイン|info|정보|情報|other|잡담|기타|雑談|その他)\\d+$/i); return match ? match[1] : label; } function tabLabel(node) { return normalizeBuiltInTabLabel((node && (node.getAttribute(\"aria-label\") || node.getAttribute(\"title\") || node.textContent)) || \"\"); } function tabsInGroup(group) { if (!group) return []; return Array.from(group.querySelectorAll('[role=\"tab\"],button.MuiTab-root,.MuiTab-root')).filter(function (node, index, array) { return isVisible(node) && tabLabel(node) && array.indexOf(node) === index; }); } function findChatTabs() { const groups = new Set(); document.querySelectorAll('[role=\"tablist\"],.MuiTabs-root,.MuiTabs-flexContainer').forEach(function (node) { if (isVisible(node)) groups.add(node); }); document.querySelectorAll('[role=\"tab\"],button.MuiTab-root,.MuiTab-root').forEach(function (tab) { if (!isVisible(tab)) return; groups.add(tab.closest('[role=\"tablist\"],.MuiTabs-root,.MuiTabs-flexContainer') || tab.parentElement); }); const rows = findRows(); const firstRect = rows.length ? rows[0].getBoundingClientRect() : null; let best = []; let bestScore = -Infinity; groups.forEach(function (group) { const tabs = tabsInGroup(group); if (tabs.length < 2 || tabs.length > 30) return; const rect = group.getBoundingClientRect(); let score = tabs.length * 4; if (tabs.some(function (tab) { return tab.getAttribute(\"aria-selected\") === \"true\" || tab.classList.contains(\"Mui-selected\"); })) score += 30; if (firstRect) { const overlap = Math.max(0, Math.min(rect.right, firstRect.right) - Math.max(rect.left, firstRect.left)); const ratio = overlap / Math.max(1, Math.min(rect.width, firstRect.width)); score += ratio * 45; const distance = Math.abs(firstRect.top - rect.bottom); score += Math.max(0, 55 - distance / 4); if (rect.top > firstRect.bottom + 120) score -= 80; } if (score > bestScore) { bestScore = score; best = tabs; } }); return best; } function selectedTab(tabs) { return (tabs || []).find(function (tab) { return tab.getAttribute(\"aria-selected\") === \"true\" || tab.classList.contains(\"Mui-selected\") || tab.getAttribute(\"tabindex\") === \"0\"; }) || (tabs || [])[0] || null; } function currentTabName() { if (manualTabName) return manualTabName; const tabs = findChatTabs(); const active = selectedTab(tabs); return tabLabel(active) || activeTabName || \"main\"; } function textCandidates(root) { return Array.from(root.querySelectorAll(\"p,span,div\")).filter(function (node) { if (!isVisible(node) || node.closest('button,input,textarea,select,[role=\"button\"]')) return false; if (node.querySelector(\"p,span,div\") && cleanInline(node.textContent) === Array.from(node.children).map(function (child) { return cleanInline(child.textContent); }).join(\" \").trim()) return false; const text = cleanMultiline(node.textContent); return !!text && text.length < 5000; }); } function findNameAndText(root) { let name = root.querySelector('.MuiListItemText-primary,[class*=\"ListItemText-primary\"],[data-message-name]'); let text = root.querySelector('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]'); if (name && text) return { name: name, text: text }; const candidates = textCandidates(root); if (!text) { const ranked = candidates.map(function (node) { const value = cleanMultiline(node.textContent); let score = value.length; if (value.indexOf(\"\\n\") >= 0) score += 30; if (detectTime(value)) score -= 200; if (node === name || (name && name.contains(node))) score -= 500; return { node: node, score: score }; }).sort(function (a, b) { return b.score - a.score; }); text = ranked.length ? ranked[0].node : null; } if (!name && text) { const preceding = candidates.filter(function (node) { if (node === text || text.contains(node) || node.contains(text)) return false; const value = cleanInline(node.textContent); if (!value || value.length > 120 || detectTime(value)) return false; return (node.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0; }); name = preceding.length ? preceding[preceding.length - 1] : null; } return name && text ? { name: name, text: text } : null; } function imageUrl(root) { const preferred = root.querySelector('.MuiListItemAvatar-root img,.MuiAvatar-root img,[class*=\"ListItemAvatar\"] img,[class*=\"Avatar\"] img'); const images = preferred ? [preferred] : Array.from(root.querySelectorAll(\"img\")); for (let index = 0; index < images.length; index += 1) { const image = images[index]; const url = image.currentSrc || image.src || image.getAttribute(\"src\") || \"\"; if (url && !/^data:image\\/svg/i.test(url)) return url; } const candidates = [root].concat(Array.from(root.querySelectorAll('.MuiListItemAvatar-root,.MuiAvatar-root,[class*=\"Avatar\"],[style*=\"background-image\"]'))); for (let index = 0; index < candidates.length; index += 1) { const node = candidates[index]; const url = backgroundImageUrl(getComputedStyle(node).backgroundImage) || backgroundImageUrl(node.style && node.style.backgroundImage); if (url && url !== \"none\") return url; } return \"\"; } function messageTime(root, nameNode, textNode) { const attributes = [\"datetime\", \"title\", \"aria-label\"]; const candidates = Array.from(root.querySelectorAll('time,[datetime],[title],[aria-label],.MuiTypography-caption,[class*=\"caption\"]')); for (let index = 0; index < candidates.length; index += 1) { const node = candidates[index]; if (node === nameNode || node === textNode || nameNode.contains(node) || textNode.contains(node)) continue; for (let attrIndex = 0; attrIndex < attributes.length; attrIndex += 1) { const value = detectTime(node.getAttribute(attributes[attrIndex])); if (value) return value; } const value = detectTime(node.textContent); if (value) return value; } return \"\"; } function numericIndex(root) { const values = [ root.dataset && root.dataset.index, root.dataset && root.dataset.itemIndex, root.dataset && root.dataset.virtuosoIndex, root.getAttribute(\"aria-posinset\") ]; for (let index = 0; index < values.length; index += 1) { if (values[index] != null && values[index] !== \"\" && !isNaN(Number(values[index]))) return Number(values[index]); } return null; } function explicitId(root) { const attributes = [\"data-message-id\", \"data-chat-id\", \"data-id\", \"data-key\"]; for (let index = 0; index < attributes.length; index += 1) { const value = root.getAttribute(attributes[index]); if (value && value.length >= 6) return attributes[index] + \":\" + value; } return \"\"; } function canonicalImageKey(value) { const url = String(value || \"\").trim(); if (!url) return \"\"; try { const parsed = new URL(url, location.href); if (/ccfolia-cdn\\.net$/i.test(parsed.hostname) || /storage\\.ccfolia/i.test(parsed.hostname)) parsed.search = \"\"; parsed.hash = \"\"; return parsed.href; } catch (error) { return url.replace(/[?#].*$/, \"\"); } } function visibleRowsFingerprint(rows) {\n  const sourceRows = rows && rows.length ? rows : captureRows(findRows(), null);\n  return sourceRows.map(function (root) {\n    const pair = findNameAndText(root);\n    if (!pair) return \"\";\n    return JSON.stringify([\n      cleanMessageName(pair.name.textContent),\n      cleanCollectedMessageText(pair.text.innerText || pair.text.textContent),\n      canonicalImageKey(imageUrl(root)),\n      explicitId(root) || numericIndex(root)\n    ]);\n  }).filter(Boolean).join(\"␞\");\n} function extract(root, activeTab) { const pair = findNameAndText(root); if (!pair) return null; const rawName = cleanMessageName(pair.name.textContent); const text = cleanCollectedMessageText(pair.text.innerText || pair.text.textContent); const imgUrl = imageUrl(root); if (!rawName || !text || !imgUrl) return null; let tab = cleanInline(activeTab || currentTabName()) || \"main\"; let name = rawName; const tabMatch = rawName.match(/^\\[([^\\]]+)\\]\\s*(.+)$/); if (tabMatch) { tab = tabMatch[1].trim(); name = tabMatch[2].trim(); } const time = messageTime(root, pair.name, pair.text); const index = numericIndex(root); const id = explicitId(root); const signature = JSON.stringify([tab.toLowerCase(), cleanInline(name).toLowerCase(), text, canonicalImageKey(imgUrl)]); const tabPrefix = \"tab:\" + tab.toLowerCase() + \"|\"; const stableKey = id ? tabPrefix + \"id:\" + id : (index != null ? tabPrefix + \"index:\" + index : \"\"); const rect = root.getBoundingClientRect(); return { stableKey: stableKey, fallbackKey: signature, signature: signature, top: rect.top, bottom: rect.bottom, data: { name: name, tab: tab, text: text, imgUrl: imgUrl, messageId: id || undefined, idx: index == null ? undefined : index, time: time || undefined, __seq: sequence++ } }; } function updateRecord(target, incoming) { if (!target || !incoming) return; if (incoming.data.imgUrl) target.data.imgUrl = incoming.data.imgUrl; if (incoming.data.time) target.data.time = incoming.data.time; if (incoming.data.messageId) target.data.messageId = incoming.data.messageId; if (incoming.data.idx || incoming.data.idx === 0) target.data.idx = incoming.data.idx; if (incoming.stableKey) target.stableKey = incoming.stableKey; } function appendRecord(incoming) { if (!incoming) return; const stableKey = incoming.stableKey && !unreliableStableKeys.has(incoming.stableKey) ? incoming.stableKey : \"\"; if (stableKey && recordByStableKey.has(stableKey)) { const existingIndex = recordByStableKey.get(stableKey); const existing = records[existingIndex]; if (existing && existing.signature === incoming.signature) { updateRecord(existing, incoming); return; } unreliableStableKeys.add(stableKey); recordByStableKey.delete(stableKey); incoming.stableKey = \"\"; } const index = records.length; records.push(incoming); if (stableKey) recordByStableKey.set(stableKey, index); } function mergeBatch(batch) { if (!batch.length) return; const keyed = batch.filter(function (item) { return !!item.stableKey; }); keyed.forEach(appendRecord); const unkeyed = batch.filter(function (item) { return !item.stableKey; }); if (!unkeyed.length) return; const tabKey = String(activeTabName || \"main\").toLowerCase(); const previous = lastUnkeyedBatchByTab.get(tabKey) || []; const currentSignatures = unkeyed.map(function (item) { return item.signature; }); const previousSignatures = previous.map(function (item) { return item.signature; }); function overlapSuffixPrefix(left, right) { const limit = Math.min(left.length, right.length); for (let size = limit; size > 0; size -= 1) { let same = true; for (let i = 0; i < size; i += 1) { if (left[left.length - size + i] !== right[i]) { same = false; break; } } if (same) return size; } return 0; } const downOverlap = overlapSuffixPrefix(previousSignatures, currentSignatures); const upOverlap = overlapSuffixPrefix(currentSignatures, previousSignatures); let additions = unkeyed; if (direction > 0 && downOverlap) additions = unkeyed.slice(downOverlap); else if (direction < 0 && upOverlap) additions = unkeyed.slice(0, Math.max(0, unkeyed.length - upOverlap)); else if (!direction) { const overlap = Math.max(downOverlap, upOverlap); if (overlap === unkeyed.length && overlap === previous.length) additions = []; } additions.forEach(appendRecord); lastUnkeyedBatchByTab.set(tabKey, unkeyed); } function armCollection(timeout) { collectionArmed = true; collectionDeadline = Date.now() + (timeout || 700); armFromFingerprint = lastVisibleFingerprint; } function currentChatScrollHost(rows) {\n  const candidates = rows && rows.length ? rows : findRows();\n  if (!candidates.length) return null;\n  let node = candidates[0].parentElement;\n  while (node && node !== document.body && node !== document.documentElement) {\n    const style = getComputedStyle(node);\n    if (/(?:auto|scroll|overlay)/.test(style.overflowY || \"\") && node.scrollHeight > node.clientHeight + 3) return node;\n    node = node.parentElement;\n  }\n  return document.scrollingElement || document.documentElement;\n} function captureViewport(host) {\n  const isDocumentHost = !host || host === document.body || host === document.documentElement || host === document.scrollingElement;\n  if (isDocumentHost) return { top: 0, bottom: window.innerHeight || document.documentElement.clientHeight || 0, height: window.innerHeight || document.documentElement.clientHeight || 0 };\n  const rect = host.getBoundingClientRect();\n  const top = Math.max(0, rect.top);\n  const bottom = Math.min(window.innerHeight || document.documentElement.clientHeight || rect.bottom, rect.bottom);\n  return { top: top, bottom: bottom, height: Math.max(1, bottom - top) };\n} function captureRows(rows, host) {\n  const sourceRows = rows || findRows();\n  if (!sourceRows.length) return [];\n  const scrollHost = host || currentChatScrollHost(sourceRows);\n  const viewport = captureViewport(scrollHost);\n  const ahead = Math.min(88, Math.max(34, viewport.height * 0.12));\n  const behind = Math.min(28, Math.max(12, viewport.height * 0.04));\n  const topMargin = direction < 0 ? ahead : behind;\n  const bottomMargin = direction > 0 ? ahead : behind;\n  const topLimit = viewport.top - topMargin;\n  const bottomLimit = viewport.bottom + bottomMargin;\n  return sourceRows.filter(function (row) {\n    const rect = row.getBoundingClientRect();\n    return rect.bottom >= topLimit && rect.top <= bottomLimit;\n  });\n} function isChatScrollTarget(target) { const host = currentChatScrollHost(); if (!host) return true; return target === host || target === document || target === window || target === document.body || target === document.documentElement || target === document.scrollingElement; } function updateCollectorStatus() { const nextCount = records.length ? records.length + \"개 · \" + collectedTabs.size + \"개 탭\" : \"탐색 중…\"; if (count.textContent !== nextCount) count.textContent = nextCount; const nextGuide = records.length ? \"현재 \" + activeTabName + \" 탭 수집 중 · 새로 확인된 메시지만 추가하며, 같은 행의 재렌더링은 제외하며, 실제 메시지 ID를 함께 저장합니다.\" : \"현재 \" + activeTabName + \" 탭을 읽고 있습니다. 채팅을 위로 스크롤해 주세요. 화면 밖의 가상 버퍼는 수집하지 않습니다.\"; if (guide.textContent !== nextGuide) guide.textContent = nextGuide; } function scan() {\n  if (stopped) return;\n  const detectedTab = cleanInline(currentTabName()) || activeTabName || \"main\";\n  if (detectedTab !== activeTabName) {\n    activeTabName = detectedTab;\n    pendingTabName = detectedTab;\n    tabSwitchStartedAt = Date.now();\n    transitionFingerprint = lastVisibleFingerprint;\n    direction = 0;\n    armCollection(950);\n    guide.textContent = activeTabName + \" 탭으로 전환됨 · 메시지 화면을 불러오는 중…\";\n    clearTimeout(tabSwitchTimer);\n    tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 210);\n    return;\n  }\n\n  const allRows = findRows();\n  const initialScrollHost = currentChatScrollHost(allRows);\n  if (initialScrollHost && initialScrollHost.__kkulLastScrollTop == null) initialScrollHost.__kkulLastScrollTop = Number(initialScrollHost.scrollTop || 0);\n  const viewportRows = captureRows(allRows, initialScrollHost);\n  const currentFingerprint = visibleRowsFingerprint(viewportRows);\n\n  if (pendingTabName) {\n    const elapsed = Date.now() - tabSwitchStartedAt;\n    const stillPreviousRows = !!transitionFingerprint && currentFingerprint === transitionFingerprint;\n    if (elapsed < 170 || (stillPreviousRows && elapsed < 620)) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, stillPreviousRows ? 120 : 70);\n      return;\n    }\n    pendingTabName = \"\";\n    transitionFingerprint = \"\";\n  }\n\n  const batch = [];\n  const stableSeen = new Set();\n  const unkeyedSeen = new Map();\n  viewportRows.forEach(function (root) {\n    const item = extract(root, activeTabName);\n    if (!item) return;\n    if (item.stableKey && stableSeen.has(item.stableKey)) return;\n    if (item.stableKey) stableSeen.add(item.stableKey);\n    const prior = unkeyedSeen.get(item.fallbackKey);\n    if (prior && (!item.stableKey || !prior.stableKey) && Math.max(0, Math.min(prior.bottom, item.bottom) - Math.max(prior.top, item.top)) >= Math.min(prior.bottom - prior.top, item.bottom - item.top) * 0.65) return;\n    unkeyedSeen.set(item.fallbackKey, item);\n    batch.push(item);\n  });\n\n  const viewportFingerprint = activeTabName.toLowerCase() + \"|\" + currentFingerprint;\n  if (!collectionArmed) {\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (armFromFingerprint && currentFingerprint === armFromFingerprint) {\n    if (Date.now() < collectionDeadline) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 90);\n    } else collectionArmed = false;\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (currentFingerprint && seenViewportFingerprints.has(viewportFingerprint)) {\n    collectionArmed = false;\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (!batch.length) {\n    if (Date.now() < collectionDeadline) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 90);\n    } else collectionArmed = false;\n    updateCollectorStatus();\n    return;\n  }\n\n  mergeBatch(batch);\n  collectedTabs.add(activeTabName);\n  if (currentFingerprint) seenViewportFingerprints.add(viewportFingerprint);\n  collectionArmed = false;\n  lastVisibleFingerprint = currentFingerprint;\n  updateCollectorStatus();\n} function scheduleScan() { if (stopped || rafId) return; rafId = requestAnimationFrame(function () { rafId = 0; scan(); }); } function onScroll(event) { const target = event.target === document ? document.scrollingElement : event.target; if (!target || typeof target.scrollTop !== \"number\" || !isChatScrollTarget(target)) return; const previous = Number(target.__kkulLastScrollTop == null ? target.scrollTop : target.__kkulLastScrollTop); const current = Number(target.scrollTop); target.__kkulLastScrollTop = current; if (current === previous) return; direction = current > previous ? 1 : -1; armCollection(750); scheduleScan(); setTimeout(scheduleScan, 70); setTimeout(scheduleScan, 180); } function onWheel(event) { if (event.deltaY) direction = event.deltaY > 0 ? 1 : -1; } function onTouchMove(event) { const current = event.touches && event.touches[0] ? event.touches[0].clientY : 0; if (touchY && current !== touchY) direction = current < touchY ? 1 : -1; touchY = current; } function onDocumentClick(event) { const target = event.target && event.target.closest ? event.target.closest('[role=\"tab\"],button.MuiTab-root,.MuiTab-root') : null; if (!target) return; const chatTabs = findChatTabs(); if (chatTabs.length && chatTabs.indexOf(target) < 0) return; const clickedLabel = tabLabel(target); if (clickedLabel) { manualTabName = clickedLabel; armCollection(950); guide.textContent = clickedLabel + \" 탭 선택 감지 · 메시지 화면을 불러오는 중…\"; } setTimeout(scheduleScan, 20); setTimeout(scheduleScan, 120); setTimeout(scheduleScan, 280); setTimeout(scheduleScan, 650); } const observer = new MutationObserver(function (mutations) { const external = mutations.some(function (mutation) { return !panel.contains(mutation.target); }); if (!external) return; const tabChanged = mutations.some(function (mutation) { return mutation.type === \"attributes\" && (mutation.attributeName === \"aria-selected\" || mutation.attributeName === \"tabindex\" || mutation.attributeName === \"class\") && mutation.target && mutation.target.matches && mutation.target.matches('[role=\"tab\"],button.MuiTab-root,.MuiTab-root'); }); if (tabChanged || pendingTabName || collectionArmed) scheduleScan(); }); observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: [\"src\", \"style\", \"data-index\", \"data-item-index\", \"data-virtuoso-index\", \"aria-selected\", \"tabindex\", \"class\"] }); window.addEventListener(\"scroll\", onScroll, true); window.addEventListener(\"wheel\", onWheel, true); window.addEventListener(\"touchmove\", onTouchMove, true); document.addEventListener(\"click\", onDocumentClick, true); intervalId = setInterval(function () { const detected = cleanInline(currentTabName()) || activeTabName || \"main\"; if (detected !== activeTabName) { armCollection(950); scheduleScan(); } }, 900); scheduleScan(); function stop() { stopped = true; clearInterval(intervalId); clearTimeout(tabSwitchTimer); if (rafId) cancelAnimationFrame(rafId); window.removeEventListener(\"scroll\", onScroll, true); window.removeEventListener(\"wheel\", onWheel, true); window.removeEventListener(\"touchmove\", onTouchMove, true); document.removeEventListener(\"click\", onDocumentClick, true); observer.disconnect(); window[ACTIVE_KEY] = false; } function roomName() {\n  let xpathTitle = \"\";\n  try {\n    const roomTitleNode = document.evaluate(\n      '//*[@id=\"root\"]/div/header/div/button[1]/h6',\n      document,\n      null,\n      XPathResult.FIRST_ORDERED_NODE_TYPE,\n      null\n    ).singleNodeValue;\n    xpathTitle = cleanInline(roomTitleNode && roomTitleNode.textContent);\n  } catch (error) {}\n\n  const selectorTitle = Array.from(document.querySelectorAll(\n    '#root > div > header > div > button:first-of-type h6, #root header button:first-of-type h6, header button h6'\n  )).map(function (node) {\n    return cleanInline(node.textContent);\n  }).find(function (value) {\n    return value && value.length <= 160;\n  }) || \"\";\n\n  const titleText = cleanInline(document.title)\n    .replace(/\\s*[|｜–—-]\\s*(?:CCFOLIA|ココフォリア).*$/i, \"\")\n    .replace(/^\\s*(?:CCFOLIA|ココフォリア)\\s*[|｜–—-]?\\s*/i, \"\")\n    .trim();\n\n  const heading = Array.from(document.querySelectorAll(\"h1,h2,h6\"))\n    .map(function (node) { return cleanInline(node.textContent); })\n    .find(function (value) {\n      return value && value.length <= 100 && !/채팅|chat|코코포리아|ccfolia/i.test(value);\n    });\n\n  return xpathTitle\n    || selectorTitle\n    || (titleText && !/^(?:CCFOLIA|ココフォリア)$/i.test(titleText) ? titleText : \"\")\n    || heading\n    || \"코코포리아_표정정보\";\n} function safeFilename(value) { const cleaned = cleanInline(value) .replace(/[\\\\/:*?\"<>|]/g, \"_\") .replace(/[. ]+$/g, \"\") .slice(0, 120); return (cleaned || \"코코포리아_표정정보\") + \".txt\"; } function exportData() { const output = records.map(function (record, index) { const data = Object.assign({}, record.data); if (!Number.isFinite(data.idx)) delete data.idx; delete data.__seq; if (!data.time) delete data.time; if (!data.messageId) delete data.messageId; return data; }); const indexed = output.filter(function (item) { return Number.isFinite(item.idx); }); if (indexed.length >= Math.max(2, 0.7 * output.length)) { output.sort(function (a, b) { return a.idx - b.idx; }); } return output; } function downloadText(filename, text) { const blob = new Blob([\"\\ufeff\", text], { type: \"text/plain;charset=utf-8\" }); const url = URL.createObjectURL(blob); const anchor = document.createElement(\"a\"); anchor.href = url; anchor.download = filename; anchor.style.display = \"none\"; document.body.appendChild(anchor); anchor.click(); setTimeout(function () { URL.revokeObjectURL(url); anchor.remove(); }, 1000); } function showResult(data) { const json = JSON.stringify({ kind: \"messages\", data: data }); const overlay = document.createElement(\"div\"); overlay.style.cssText = \"position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:\" + FONT + \";\"; const card = document.createElement(\"div\"); card.style.cssText = \"background:#fff;padding:22px 22px 18px;border-radius:12px;max-width:640px;width:90%;color:\" + TEXT + \";box-shadow:0 20px 60px rgba(0,0,0,.3);\"; const heading = document.createElement(\"div\"); heading.style.cssText = \"font-size:15px;font-weight:700;margin-bottom:10px;\"; const tabCount = new Set(data.map(function (item) { return item.tab || \"main\"; })).size; heading.textContent = \"완료 - \" + tabCount + \"개 탭 · 총 \" + data.length + \"개\"; const textarea = document.createElement(\"textarea\"); textarea.value = json; textarea.readOnly = true; textarea.style.cssText = \"width:100%;height:140px;font-family:monospace;font-size:11px;box-sizing:border-box;border:1px solid \" + BORDER + \";border-radius:8px;padding:8px;background:#f8fafc;color:\" + TEXT + \";resize:none;\"; const status = document.createElement(\"div\"); status.style.cssText = \"margin-top:10px;font-size:13px;min-height:20px;color:\" + MUTED + \";\"; status.textContent = \"TXT 다운로드를 누르면 룸 이름으로 바로 저장됩니다.\"; const buttons = document.createElement(\"div\"); buttons.style.cssText = \"display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;\"; const downloadButton = document.createElement(\"button\"); downloadButton.textContent = \"TXT 다운로드\"; downloadButton.style.cssText = \"flex:1 1 150px;padding:10px;cursor:pointer;font-size:14px;background:\" + BLUE + \";color:#fff;border:none;border-radius:8px;font-weight:700;font-family:\" + FONT + \";\"; const copyButton = document.createElement(\"button\"); copyButton.textContent = \"복사하기\"; copyButton.style.cssText = \"flex:1 1 120px;padding:10px;cursor:pointer;font-size:14px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:8px;font-weight:700;font-family:\" + FONT + \";\"; const dismissButton = document.createElement(\"button\"); dismissButton.textContent = \"닫기\"; dismissButton.style.cssText = \"padding:10px 18px;cursor:pointer;font-size:14px;background:#fff;color:\" + TEXT + \";border:1px solid \" + BORDER + \";border-radius:8px;font-family:\" + FONT + \";\"; downloadButton.onclick = function () { const filename = safeFilename(roomName()); downloadText(filename, json); status.textContent = filename + \" 저장을 시작했습니다.\"; status.style.color = \"#16a34a\"; downloadButton.textContent = \"저장됨\"; }; function copySuccess() { status.textContent = \"복사 완료!\"; status.style.color = \"#16a34a\"; copyButton.textContent = \"복사됨\"; } function copyFallback() { textarea.focus(); textarea.select(); textarea.setSelectionRange(0, json.length); try { if (!document.execCommand(\"copy\")) throw new Error(\"copy failed\"); copySuccess(); } catch (error) { status.textContent = \"복사 실패. Ctrl+A → Ctrl+C로 직접 복사해 주세요.\"; status.style.color = \"#dc2626\"; } } copyButton.onclick = function () { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json).then(copySuccess).catch(copyFallback); } else copyFallback(); }; dismissButton.onclick = function () { overlay.remove(); }; buttons.appendChild(downloadButton); buttons.appendChild(copyButton); buttons.appendChild(dismissButton); card.appendChild(heading); card.appendChild(textarea); card.appendChild(status); card.appendChild(buttons); overlay.appendChild(card); document.body.appendChild(overlay); } finishButton.onclick = function () { scan(); const data = exportData(); stop(); if (panel.parentNode) panel.remove(); if (data.length) showResult(data); else alert(\"메시지를 찾지 못했습니다.\\n채팅 패널을 열고 메시지가 보이는 상태에서 다시 실행해 주세요.\"); }; closeButton.onclick = function () { stop(); panel.remove(); }; })();";
 
 function escapeHtml(value) {
@@ -2157,19 +2212,48 @@ function updateFileUploadSummary(mode = "idle") {
   }
 }
 
+let primaryExportActionsVisible = false;
+let stickyExportObserver = null;
+
 function syncStickyActions(analyzed = Boolean(state.messages.length)) {
+  const sticky = el("stickyActions");
   const analyzeButton = el("stickyAnalyzeBtn");
   const exportActions = el("stickyExportActions");
   const hasFile = Boolean(state.orderText || orderFile?.files?.length);
   const ready = analyzed && !el("saveBtn")?.disabled;
+  const showStickyExport = ready && !primaryExportActionsVisible;
   if (analyzeButton) {
     analyzeButton.hidden = ready;
     analyzeButton.disabled = !hasFile;
     analyzeButton.textContent = hasFile ? "로그 분석하기" : "파일을 선택하세요";
   }
-  if (exportActions) exportActions.hidden = !ready;
+  if (exportActions) exportActions.hidden = !showStickyExport;
   if (el("stickyCopyBtn")) el("stickyCopyBtn").disabled = !ready;
   if (el("stickySaveBtn")) el("stickySaveBtn").disabled = !ready;
+  if (sticky) sticky.hidden = ready && !showStickyExport;
+}
+
+function setupStickyExportObserver() {
+  const target = document.querySelector("#section-export .export-actions");
+  const sidebar = document.querySelector(".sidebar");
+  if (!target || !("IntersectionObserver" in window)) return;
+  stickyExportObserver?.disconnect?.();
+  const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
+  const sidebarIsScrollRoot = Boolean(
+    sidebar &&
+    /auto|scroll/.test(sidebarStyle?.overflowY || "") &&
+    sidebar.scrollHeight > sidebar.clientHeight + 2
+  );
+  stickyExportObserver = new IntersectionObserver(entries => {
+    const entry = entries[0];
+    primaryExportActionsVisible = Boolean(entry?.isIntersecting && entry.intersectionRatio >= .35);
+    syncStickyActions();
+  }, {
+    root: sidebarIsScrollRoot ? sidebar : null,
+    rootMargin: "0px 0px -64px 0px",
+    threshold: [0, .35, .75]
+  });
+  stickyExportObserver.observe(target);
 }
 
 
@@ -3285,6 +3369,32 @@ function formatBgmTrigger(trigger) {
 }
 
 let bgmTriggerMap = new Map();
+const bgmFetchedTitleByVideoId = new Map();
+const bgmTitleFetchPromises = new Map();
+
+function fetchYoutubeTitleForTrigger(trigger) {
+  const videoId = trigger?.videoId;
+  if (!videoId) return Promise.resolve("");
+  if (bgmFetchedTitleByVideoId.has(videoId)) return Promise.resolve(bgmFetchedTitleByVideoId.get(videoId));
+  if (bgmTitleFetchPromises.has(videoId)) return bgmTitleFetchPromises.get(videoId);
+  const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+  const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`;
+  const promise = fetch(endpoint, { mode: "cors", credentials: "omit", referrerPolicy: "no-referrer" })
+    .then(response => {
+      if (!response.ok) throw new Error(`YouTube 제목 응답 ${response.status}`);
+      return response.json();
+    })
+    .then(data => normalizeText(data?.title || "").replace(/\s+/g, " ").trim())
+    .catch(() => "")
+    .then(title => {
+      bgmFetchedTitleByVideoId.set(videoId, title || "YouTube 영상");
+      bgmTitleFetchPromises.delete(videoId);
+      return bgmFetchedTitleByVideoId.get(videoId);
+    });
+  bgmTitleFetchPromises.set(videoId, promise);
+  return promise;
+}
+
 function rebuildBgmTriggerMap() {
   bgmTriggerMap = new Map(parseBgmTriggerLines(el("bgmTriggers")?.value || "").map(trigger => [trigger.id, trigger]));
   renderBgmTriggerList();
@@ -3298,11 +3408,21 @@ function compactBgmChatLabel(message) {
   return `${name} — ${body}`;
 }
 
+function bgmTitleForTrigger(trigger, titleByVideoId) {
+  return titleByVideoId.get(trigger.videoId)
+    || bgmFetchedTitleByVideoId.get(trigger.videoId)
+    || "곡명 불러오는 중…";
+}
+
 function renderBgmTriggerList() {
   const root = el("bgmTriggerList");
   const count = el("bgmTriggerCount");
   if (!root) return;
+  const previousScrollTop = root.scrollTop;
   const triggers = [...bgmTriggerMap.values()].sort((a, b) => a.id - b.id);
+  const titleByVideoId = new Map(
+    bgmPlaylistItems().map(item => [item.videoId, item.title || "YouTube 영상"])
+  );
   if (count) count.textContent = `${triggers.length.toLocaleString()}개`;
   root.innerHTML = "";
   if (!triggers.length) {
@@ -3316,20 +3436,57 @@ function renderBgmTriggerList() {
   const fragment = document.createDocumentFragment();
   triggers.forEach(trigger => {
     const message = messagesById.get(Number(trigger.id));
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `bgm-trigger-item${message ? "" : " is-missing"}`;
-    button.dataset.bgmJumpId = String(trigger.id);
-    const label = message ? compactBgmChatLabel(message) : `메시지 #${trigger.id} · 로그 분석 후 이동 가능`;
-    button.title = label;
-    const number = document.createElement("strong");
-    number.textContent = `#${trigger.id} `;
-    button.append(number, document.createTextNode(message ? compactBgmChatLabel(message) : "로그 분석 후 이동 가능"));
-    if (message) button.addEventListener("click", () => jumpToBgmChat(trigger.id));
-    else button.disabled = true;
-    fragment.append(button);
+    const chatLabel = message ? compactBgmChatLabel(message) : "로그 분석 후 이동 가능";
+    const trackTitle = bgmTitleForTrigger(trigger, titleByVideoId);
+
+    const row = document.createElement("div");
+    row.className = "bgm-trigger-row";
+
+    const jumpButton = document.createElement("button");
+    jumpButton.type = "button";
+    jumpButton.className = "bgm-trigger-jump";
+    jumpButton.dataset.bgmJumpId = String(trigger.id);
+    jumpButton.title = message
+      ? `#${trigger.id} ${chatLabel} · ${trackTitle}`
+      : `#${trigger.id} · ${trackTitle}`;
+
+    const number = document.createElement("span");
+    number.className = "bgm-trigger-id";
+    number.textContent = `#${trigger.id}`;
+    const chat = document.createElement("span");
+    chat.className = "bgm-trigger-chat";
+    chat.textContent = chatLabel;
+    const track = document.createElement("span");
+    track.className = "bgm-trigger-track";
+    track.textContent = `· ${trackTitle}`;
+    track.title = trackTitle;
+    if (!titleByVideoId.has(trigger.videoId) && !bgmFetchedTitleByVideoId.has(trigger.videoId)) {
+      fetchYoutubeTitleForTrigger(trigger).then(() => {
+        if (bgmTriggerMap.has(Number(trigger.id))) renderBgmTriggerList();
+      });
+    }
+    jumpButton.append(number, chat, track);
+    if (message) jumpButton.addEventListener("click", () => jumpToBgmChat(trigger.id));
+    else jumpButton.disabled = true;
+
+    const actions = document.createElement("div");
+    actions.className = "bgm-trigger-actions";
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "bgm-trigger-edit";
+    editButton.textContent = "수정";
+    editButton.title = `#${trigger.id} BGM 수정`;
+    editButton.setAttribute("aria-label", `#${trigger.id} BGM 수정`);
+    editButton.addEventListener("click", () => addBgmTrigger(trigger.id));
+
+    actions.append(editButton);
+    row.append(jumpButton, actions);
+    fragment.append(row);
   });
   root.append(fragment);
+  window.requestAnimationFrame(() => {
+    root.scrollTop = Math.min(previousScrollTop, Math.max(0, root.scrollHeight - root.clientHeight));
+  });
 }
 
 function pageNumberForBgmJump(rows, id) {
@@ -3387,9 +3544,27 @@ function jumpToBgmChat(id) {
   updateView();
 
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    const target = el("preview")?.querySelector(`[data-index="${Number(message.id)}"]`);
+    const preview = el("preview");
+    const target = preview?.querySelector(`[data-index="${Number(message.id)}"]`);
     if (!target) return;
-    target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    const main = target.closest(".ccfolia-wrap") || preview;
+    const mainStyle = window.getComputedStyle(main);
+    const mainOwnScroll = main.scrollHeight > main.clientHeight + 2 && mainStyle.overflowY !== "visible";
+    const mainRect = main.getBoundingClientRect();
+    const markerOffset = Math.min(Math.max(1, mainRect.height) * 0.35, 220);
+    const desiredTop = mainRect.top + markerOffset;
+    const delta = target.getBoundingClientRect().top - desiredTop;
+    if (mainOwnScroll) {
+      main.scrollTop += delta;
+      main.dispatchEvent(new Event("scroll", { bubbles: true }));
+    } else {
+      const scrollHost = preview.scrollHeight > preview.clientHeight + 2 ? preview : document.scrollingElement;
+      if (scrollHost === preview) preview.scrollTop += delta;
+      else window.scrollBy({ top: delta, behavior: "auto" });
+      scrollHost?.dispatchEvent?.(new Event("scroll", { bubbles: true }));
+    }
+    const trigger = bgmTriggerMap.get(Number(message.id));
+    if (trigger && el("bgmAutoplay")?.checked) getPersistentPreviewBgmController().syncTrigger(trigger);
     target.classList.add("is-bgm-jump-target");
     window.setTimeout(() => target.classList.remove("is-bgm-jump-target"), 1800);
   }));
@@ -7782,6 +7957,9 @@ updateUploadCard(otherFile, "otherFileName");
 updateUploadCard(jsonFile, "jsonFileName");
 updateFileUploadSummary("idle");
 updateWorkflowUi(false);
+setupStickyExportObserver();
+const refreshStickyExportObserver = debounce(setupStickyExportObserver, 180);
+window.addEventListener("resize", refreshStickyExportObserver);
 
 el("analyzeBtn").addEventListener("click", analyze);
 document.querySelectorAll("[data-copy-helper-bookmarklet]").forEach(button => button.addEventListener("click", copyHelperBookmarklet));
@@ -7810,6 +7988,7 @@ const debouncedBgmTriggerPreview = debounce(() => {
   }
 }, 260);
 const debouncedBgmPlaylistPreview = debounce(() => {
+  renderBgmTriggerList();
   if (state.messages.length) renderPreview({ preserveScroll: true });
 }, 260);
 el("searchBox").addEventListener("input", debouncedSearchUpdate);
