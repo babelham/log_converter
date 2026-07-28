@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.40">
+<meta name="trpg-app-version" content="6.41">
 <title>TRPG 로그 변환기</title>
 <style>
 :root {
@@ -383,26 +383,6 @@ label { color: var(--muted); font-size: 13px; }
 .bgm-playlist-item:hover .bgm-track-title,
 .bgm-playlist-item:focus-visible .bgm-track-title {
   color: #93c5fd;
-}
-
-.bgm-custom-details {
-  border: 1px solid var(--line-soft);
-  border-radius: 8px;
-  background: rgba(255,255,255,.018);
-}
-
-.bgm-custom-details > summary {
-  padding: 10px 12px;
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.bgm-custom-details-body {
-  display: grid;
-  gap: 8px;
-  padding: 0 12px 12px;
 }
 
 .bgm-picker-preview {
@@ -2916,12 +2896,7 @@ function chooseBgmUrlFromPlaylist(options = {}) {
           <input type="search" data-bgm-search placeholder="곡 제목 검색" aria-label="플레이리스트 검색">
           <div class="bgm-playlist-list" data-bgm-list role="list" aria-label="BGM 플레이리스트"></div>
           <div class="status" data-bgm-list-status></div>
-          <details class="bgm-custom-details" data-bgm-custom-details>
-            <summary>목록 밖 YouTube 링크 사용</summary>
-            <div class="bgm-custom-details-body">
-              <input type="text" data-bgm-custom placeholder="https://youtu.be/..." aria-label="목록 밖 YouTube 링크">
-            </div>
-          </details>
+          <input type="text" data-bgm-custom placeholder="YouTube 링크를 직접 입력" aria-label="YouTube 링크 직접 입력">
         ` : `
           <div class="bgm-picker-guide">YouTube 링크를 입력한 뒤 하나의 플레이어에서 미리듣고 지정할 수 있습니다.</div>
           <input type="text" data-bgm-custom placeholder="https://youtu.be/..." aria-label="YouTube 링크">
@@ -2949,7 +2924,6 @@ function chooseBgmUrlFromPlaylist(options = {}) {
     const listStatus = backdrop.querySelector("[data-bgm-list-status]");
     const search = backdrop.querySelector("[data-bgm-search]");
     const custom = backdrop.querySelector("[data-bgm-custom]");
-    const customDetails = backdrop.querySelector("[data-bgm-custom-details]");
     const status = backdrop.querySelector("[data-bgm-picker-status]");
     const removeButton = backdrop.querySelector("[data-bgm-remove]");
     const confirmButton = backdrop.querySelector("[data-bgm-confirm]");
@@ -3275,9 +3249,6 @@ function chooseBgmUrlFromPlaylist(options = {}) {
       const nextKey = itemKey(candidate);
       if (previewKey && previewKey !== nextKey) stopPreview({ silent: true });
       setPreviewInfo(candidate);
-      if (hasPlaylist && custom?.value.trim()) {
-        customDetails.open = true;
-      }
     }
 
     function togglePreview() {
@@ -3393,6 +3364,43 @@ function fetchYoutubeTitleForTrigger(trigger) {
     });
   bgmTitleFetchPromises.set(videoId, promise);
   return promise;
+}
+
+function notifyBgmPlaylistChanged() {
+  const input = el("bgmUrl");
+  if (!input) return;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function addDirectBgmToPlaylist(videoId, url) {
+  const input = el("bgmUrl");
+  if (!input || !videoId) return;
+  if (bgmPlaylistItems().some(item => item.videoId === videoId)) return;
+
+  const canonicalUrl = `https://youtu.be/${videoId}`;
+  const cachedTitle = bgmFetchedTitleByVideoId.get(videoId);
+  const initialTitle = cachedTitle && cachedTitle !== "YouTube 영상"
+    ? cachedTitle
+    : "곡명 불러오는 중…";
+  const current = String(input.value || "").replace(/\s+$/, "");
+  input.value = `${current}${current ? "\n" : ""}${initialTitle} ${canonicalUrl}`;
+  notifyBgmPlaylistChanged();
+
+  fetchYoutubeTitleForTrigger({ videoId, url: url || canonicalUrl }).then(title => {
+    const resolvedTitle = normalizeText(title || "YouTube 영상").replace(/\s+/g, " ").trim() || "YouTube 영상";
+    let changed = false;
+    const nextValue = String(input.value || "").split(/\n/).map(line => {
+      const lineUrl = extractYoutubeUrl(line);
+      if (youtubeIdFromUrl(lineUrl) !== videoId) return line;
+      const currentTitle = line.replace(lineUrl, "").replace(/^[\s:|\-–—]+|[\s:|\-–—]+$/g, "").trim();
+      if (currentTitle && !["곡명 불러오는 중…", "YouTube 영상"].includes(currentTitle)) return line;
+      changed = true;
+      return `${resolvedTitle} ${canonicalUrl}`;
+    }).join("\n");
+    if (!changed || nextValue === input.value) return;
+    input.value = nextValue;
+    notifyBgmPlaylistChanged();
+  });
 }
 
 function rebuildBgmTriggerMap() {
@@ -3775,9 +3783,9 @@ async function addBgmTrigger(id) {
     return;
   }
   const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://youtu.be/${videoId}`;
+  addDirectBgmToPlaylist(videoId, url);
   triggers.push({ id, url, videoId });
   triggers.sort((a, b) => a.id - b.id);
-  if (bgmPlaylistItems().length <= 1) el("bgmUrl").value = url;
   el("bgmTriggers").value = triggers.map(formatBgmTrigger).join("\n");
   rebuildBgmTriggerMap();
   renderPreview({ preserveScroll: true });
@@ -4154,6 +4162,7 @@ function enhancementRuntime(root, options = {}) {
   // main/other를 서로 다른 파일에서 병합한 경우에는 공통 순서 ID가 없으므로
   // 자동 동기화를 시도하지 않는다. other는 사용자가 직접 스크롤한 위치를 유지한다.
   const manualOtherOnly = options.manualOther === true;
+  const singlePassOtherSync = options.singlePassOtherSync === true;
   if (sideLayout) sideLayout.classList.toggle("is-other-manual", manualOtherOnly);
   const logPage = main.closest(".page") || sideLayout || main;
   const logBounds = sideLayout || main;
@@ -5237,7 +5246,7 @@ function enhancementRuntime(root, options = {}) {
       const viewHeight = this.motion()?.viewportHeight?.() || Math.max(1, other?.clientHeight || 1);
       const initialDelta = initialTarget - initialCurrent;
       const skipThreshold = viewHeight * (mode === "settle" ? 1.15 : 1.8);
-      if (Number.isFinite(initialDelta) && Math.abs(initialDelta) > skipThreshold) {
+      if (!singlePassOtherSync && Number.isFinite(initialDelta) && Math.abs(initialDelta) > skipThreshold) {
         const tail = Math.min(mode === "settle" ? 140 : 90, viewHeight * (mode === "settle" ? 0.2 : 0.14));
         this.setControlled(true);
         this.setOffset(initialTarget - Math.sign(initialDelta) * Math.max(36, tail));
@@ -5333,6 +5342,9 @@ function enhancementRuntime(root, options = {}) {
         } else if (moved || targetChanged) {
           this.move(target, "follow");
         }
+      } else if (singlePassOtherSync) {
+        this.pendingTarget = 0;
+        if (moved || targetChanged) this.move(target, "follow");
       } else {
         if (moved || targetChanged) this.pendingTarget = target;
         if (this.pendingTarget) {
@@ -5850,6 +5862,7 @@ function renderPreview(options = {}) {
     externalBgmController: previewBgmController,
     allowLocalBgmPanel: true,
     manualOther: !!state.otherText,
+    singlePassOtherSync: true,
     instantInitialOtherSync: !state.otherText && bgmScenePagesEnabled(),
     bgmInitiallyUnlocked: state.previewBgmUnlocked,
     onBgmUnlock: () => {
