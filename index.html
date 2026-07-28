@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.41">
+<meta name="trpg-app-version" content="6.49">
 <title>TRPG 로그 변환기</title>
 <style>
 :root {
@@ -293,6 +293,7 @@ label { color: var(--muted); font-size: 13px; }
 }
 
 .bgm-playlist-item {
+  position: relative;
   min-width: 0;
   display: grid;
   grid-template-columns: 128px minmax(0, 1fr);
@@ -366,6 +367,50 @@ label { color: var(--muted); font-size: 13px; }
   display: grid;
   align-content: center;
   gap: 5px;
+  padding-right: 24px;
+}
+
+.bgm-track-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 23px;
+  min-width: 23px;
+  height: 23px;
+  min-height: 23px;
+  padding: 0;
+  border-color: rgba(255,255,255,.12);
+  border-radius: 999px;
+  background: rgba(20,20,20,.82);
+  color: rgba(255,255,255,.55);
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity .12s ease, transform .12s ease, color .12s ease, background-color .12s ease;
+}
+.bgm-playlist-item:hover .bgm-track-remove,
+.bgm-playlist-item:focus-within .bgm-track-remove {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.bgm-track-remove:hover,
+.bgm-track-remove:focus-visible {
+  color: #fff;
+  border-color: rgba(255,140,140,.42);
+  background: rgba(145,45,45,.92);
+}
+@media (hover: none) {
+  .bgm-track-remove {
+    opacity: .72;
+    pointer-events: auto;
+    transform: none;
+  }
 }
 
 .bgm-track-title {
@@ -644,6 +689,7 @@ label { color: var(--muted); font-size: 13px; }
 }
 
 .log-row {
+  position: relative;
   display: flex;
   gap: 13px;
   align-items: flex-start;
@@ -777,15 +823,6 @@ label { color: var(--muted); font-size: 13px; }
   display: none;
 }
 
-.grouped-line-actions {
-  position: absolute;
-  top: 0;
-  right: 14px;
-  z-index: 2;
-  display: flex;
-  gap: 4px;
-}
-
 .message {
   min-width: 0;
   flex: 1 1 auto;
@@ -825,61 +862,251 @@ label { color: var(--muted); font-size: 13px; }
 }
 
 .split-button {
-  margin-left: auto;
-  min-height: 24px;
-  padding: 2px 7px;
+  position: relative;
+  flex: 0 0 26px;
+  width: 26px;
+  min-width: 26px;
+  height: 25px;
+  min-height: 25px;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
   border-radius: 5px;
   border: 1px solid rgba(255,255,255,.1);
   background: rgba(255,255,255,.045);
-  color: rgba(255,255,255,.56);
-  font-size: 11px;
+  color: rgba(255,255,255,.62);
+  font-size: 0;
+  line-height: 1;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .12s ease, background-color .12s ease, border-color .12s ease;
+  transition: opacity .12s ease, color .12s ease, background-color .12s ease, border-color .12s ease, transform .12s ease;
 }
 
-.bgm-button {
-  margin-left: 0;
+.split-button::before {
+  font-size: 12px;
+  line-height: 1;
 }
 
-.split-button:hover {
+.split-button[data-split-id]::before {
+  content: "✂";
+}
+
+.split-button.bgm-button::before {
+  content: "♫";
+}
+
+/* main: keep the split icon compact, but make BGM the primary wide action */
+.row-actions .main-bgm-button {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 70px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+
+.row-actions .main-bgm-button::before {
+  content: none;
+  display: none;
+}
+
+.row-actions .main-bgm-button.is-set {
+  color: #cfe8ff;
+  background: rgba(52,127,198,.24);
+  border-color: rgba(90,169,248,.46);
+}
+
+.split-button:hover,
+.split-button:focus-visible {
   color: #fff;
   background: rgba(143,199,255,.16);
   border-color: rgba(143,199,255,.3);
+  transform: translateY(-1px);
 }
 
-.log-row:hover .split-button,
-.log-row:focus-within .split-button,
-.other-row:hover .split-button,
-.other-row:focus-within .split-button,
-.system-line:hover .split-button,
-.system-line:focus-within .split-button {
+.split-button[data-split-id].is-set {
+  color: #bcefd2;
+  background: rgba(35,122,80,.24);
+  border-color: rgba(115,214,165,.48);
+}
+
+.split-button[data-split-id].is-set::before {
+  content: "✓";
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.split-button[data-split-id].is-set:hover,
+.split-button[data-split-id].is-set:focus-visible {
+  color: #ffd1d1;
+  background: rgba(138,52,52,.34);
+  border-color: rgba(255,140,140,.5);
+}
+
+.split-button[data-split-id].is-set:hover::before,
+.split-button[data-split-id].is-set:focus-visible::before {
+  content: "×";
+  font-size: 15px;
+}
+
+.row-actions,
+.other-actions {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 3;
+  display: flex;
+  gap: 3px;
+  margin: 0;
+  padding: 2px;
+  border-radius: 6px;
+  background: rgba(28,28,28,.9);
+  box-shadow: 0 2px 10px rgba(0,0,0,.24);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+
+.log-row:hover .row-actions,
+.log-row:focus-within .row-actions,
+.system-line:hover .row-actions,
+.system-line:focus-within .row-actions,
+.other-row:hover .other-actions,
+.other-row:focus-within .other-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.row-actions .split-button,
+.other-actions .split-button {
   opacity: 1;
   pointer-events: auto;
 }
 
-.system-line .split-button {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+.row-actions.has-split,
+.other-actions.has-split {
+  opacity: .88;
+  pointer-events: auto;
+  transform: none;
+  background: rgba(28,48,39,.94);
+  box-shadow: 0 2px 10px rgba(0,0,0,.24), 0 0 0 1px rgba(115,214,165,.12);
 }
 
-.system-line .bgm-button {
-  right: 92px;
+
+.split-boundary {
+  display: grid;
+  gap: 3px;
+  margin: 14px 0;
+  padding: 9px 10px;
+  min-height: 52px;
+  border: 1px solid rgba(115,214,165,.42);
+  border-top: 3px solid rgba(115,214,165,.92);
+  border-bottom: 1px dashed rgba(115,214,165,.26);
+  background: linear-gradient(180deg, rgba(35,122,80,.26), rgba(35,122,80,.075));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 0 0 1px rgba(115,214,165,.08);
+  color: rgba(255,255,255,.64);
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.35;
 }
 
-.other-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-  margin: 4px 0 2px;
+.split-boundary-mark {
+  display: inline-flex;
+  justify-self: center;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px 7px;
+  border: 1px solid rgba(115,214,165,.36);
+  border-radius: 999px;
+  background: rgba(24,55,40,.76);
+  color: #bcefd2;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.other-actions .split-button {
-  float: none;
-  margin-left: 0;
-  flex: 0 0 auto;
+.split-boundary-before,
+.split-boundary-after {
+  overflow-wrap: anywhere;
+}
+
+.split-boundary-before { color: rgba(255,255,255,.55); }
+.split-boundary-after { color: rgba(188,239,210,.78); }
+
+.split-boundary.is-terminal {
+  border-top-color: rgba(255,210,122,.62);
+  border-bottom-color: rgba(255,210,122,.28);
+  background: linear-gradient(180deg, rgba(153,105,24,.11), rgba(153,105,24,.035));
+}
+
+.split-boundary.is-terminal .split-boundary-mark {
+  border-color: rgba(255,210,122,.38);
+  background: rgba(78,55,19,.74);
+  color: #ffe0a3;
+}
+
+.other-wrap .split-boundary {
+  margin: 8px 0;
+  padding: 6px 7px;
+  font-size: 9px;
+}
+
+.split-boundary.is-new {
+  animation: split-boundary-flash .9s ease;
+}
+
+@keyframes split-boundary-flash {
+  0% { box-shadow: 0 0 0 0 rgba(115,214,165,.58); }
+  45% { box-shadow: 0 0 0 4px rgba(115,214,165,.2); }
+  100% { box-shadow: 0 0 0 0 rgba(115,214,165,0); }
+}
+
+.split-action-toast {
+  position: fixed;
+  z-index: 1500;
+  max-width: min(230px, calc(100vw - 20px));
+  padding: 7px 10px;
+  border: 1px solid rgba(143,199,255,.32);
+  border-radius: 7px;
+  background: rgba(24,24,24,.96);
+  color: #f5f5f5;
+  box-shadow: 0 8px 24px rgba(0,0,0,.34);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .14s ease, transform .14s ease;
+}
+
+.split-action-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.split-action-toast.is-remove {
+  border-color: rgba(255,140,140,.34);
+}
+
+@media (hover: none) {
+  .row-actions,
+  .other-actions {
+    opacity: .72;
+    pointer-events: auto;
+    transform: none;
+  }
 }
 
 .other-row.is-sync-target {
@@ -1145,7 +1372,6 @@ label { color: var(--muted); font-size: 13px; }
   .log-row.has-continuation { padding-bottom: 0; }
   .log-row.is-continuation { padding-top: 0; padding-bottom: 0; }
   .log-row.is-continuation:not(.has-continuation) { padding-bottom: 12px; }
-  .grouped-line-actions { right: 10px; }
   .pager { justify-content: flex-start; flex-wrap: wrap; }
   .system-text { max-width: 100%; }
   .avatar {
@@ -1584,7 +1810,7 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
 .bgm-trigger-list {
   display: grid;
   gap: 5px;
-  max-height: 220px;
+  max-height: 440px;
   padding: 5px;
   overflow: auto;
   border: 1px solid var(--line);
@@ -1604,8 +1830,8 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
   align-items: center;
   gap: 4px;
   min-width: 0;
-  min-height: 34px;
-  padding: 3px 4px;
+  min-height: 50px;
+  padding: 4px;
   border: 1px solid transparent;
   border-radius: 6px;
   background: rgba(255,255,255,.025);
@@ -1618,11 +1844,15 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
 }
 .bgm-trigger-jump {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(56px, .48fr);
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "id chat"
+    "track track";
   align-items: center;
-  gap: 4px;
+  column-gap: 5px;
+  row-gap: 2px;
   min-width: 0;
-  min-height: 26px;
+  min-height: 40px;
   padding: 3px 4px;
   overflow: hidden;
   border: 0;
@@ -1641,6 +1871,7 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
   cursor: default;
 }
 .bgm-trigger-id {
+  grid-area: id;
   color: rgba(143,199,255,.92);
   font-weight: 800;
   white-space: nowrap;
@@ -1652,9 +1883,11 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.bgm-trigger-chat { grid-area: chat; }
 .bgm-trigger-track {
-  color: rgba(255,255,255,.42);
-  text-align: right;
+  grid-area: track;
+  color: rgba(255,255,255,.5);
+  text-align: left;
 }
 .bgm-trigger-actions {
   display: flex;
@@ -2010,6 +2243,7 @@ const state = {
   chars: [],
   page: 1,
   previewBgmUnlocked: false,
+  splitOrderHints: new Map(),
   inlineImageCache: new Map(),
   lastImageAssetStats: null,
   lastCompactStats: null,
@@ -2024,6 +2258,8 @@ const otherFile = el("otherFile");
 const jsonFile = el("jsonFile");
 const APP_VERSION = document.querySelector('meta[name="trpg-app-version"]')?.content?.trim() || "dev";
 const PREFERENCE_STORAGE_KEY = "trpg-log-converter:last-preferences";
+const PREFERENCE_SCHEMA_VERSION = 2;
+const DEFAULT_PAGE_SIZE = "1000";
 const PREFERENCE_FIELDS = [
   "fontSize", "lineHeight", "avatarSize", "pageSize",
   "groupRows", "sideOther", "showExpression", "hideEmpty", "hideSystem",
@@ -2053,7 +2289,20 @@ function loadLastPreferences() {
   try {
     const saved = JSON.parse(localStorage.getItem(PREFERENCE_STORAGE_KEY) || "null");
     if (!saved || typeof saved !== "object") return;
+
+    const needsPageSizeMigration = Number(saved.__schemaVersion || 0) < PREFERENCE_SCHEMA_VERSION;
+    if (needsPageSizeMigration && String(saved.pageSize || "") === "100") {
+      // v6.48 이전에 저장된 100개 기본값이 새 기본값(1000개)을 덮어쓰지 않게 한 번만 보정한다.
+      saved.pageSize = DEFAULT_PAGE_SIZE;
+    }
+
     PREFERENCE_FIELDS.forEach(id => writeControlValue(el(id), saved[id]));
+
+    if (needsPageSizeMigration) {
+      saved.__schemaVersion = PREFERENCE_SCHEMA_VERSION;
+      saved.pageSize = readControlValue(el("pageSize")) || DEFAULT_PAGE_SIZE;
+      localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify(saved));
+    }
   } catch (error) {
     console.warn("직전 설정을 불러오지 못했습니다.", error);
   }
@@ -2061,7 +2310,7 @@ function loadLastPreferences() {
 
 function saveLastPreferences() {
   try {
-    const saved = {};
+    const saved = { __schemaVersion: PREFERENCE_SCHEMA_VERSION };
     PREFERENCE_FIELDS.forEach(id => {
       const control = el(id);
       if (control) saved[id] = readControlValue(control);
@@ -2741,6 +2990,7 @@ function applyMatches(messages) {
       id,
       imgUrl,
       match,
+      _order: index,
       searchText: normalizeText(`${message.name || ""}
 ${tab}
 ${message.text || ""}`).toLowerCase()
@@ -2876,7 +3126,7 @@ function loadYoutubeIframeApi() {
 }
 
 function chooseBgmUrlFromPlaylist(options = {}) {
-  const items = bgmPlaylistItems();
+  let items = bgmPlaylistItems();
   const raw = el("bgmUrl").value.trim();
   const currentTrigger = options.currentTrigger || null;
   const hasCurrentBgm = !!currentTrigger?.videoId;
@@ -3174,6 +3424,28 @@ function chooseBgmUrlFromPlaylist(options = {}) {
       status.textContent = "썸네일 클릭으로 재생을 요청했습니다. 브라우저가 허용하면 곧바로 재생됩니다.";
     }
 
+    function removePlaylistItem(item) {
+      if (!item?.videoId) return;
+      const confirmed = window.confirm(`“${item.title}”을 BGM 목록에서 제거할까요?\n이미 채팅에 지정된 BGM은 유지됩니다.`);
+      if (!confirmed) return;
+
+      if (previewItem?.videoId === item.videoId || previewKey === itemKey(item)) {
+        stopPreview({ silent: true });
+      }
+
+      const input = el("bgmUrl");
+      if (!input) return;
+      const nextLines = String(input.value || "").split(/\n/).filter(line => {
+        const lineUrl = extractYoutubeUrl(line);
+        return youtubeIdFromUrl(lineUrl) !== item.videoId;
+      });
+      input.value = nextLines.join("\n").replace(/^\n+|\n+$/g, "");
+      notifyBgmPlaylistChanged();
+      items = bgmPlaylistItems();
+      renderPlaylist();
+      status.textContent = `“${item.title}”을 BGM 목록에서 제거했습니다.`;
+    }
+
     function renderPlaylist(options = {}) {
       if (!list) return;
       const previousScrollTop = options.restoreSaved
@@ -3186,7 +3458,7 @@ function chooseBgmUrlFromPlaylist(options = {}) {
       if (!filtered.length) {
         const empty = document.createElement("div");
         empty.className = "bgm-playlist-empty";
-        empty.textContent = "검색 결과가 없습니다.";
+        empty.textContent = query ? "검색 결과가 없습니다." : "BGM 목록에 곡이 없습니다.";
         list.append(empty);
       } else {
         const fragment = document.createDocumentFragment();
@@ -3221,9 +3493,21 @@ function chooseBgmUrlFromPlaylist(options = {}) {
           title.className = "bgm-track-title";
           title.textContent = item.title;
           copy.append(title);
-          row.append(thumb, copy);
+
+          const removeTrackButton = document.createElement("button");
+          removeTrackButton.type = "button";
+          removeTrackButton.className = "bgm-track-remove";
+          removeTrackButton.textContent = "×";
+          removeTrackButton.title = `${item.title} 목록에서 제거`;
+          removeTrackButton.setAttribute("aria-label", `${item.title} 목록에서 제거`);
+          removeTrackButton.addEventListener("click", event => {
+            event.stopPropagation();
+            removePlaylistItem(item);
+          });
+
+          row.append(thumb, copy, removeTrackButton);
           row.addEventListener("click", event => {
-            if (event.target.closest("[data-bgm-thumb]")) return;
+            if (event.target.closest("[data-bgm-thumb], .bgm-track-remove")) return;
             close(item.url);
           });
           row.addEventListener("keydown", event => {
@@ -3466,7 +3750,7 @@ function renderBgmTriggerList() {
     chat.textContent = chatLabel;
     const track = document.createElement("span");
     track.className = "bgm-trigger-track";
-    track.textContent = `· ${trackTitle}`;
+    track.textContent = trackTitle;
     track.title = trackTitle;
     if (!titleByVideoId.has(trigger.videoId) && !bgmFetchedTitleByVideoId.has(trigger.videoId)) {
       fetchYoutubeTitleForTrigger(trigger).then(() => {
@@ -3551,10 +3835,10 @@ function jumpToBgmChat(id) {
   }
   updateView();
 
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  const alignJumpTarget = ({ highlight = false } = {}) => {
     const preview = el("preview");
     const target = preview?.querySelector(`[data-index="${Number(message.id)}"]`);
-    if (!target) return;
+    if (!target) return false;
     const main = target.closest(".ccfolia-wrap") || preview;
     const mainStyle = window.getComputedStyle(main);
     const mainOwnScroll = main.scrollHeight > main.clientHeight + 2 && mainStyle.overflowY !== "visible";
@@ -3562,20 +3846,37 @@ function jumpToBgmChat(id) {
     const markerOffset = Math.min(Math.max(1, mainRect.height) * 0.35, 220);
     const desiredTop = mainRect.top + markerOffset;
     const delta = target.getBoundingClientRect().top - desiredTop;
-    if (mainOwnScroll) {
-      main.scrollTop += delta;
-      main.dispatchEvent(new Event("scroll", { bubbles: true }));
-    } else {
-      const scrollHost = preview.scrollHeight > preview.clientHeight + 2 ? preview : document.scrollingElement;
-      if (scrollHost === preview) preview.scrollTop += delta;
-      else window.scrollBy({ top: delta, behavior: "auto" });
-      scrollHost?.dispatchEvent?.(new Event("scroll", { bubbles: true }));
+    if (Math.abs(delta) > 0.5) {
+      if (mainOwnScroll) {
+        main.scrollTop += delta;
+        main.dispatchEvent(new Event("scroll", { bubbles: true }));
+      } else {
+        const scrollHost = preview.scrollHeight > preview.clientHeight + 2 ? preview : document.scrollingElement;
+        if (scrollHost === preview) preview.scrollTop += delta;
+        else window.scrollBy({ top: delta, behavior: "auto" });
+        scrollHost?.dispatchEvent?.(new Event("scroll", { bubbles: true }));
+      }
     }
+    const syncEvent = typeof CustomEvent === "function"
+      ? new CustomEvent("trpg-preview-sync-other-now", { detail: { index: Number(message.id) } })
+      : new Event("trpg-preview-sync-other-now");
+    preview.dispatchEvent(syncEvent);
     const trigger = bgmTriggerMap.get(Number(message.id));
     if (trigger && el("bgmAutoplay")?.checked) getPersistentPreviewBgmController().syncTrigger(trigger);
-    target.classList.add("is-bgm-jump-target");
-    window.setTimeout(() => target.classList.remove("is-bgm-jump-target"), 1800);
-  }));
+    if (highlight) {
+      target.classList.add("is-bgm-jump-target");
+      window.setTimeout(() => target.classList.remove("is-bgm-jump-target"), 1800);
+    }
+    return true;
+  };
+
+  // DOM을 다시 그린 직후, 첫 화면이 칠해지기 전에 main과 other를 동시에 맞춘다.
+  // 다음 프레임에서는 이미지·폰트 반영으로 생긴 미세한 오차만 다시 보정한다.
+  if (alignJumpTarget({ highlight: true })) {
+    requestAnimationFrame(() => alignJumpTarget());
+  } else {
+    requestAnimationFrame(() => alignJumpTarget({ highlight: true }));
+  }
 }
 
 function formatBgmTriggersValue(value) {
@@ -5378,6 +5679,11 @@ function enhancementRuntime(root, options = {}) {
     if (!syncController) return;
     syncController.force(index, optionsValue.force || optionsValue.behavior === "auto" ? "auto" : "smooth");
   }
+  on(scope, "trpg-preview-sync-other-now", event => {
+    const index = Number(event?.detail?.index);
+    if (!Number.isFinite(index) || index <= 0 || manualOtherOnly) return;
+    syncOther(index, { behavior: "auto", force: true });
+  });
 
   function activeBgmTrigger(index) {
     let low = 0;
@@ -5730,14 +6036,165 @@ function renderAvatar(message, imageAssetIds = null) {
   return `<div class="avatar">${escapeHtml(initials(message.name))}</div>`;
 }
 
-function splitButton(message, target = "main") {
-  return `<button type="button" class="split-button" data-split-target="${target}" data-split-id="${message.id}">여기서 분할</button>`;
+function previewSplitEntries() {
+  const byKey = new Map();
+  [
+    { target: "main", value: el("manualSplits")?.value || "" },
+    { target: "other", value: el("manualOtherSplits")?.value || "" }
+  ].forEach(source => {
+    parseSplitEntries(source.value).forEach(entry => {
+      const key = `${source.target}:${entry.id}`;
+      const previous = byKey.get(key);
+      byKey.set(key, {
+        id: entry.id,
+        target: source.target,
+        label: entry.label || previous?.label || ""
+      });
+    });
+  });
+  return [...byKey.values()].sort((a, b) => {
+    const orderA = resolvedSplitOrder(a);
+    const orderB = resolvedSplitOrder(b);
+    if (orderA != null && orderB != null && orderA !== orderB) return orderA - orderB;
+    return a.id - b.id || a.target.localeCompare(b.target);
+  });
 }
 
-function bgmButton(message) {
+function splitTargetMatchesRow(row, target = "main") {
+  const isOther = normalizedTab(row?.tab) === "other";
+  return target === "other" ? isOther : !isOther;
+}
+
+function messageRenderOrder(row) {
+  const stored = Number(row?._order);
+  if (Number.isFinite(stored) && stored >= 0) return stored;
+  const index = state.messages.indexOf(row);
+  return index >= 0 ? index : null;
+}
+
+function resolvedSplitOrder(entry) {
+  const key = `${entry.target || "main"}:${Number(entry.id)}`;
+  const hinted = Number(state.splitOrderHints?.get(key));
+  if (Number.isFinite(hinted) && hinted >= 0) {
+    const row = state.messages[hinted];
+    if (row && Number(row.id) === Number(entry.id) && splitTargetMatchesRow(row, entry.target)) return hinted;
+  }
+  for (let index = 0; index < state.messages.length; index += 1) {
+    const row = state.messages[index];
+    if (Number(row.id) === Number(entry.id) && splitTargetMatchesRow(row, entry.target)) return index;
+  }
+  for (let index = 0; index < state.messages.length; index += 1) {
+    if (Number(state.messages[index].id) === Number(entry.id)) return index;
+  }
+  return null;
+}
+
+function splitBoundaryHtml(entry) {
+  const splitOrder = resolvedSplitOrder(entry);
+  const hasFollowingMessage = splitOrder != null && splitOrder < state.messages.length - 1;
+  const marker = `✂ #${entry.id}${entry.label ? ` · ${entry.label}` : ""}`;
+  const boundaryKey = `${entry.target || "main"}:${entry.id}`;
+  if (!hasFollowingMessage) {
+    return `<div class="split-boundary is-terminal" data-split-boundary="${entry.id}" data-split-key="${escapeHtml(boundaryKey)}" role="separator" aria-label="#${entry.id} 로그 마지막 분할점">
+      <span class="split-boundary-before">↑ 이 위까지 마지막 HTML에 포함</span>
+      <span class="split-boundary-mark">${escapeHtml(marker)}</span>
+      <span class="split-boundary-after">로그 끝이라 새 HTML은 추가로 생기지 않음</span>
+    </div>`;
+  }
+  return `<div class="split-boundary" data-split-boundary="${entry.id}" data-split-key="${escapeHtml(boundaryKey)}" role="separator" aria-label="#${entry.id} 뒤에서 HTML 분할">
+    <span class="split-boundary-before">↑ 이 위까지 이전 HTML</span>
+    <span class="split-boundary-mark">${escapeHtml(marker)}</span>
+    <span class="split-boundary-after">↓ 이 아래부터 다음 HTML</span>
+  </div>`;
+}
+
+function splitBoundaryMapForWindow(windowRows, allColumnRows, columnTarget, entries = previewSplitEntries()) {
+  const map = new Map();
+  if (!windowRows.length || !allColumnRows.length || !entries.length) return map;
+  const startIndex = allColumnRows.indexOf(windowRows[0]);
+  if (startIndex < 0) return map;
+  const endIndex = startIndex + windowRows.length;
+
+  entries.forEach(entry => {
+    const splitOrder = resolvedSplitOrder(entry);
+    if (splitOrder == null) return;
+
+    let insertionIndex = -1;
+    // In the column where the split was clicked, anchor directly after that exact message.
+    // This also handles duplicated message IDs in imported/merged logs.
+    if ((entry.target || "main") === columnTarget) {
+      const exactIndex = allColumnRows.findIndex(row => messageRenderOrder(row) === splitOrder);
+      if (exactIndex >= 0) insertionIndex = exactIndex + 1;
+    }
+
+    // In the opposite column, place the same boundary at the first message after the
+    // source-order position so main and other show the same exported HTML boundary.
+    if (insertionIndex < 0) {
+      insertionIndex = allColumnRows.findIndex(row => {
+        const rowOrder = messageRenderOrder(row);
+        return rowOrder != null && rowOrder > splitOrder;
+      });
+      if (insertionIndex < 0) insertionIndex = allColumnRows.length;
+    }
+
+    if (insertionIndex < startIndex || insertionIndex > endIndex) return;
+    const localIndex = insertionIndex - startIndex;
+    if (!map.has(localIndex)) map.set(localIndex, []);
+    map.get(localIndex).push(entry);
+  });
+  return map;
+}
+
+function renderMainRowsWithSplitBoundaries(pageRows, allMainRows) {
+  const boundaryMap = splitBoundaryMapForWindow(pageRows, allMainRows, "main");
+  const output = [];
+  let previous = null;
+  let groupTone = -1;
+  for (let index = 0; index <= pageRows.length; index += 1) {
+    const boundaries = boundaryMap.get(index) || [];
+    if (boundaries.length) {
+      boundaries.forEach(entry => output.push(splitBoundaryHtml(entry)));
+      previous = null;
+    }
+    if (index >= pageRows.length) break;
+    const row = pageRows[index];
+    const grouped = canGroupConsecutiveRows(previous, row);
+    if (!grouped) groupTone += 1;
+    const boundaryAfter = boundaryMap.has(index + 1);
+    const next = boundaryAfter ? null : (pageRows[index + 1] || null);
+    output.push(renderRow(row, previous, next, true, null, groupTone));
+    previous = row;
+  }
+  return output.join("");
+}
+
+function renderOtherRowsWithSplitBoundaries(rows) {
+  const boundaryMap = splitBoundaryMapForWindow(rows, rows, "other");
+  const output = [];
+  for (let index = 0; index <= rows.length; index += 1) {
+    (boundaryMap.get(index) || []).forEach(entry => output.push(splitBoundaryHtml(entry)));
+    if (index < rows.length) output.push(renderOtherRow(rows[index], true));
+  }
+  return output.join("");
+}
+
+function splitButton(message, target = "main") {
+  const isSet = hasManualSplit(message.id, target);
+  const label = isSet ? "분할점 제거" : "이 채팅 뒤에서 분할";
+  const order = messageRenderOrder(message);
+  return `<button type="button" class="split-button split-toggle${isSet ? " is-set" : ""}" data-split-target="${target}" data-split-id="${message.id}"${order != null ? ` data-split-order="${order}"` : ""} title="${label}" aria-label="${label}" aria-pressed="${isSet ? "true" : "false"}">${label}</button>`;
+}
+
+function rowActionButtons(message, target = "main") {
+  const hasSplit = hasManualSplit(message.id, target);
+  return `<div class="row-actions${hasSplit ? " has-split" : ""}">${splitButton(message, target)}${bgmButton(message, true)}</div>`;
+}
+
+function bgmButton(message, wide = false) {
   const hasBgm = !!bgmTriggerForMessage(message);
   const label = hasBgm ? "BGM 수정·해제" : "BGM 지정";
-  return `<button type="button" class="split-button bgm-button${hasBgm ? " is-set" : ""}" data-bgm-id="${message.id}" title="${label}">${label}</button>`;
+  const visibleText = wide ? "BGM ♬" : label;
+  return `<button type="button" class="split-button bgm-button${wide ? " main-bgm-button" : ""}${hasBgm ? " is-set" : ""}" data-bgm-id="${message.id}" title="${label}" aria-label="${label}">${visibleText}</button>`;
 }
 
 function bgmLink(trigger) {
@@ -5759,7 +6216,7 @@ function renderOtherRow(message, interactive = false) {
   return `<article class="other-row" data-index="${message.id}">
     <strong class="other-name" style="--name-color:${escapeHtml(safeCssColor(message.color || "#dddddd"))}">${escapeHtml(message.name)}</strong>
     ${bgmLink(bgmTrigger)}
-    ${interactive ? `<div class="other-actions">${splitButton(message, "other")}${bgmButton(message)}</div>` : ""}
+    ${interactive ? `<div class="other-actions${hasManualSplit(message.id, "other") ? " has-split" : ""}">${splitButton(message, "other")}${bgmButton(message)}</div>` : ""}
     <div class="other-text">${escapeHtml(compactOtherText(message.text)).replace(/\n/g, "<br>")}</div>
   </article>`;
 }
@@ -5786,7 +6243,7 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
     const bgmTrigger = bgmTriggerForMessage(message);
     return `<article class="system-line" data-index="${message.id}">
       <div class="system-text">${escapeHtml(message.text).replace(/\n/g, "<br>")}${bgmTrigger ? `<br>${bgmLink(bgmTrigger)}` : ""}</div>
-      ${interactive ? splitButton(message, "main") + bgmButton(message) : ""}
+      ${interactive ? rowActionButtons(message, "main") : ""}
     </article>`;
   }
   const isExtraTab = tab !== "main" && tab !== "other";
@@ -5801,18 +6258,17 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
     : renderAvatar(message, imageAssetIds);
   const toneClass = isExtraTab || isSystem ? "" : (groupTone % 2 ? " group-tone-b" : " group-tone-a");
   const groupedLink = bgmLink(bgmTrigger);
-  const groupedActions = interactive ? `<div class="grouped-line-actions">${splitButton(message, "main")}${bgmButton(message)}</div>` : "";
   const contentHtml = grouped
-    ? `<div class="grouped-line"><div class="text">${escapeHtml(message.text).replace(/\n/g, "<br>")}</div>${groupedLink ? `<div class="grouped-line-tools">${groupedLink}</div>` : ""}</div>${groupedActions}`
+    ? `<div class="grouped-line"><div class="text">${escapeHtml(message.text).replace(/\n/g, "<br>")}</div>${groupedLink ? `<div class="grouped-line-tools">${groupedLink}</div>` : ""}</div>`
     : `<div class="meta">
         <strong class="name" style="--name-color:${escapeHtml(safeCssColor(message.color || "#dddddd"))}">${escapeHtml(message.name)}</strong>
         ${tabTag}
         ${label ? `<span class="expr-tag">${escapeHtml(label)}</span>` : ""}
         ${bgmLink(bgmTrigger)}
-        ${interactive ? splitButton(message, "main") + bgmButton(message) : ""}
       </div>
       <div class="text">${escapeHtml(message.text).replace(/\n/g, "<br>")}</div>`;
   return `<article class="log-row${isSystem ? " is-system" : ""}${isExtraTab ? " is-extra-tab" : ""}${grouped ? " is-continuation" : ""}${hasContinuation ? " has-continuation" : ""}${toneClass}" data-index="${message.id}">
+    ${interactive ? rowActionButtons(message, "main") : ""}
     ${avatarHtml}
     <div class="message">${contentHtml}</div>
   </article>`;
@@ -5826,17 +6282,9 @@ function renderPreview(options = {}) {
   const paging = pagingInfoForRows(mainRows);
   const pageRows = rowsForPaging(mainRows, paging);
   const sideRows = otherVisibleRows();
-  let previous = null;
-  let groupTone = -1;
-  const html = pageRows.map((row, index) => {
-    const grouped = canGroupConsecutiveRows(previous, row);
-    if (!grouped) groupTone += 1;
-    const rendered = renderRow(row, previous, pageRows[index + 1] || null, true, null, groupTone);
-    previous = row;
-    return rendered;
-  }).join("");
+  const html = renderMainRowsWithSplitBoundaries(pageRows, mainRows);
   if (sideOtherEnabled()) {
-    const otherHtml = sideRows.map(row => renderOtherRow(row, true)).join("");
+    const otherHtml = renderOtherRowsWithSplitBoundaries(sideRows);
     root.innerHTML = `<div class="preview-layout">
       <div class="ccfolia-wrap">${html || '<div class="empty-state"><h2>표시할 main 메시지가 없습니다</h2><p>필터를 조정해보세요.</p></div>'}</div>
       <aside class="other-wrap">${otherHtml}</aside>
@@ -5846,7 +6294,7 @@ function renderPreview(options = {}) {
   }
   restorePreviewScroll(root, scrollSnapshot);
   root.querySelectorAll(".split-button[data-split-id]").forEach(button => {
-    button.addEventListener("click", () => addManualSplit(Number(button.dataset.splitId), button.dataset.splitTarget));
+    button.addEventListener("click", () => toggleManualSplit(Number(button.dataset.splitId), button.dataset.splitTarget, button));
   });
   root.querySelectorAll(".bgm-button[data-bgm-id]").forEach(button => {
     button.addEventListener("click", () => addBgmTrigger(Number(button.dataset.bgmId)));
@@ -5902,16 +6350,93 @@ function parseSplitEntries(value) {
   return [...byId.values()].sort((a, b) => a.id - b.id);
 }
 
-function writeSplitPoints(input, points) {
-  input.value = [...new Set(points)].sort((a, b) => a - b).join(", ");
+function splitInputForTarget(target = "main") {
+  return target === "other" && state.otherText ? el("manualOtherSplits") : el("manualSplits");
+}
+
+function hasManualSplit(id, target = "main") {
+  const input = splitInputForTarget(target);
+  return parseSplitEntries(input?.value || "").some(entry => entry.id === Number(id));
+}
+
+function writeSplitEntries(input, entries) {
+  const normalized = [...entries]
+    .filter(entry => Number.isFinite(Number(entry.id)) && Number(entry.id) > 0)
+    .map(entry => ({ id: Number(entry.id), label: String(entry.label || "").trim() }))
+    .sort((a, b) => a.id - b.id);
+  input.value = normalized.map(entry => `${entry.id}${entry.label ? ` ${entry.label}` : ""}`).join("\n");
   el("clearSplitsBtn").disabled = !el("manualSplits").value.trim() && !el("manualOtherSplits").value.trim();
 }
 
-function addManualSplit(id, target = "main") {
-  const input = target === "other" && state.otherText ? el("manualOtherSplits") : el("manualSplits");
-  const points = parseSplitPoints(input.value);
-  points.push(id);
-  writeSplitPoints(input, points);
+function syncSplitButtonStates() {
+  document.querySelectorAll(".split-button[data-split-id]").forEach(button => {
+    const id = Number(button.dataset.splitId);
+    const target = button.dataset.splitTarget || "main";
+    const isSet = hasManualSplit(id, target);
+    const label = isSet ? "분할점 제거" : "이 채팅 뒤에서 분할";
+    button.classList.toggle("is-set", isSet);
+    button.parentElement?.classList.toggle("has-split", isSet);
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String(isSet));
+  });
+}
+
+function showSplitActionToast(button, message, removed = false) {
+  if (!button?.isConnected) return;
+  document.querySelectorAll(".split-action-toast").forEach(node => node.remove());
+  const toast = document.createElement("div");
+  toast.className = `split-action-toast${removed ? " is-remove" : ""}`;
+  toast.textContent = message;
+  document.body.append(toast);
+  const buttonRect = button.getBoundingClientRect();
+  const toastRect = toast.getBoundingClientRect();
+  const left = Math.max(10, Math.min(window.innerWidth - toastRect.width - 10, buttonRect.right - toastRect.width));
+  const preferredTop = buttonRect.top - toastRect.height - 8;
+  const top = preferredTop >= 8 ? preferredTop : Math.min(window.innerHeight - toastRect.height - 8, buttonRect.bottom + 8);
+  toast.style.left = `${left}px`;
+  toast.style.top = `${Math.max(8, top)}px`;
+  requestAnimationFrame(() => toast.classList.add("is-visible"));
+  window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+    window.setTimeout(() => toast.remove(), 180);
+  }, 1400);
+}
+
+function revealSplitBoundary(id, target = "main") {
+  const splitKey = `${target}:${Number(id)}`;
+  let boundaries = [...document.querySelectorAll(`[data-split-key="${CSS.escape(splitKey)}"]`)];
+  if (!boundaries.length) boundaries = [...document.querySelectorAll(`[data-split-boundary="${Number(id)}"]`)];
+  if (!boundaries.length) return;
+  boundaries.forEach(boundary => boundary.classList.add("is-new"));
+  const mainBoundary = boundaries.find(boundary => boundary.closest(".ccfolia-wrap")) || boundaries[0];
+  mainBoundary.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+  window.setTimeout(() => boundaries.forEach(boundary => boundary.classList.remove("is-new")), 950);
+}
+
+function toggleManualSplit(id, target = "main", sourceButton = null) {
+  const input = splitInputForTarget(target);
+  const splitKey = `${target}:${Number(id)}`;
+  const sourceOrder = Number(sourceButton?.dataset.splitOrder);
+  const entries = parseSplitEntries(input.value);
+  const existingIndex = entries.findIndex(entry => entry.id === Number(id));
+  const removed = existingIndex >= 0;
+  if (removed) {
+    entries.splice(existingIndex, 1);
+    state.splitOrderHints.delete(splitKey);
+  } else {
+    entries.push({ id: Number(id), label: "" });
+    if (Number.isFinite(sourceOrder) && sourceOrder >= 0) state.splitOrderHints.set(splitKey, sourceOrder);
+  }
+  writeSplitEntries(input, entries);
+  syncSplitButtonStates();
+  const message = removed ? `#${id} 분할점을 제거했습니다.` : `#${id} 뒤에 분할점을 등록했습니다.`;
+  showSplitActionToast(sourceButton, message, removed);
+  setStatus(removed
+    ? message
+    : `${message} 이 채팅까지 이전 HTML에 포함되고, 다음 채팅부터 새 HTML이 시작됩니다.`);
+  renderPreview({ preserveScroll: true });
+  if (!removed) revealSplitBoundary(id, target);
 }
 
 function splitRowsByAfterIds(rows, splitPoints) {
@@ -8012,16 +8537,21 @@ el("bgmScenePages").addEventListener("change", () => { state.page = 1; updateVie
 el("prevBtn").addEventListener("click", () => { state.page -= 1; updateView(); });
 el("nextBtn").addEventListener("click", () => { state.page += 1; updateView(); });
 el("pageInput").addEventListener("change", () => { state.page = Number(el("pageInput").value) || 1; updateView(); });
-el("manualSplits").addEventListener("input", () => {
+const refreshSplitPreview = debounce(() => {
   el("clearSplitsBtn").disabled = !el("manualSplits").value.trim() && !el("manualOtherSplits").value.trim();
-});
-el("manualOtherSplits").addEventListener("input", () => {
-  el("clearSplitsBtn").disabled = !el("manualSplits").value.trim() && !el("manualOtherSplits").value.trim();
-});
+  syncSplitButtonStates();
+  if (state.messages.length) renderPreview({ preserveScroll: true });
+}, 120);
+el("manualSplits").addEventListener("input", refreshSplitPreview);
+el("manualOtherSplits").addEventListener("input", refreshSplitPreview);
 el("clearSplitsBtn").addEventListener("click", () => {
   el("manualSplits").value = "";
   el("manualOtherSplits").value = "";
+  state.splitOrderHints.clear();
   el("clearSplitsBtn").disabled = true;
+  syncSplitButtonStates();
+  if (state.messages.length) renderPreview({ preserveScroll: true });
+  setStatus("모든 분할점을 지웠습니다.");
 });
 el("saveBtn").addEventListener("click", createExportLinks);
 el("exportGuideBtn").addEventListener("click", () => {
