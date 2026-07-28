@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.56">
+<meta name="trpg-app-version" content="6.57">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2065,7 +2065,7 @@ html[data-theme="light"] .bgm-track-thumb.is-external { background: rgba(37,99,1
 .preview-shell.is-style-adjusting { contain: layout paint; }
 
 
-/* v6.56 — converter and exported log share the selected fixed theme. */
+/* v6.57 — converter and exported log share the selected fixed theme. */
 .theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -5160,6 +5160,9 @@ function getPersistentPreviewBgmController() {
   let unlocked = Boolean(state.previewBgmUnlocked);
   let currentTrigger = null;
   let currentTrackKey = "";
+  let availableTriggers = [];
+  let firstYoutubeTrigger = null;
+  let firstExternalTrigger = null;
   let activeType = "";
   let player = null;
   let playerReady = false;
@@ -5169,6 +5172,8 @@ function getPersistentPreviewBgmController() {
   let autoplayCheckTimer = 0;
   let heldForPreview = false;
   let shouldResumeAfterPreview = false;
+  let primingYoutube = false;
+  let primeYoutubeTimer = 0;
 
   function clearAutoplayCheck() {
     if (autoplayCheckTimer) window.clearTimeout(autoplayCheckTimer);
@@ -5207,6 +5212,7 @@ function getPersistentPreviewBgmController() {
     return vars;
   }
   function showYoutubeFrame() {
+    if (activeType === "youtube") return;
     activeType = "youtube";
     audio.pause();
     audio.hidden = true;
@@ -5214,6 +5220,7 @@ function getPersistentPreviewBgmController() {
     frame.classList.remove("is-external-audio");
   }
   function showAudioFrame() {
+    if (activeType === "external") return;
     activeType = "external";
     try { player?.pauseVideo(); } catch (error) {}
     youtubeFrame.hidden = true;
@@ -5222,8 +5229,6 @@ function getPersistentPreviewBgmController() {
   }
   function ensurePlayer(trigger) {
     if (trigger?.type !== "youtube" || !trigger.videoId) return Promise.resolve(null);
-    currentTrigger = trigger;
-    showYoutubeFrame();
     if (playerReady && player) return Promise.resolve(player);
     if (playerInitPromise) return playerInitPromise;
     playerHost = document.createElement("div");
@@ -5254,11 +5259,16 @@ function getPersistentPreviewBgmController() {
                 if (unlocked && !heldForPreview) player.loadVideoById(pending.videoId);
                 else player.cueVideoById(pending.videoId);
               } catch (error) {}
+            } else if (unlocked && pending?.type === "external") {
+              // 활성화 클릭보다 API 준비가 늦어도, 음소거 재생으로 YouTube 엔진을
+              // 미리 깨워 두면 이후 외부 음원 → YouTube 전환이 자동으로 이어진다.
+              window.setTimeout(primeYoutubeForFutureSwitch, 0);
             }
             resolve(player);
           },
           onStateChange(event) {
             const YTState = window.YT?.PlayerState;
+            if (primingYoutube) return;
             if (event.data === YTState?.PLAYING) {
               clearAutoplayCheck();
               if (currentTrigger) setStatusForTrigger(currentTrigger, "재생");
@@ -5277,40 +5287,84 @@ function getPersistentPreviewBgmController() {
     });
     return playerInitPromise;
   }
-  function syncExternal(trigger) {
-    showAudioFrame();
+  function syncExternal(trigger, { force = false } = {}) {
     const key = bgmTrackKey(trigger);
-    if (currentTrackKey !== key) {
+    const changed = currentTrackKey !== key || activeType !== "external";
+    if (changed) {
+      showAudioFrame();
       currentTrackKey = key;
       audio.src = trigger.url;
       audio.load();
     }
     setStatusForTrigger(trigger, unlocked ? "재생" : "대기");
-    if (!unlocked || heldForPreview) { audio.pause(); return; }
+    if (!unlocked || heldForPreview) {
+      if (changed || !audio.paused) audio.pause();
+      return;
+    }
+    if (!force && !changed && !audio.paused) return;
     audio.play().then(() => setStatusForTrigger(trigger, "재생")).catch(() => setAutoplayBlocked(trigger));
   }
-  function syncYoutube(trigger) {
-    showYoutubeFrame();
+  function syncYoutube(trigger, { force = false } = {}) {
+    const key = bgmTrackKey(trigger);
+    const changed = currentTrackKey !== key || activeType !== "youtube";
+    if (changed) {
+      showYoutubeFrame();
+      currentTrackKey = key;
+    }
     setStatusForTrigger(trigger, unlocked ? "재생" : "대기");
     ensurePlayer(trigger).then(readyPlayer => {
-      if (!readyPlayer || !playerReady || currentTrigger?.url !== trigger.url) return;
+      if (!readyPlayer || !playerReady || bgmTrackKey(currentTrigger) !== key) return;
       if (!unlocked) {
-        if (loadedVideoId !== trigger.videoId) { try { loadedVideoId = trigger.videoId; readyPlayer.cueVideoById(trigger.videoId); } catch (error) {} }
+        if (loadedVideoId !== trigger.videoId) {
+          try { loadedVideoId = trigger.videoId; readyPlayer.cueVideoById(trigger.videoId); } catch (error) {}
+        }
         return;
       }
       if (heldForPreview) { try { readyPlayer.pauseVideo(); } catch (error) {} return; }
       try {
-        if (loadedVideoId !== trigger.videoId) { loadedVideoId = trigger.videoId; readyPlayer.loadVideoById(trigger.videoId); }
-        else readyPlayer.playVideo();
+        try { readyPlayer.unMute?.(); } catch (error) {}
+        if (loadedVideoId !== trigger.videoId) {
+          loadedVideoId = trigger.videoId;
+          readyPlayer.loadVideoById(trigger.videoId);
+        } else {
+          let stateValue = null;
+          try { stateValue = readyPlayer.getPlayerState(); } catch (error) {}
+          const YTState = window.YT?.PlayerState;
+          if (force || (stateValue !== YTState?.PLAYING && stateValue !== YTState?.BUFFERING)) readyPlayer.playVideo();
+        }
         scheduleAutoplayCheck(trigger);
       } catch (error) { setAutoplayBlocked(trigger); }
     });
   }
-  function syncTrigger(trigger) {
+  function syncTrigger(trigger, options = {}) {
     currentTrigger = trigger ? { ...trigger, ...(bgmTrackFromUrl(trigger.url) || {}) } : null;
     if (!enabled || !currentTrigger?.url) return;
-    if (currentTrigger.type === "external") syncExternal(currentTrigger);
-    else syncYoutube(currentTrigger);
+    if (currentTrigger.type === "external") syncExternal(currentTrigger, options);
+    else syncYoutube(currentTrigger, options);
+  }
+  function prepareAlternateYoutube() {
+    if (!enabled || !firstYoutubeTrigger || currentTrigger?.type === "youtube") return;
+    ensurePlayer(firstYoutubeTrigger).then(() => {});
+  }
+  function primeYoutubeForFutureSwitch() {
+    if (!playerReady || !player || !firstYoutubeTrigger || currentTrigger?.type === "youtube") return;
+    window.clearTimeout(primeYoutubeTimer);
+    primingYoutube = true;
+    try {
+      player.mute?.();
+      if (loadedVideoId !== firstYoutubeTrigger.videoId) {
+        loadedVideoId = firstYoutubeTrigger.videoId;
+        player.loadVideoById(firstYoutubeTrigger.videoId);
+      } else player.playVideo();
+    } catch (error) {
+      primingYoutube = false;
+      return;
+    }
+    primeYoutubeTimer = window.setTimeout(() => {
+      try { player.pauseVideo(); player.unMute?.(); } catch (error) {}
+      primingYoutube = false;
+      if (currentTrigger?.type === "external") showAudioFrame();
+    }, 120);
   }
 
   audio.addEventListener("ended", () => { try { audio.currentTime = 0; audio.play(); } catch (error) {} });
@@ -5322,22 +5376,31 @@ function getPersistentPreviewBgmController() {
     state.previewBgmUnlocked = true;
     enableButton.textContent = "BGM 활성화됨";
     status.textContent = "BGM 활성화됨";
-    if (currentTrigger) syncTrigger(currentTrigger);
+    if (currentTrigger) syncTrigger(currentTrigger, { force: true });
+    primeYoutubeForFutureSwitch();
   });
 
   persistentPreviewBgmController = {
     configure(next = {}) {
       enabled = Boolean(next.enabled);
+      availableTriggers = Array.isArray(next.triggers)
+        ? next.triggers.map(trigger => ({ ...trigger, ...(bgmTrackFromUrl(trigger?.url) || {}) })).filter(trigger => trigger?.url)
+        : availableTriggers;
+      firstYoutubeTrigger = availableTriggers.find(trigger => trigger.type === "youtube") || null;
+      firstExternalTrigger = availableTriggers.find(trigger => trigger.type === "external") || null;
       panel.hidden = !enabled;
       schedulePanelDockingUpdate();
       if (!enabled) {
         clearAutoplayCheck();
+        window.clearTimeout(primeYoutubeTimer);
+        primingYoutube = false;
         audio.pause();
         try { player?.pauseVideo(); } catch (error) {}
         return;
       }
       unlocked = Boolean(state.previewBgmUnlocked);
       enableButton.textContent = unlocked ? "BGM 활성화됨" : "BGM 활성화";
+      prepareAlternateYoutube();
       if (currentTrigger) syncTrigger(currentTrigger);
     },
     syncTrigger,
@@ -5363,7 +5426,7 @@ function getPersistentPreviewBgmController() {
       heldForPreview = false;
       shouldResumeAfterPreview = false;
       if (!shouldResume || !unlocked || !currentTrigger) return false;
-      syncTrigger(currentTrigger);
+      syncTrigger(currentTrigger, { force: true });
       return true;
     }
   };
@@ -5392,16 +5455,28 @@ function enhancementRuntime(root, options = {}) {
   const logPage = main.closest(".page") || sideLayout || main;
   const logBounds = sideLayout || main;
   const triggers = (options.bgmTriggers || [])
-    .map(trigger => ({ ...trigger, id: Number(trigger.id), type: trigger.type || (trigger.videoId ? "youtube" : "external") }))
+    .map((trigger, sequence) => {
+      const id = Number(trigger.id);
+      const explicitOrder = Number(trigger.order);
+      const order = Number.isFinite(explicitOrder) ? explicitOrder : (Number.isFinite(id) ? id : sequence);
+      return { ...trigger, id, order, _bgmOrder: order, type: trigger.type || (trigger.videoId ? "youtube" : "external") };
+    })
     .filter(trigger => Number.isFinite(trigger.id) && trigger.url && (trigger.type === "external" || trigger.videoId))
-    .sort((a, b) => a.id - b.id);
+    .sort((a, b) => a._bgmOrder - b._bgmOrder || a.id - b.id);
+  function triggerIdentity(trigger) {
+    if (!trigger) return "";
+    return `${trigger.uid || ""}${Number(trigger._bgmOrder ?? trigger.order ?? trigger.id) || 0}${trigger.type || ""}${trigger.url || ""}`;
+  }
+  function sameTrigger(a, b) { return triggerIdentity(a) === triggerIdentity(b); }
   const enableBgm = options.enableBgm !== false && triggers.length > 0;
   const externalBgmController = options.externalBgmController || null;
   const allowLocalBgmPanel = options.allowLocalBgmPanel === true;
   const cleanup = [];
   let activeOther = null;
   let activeBgmId = 0;
+  let activeBgmKey = "";
   let lastPendingId = 0;
+  let lastActiveBgmKey = "__initial__";
   let bgmUnlocked = options.bgmInitiallyUnlocked === true;
   let bgmPlayer = null;
   let bgmPlayerReady = false;
@@ -5431,9 +5506,16 @@ function enhancementRuntime(root, options = {}) {
   let lastViewportHeight = Math.round(win.visualViewport?.height || win.innerHeight || doc.documentElement.clientHeight || 0);
   let mobileOtherAnchorViewportY = 0;
   const mainEntries = virtual
-    ? virtual.mainIds.map(index => ({ index }))
+    ? virtual.mainIds.map((index, position) => ({
+        index,
+        order: Number(virtual.mainOrders?.[position] ?? position)
+      }))
     : [...main.querySelectorAll("[data-index]")]
-      .map(row => ({ row, index: Number(row.dataset.index) || 0 }))
+      .map((row, position) => ({
+        row,
+        index: Number(row.dataset.index) || 0,
+        order: Number.isFinite(Number(row.dataset.order)) ? Number(row.dataset.order) : position
+      }))
       .filter(entry => entry.index);
   const otherEntries = virtual
     ? virtual.otherIds.map(index => ({ index }))
@@ -5979,7 +6061,7 @@ function enhancementRuntime(root, options = {}) {
   }
 
   function setBgmAutoplayBlocked(trigger) {
-    if (!trigger || pendingBgmTrigger?.id !== trigger.id) return;
+    if (!trigger || !sameTrigger(pendingBgmTrigger, trigger)) return;
     if (bgmStatus) {
       const link = doc.createElement("a");
       link.href = trigger.url;
@@ -5996,7 +6078,7 @@ function enhancementRuntime(root, options = {}) {
   function scheduleBgmAutoplayCheck(trigger) {
     clearBgmAutoplayCheck();
     bgmAutoplayCheckTimer = win.setTimeout(() => {
-      if (!bgmPlayerReady || !bgmPlayer || pendingBgmTrigger?.id !== trigger.id) return;
+      if (!bgmPlayerReady || !bgmPlayer || !sameTrigger(pendingBgmTrigger, trigger)) return;
       let playerState = null;
       try { playerState = bgmPlayer.getPlayerState(); } catch (error) {}
       const YTState = win.YT?.PlayerState;
@@ -6096,7 +6178,7 @@ function enhancementRuntime(root, options = {}) {
     if (!trigger?.videoId || !bgmFrame) return;
     pendingBgmTrigger = trigger;
     ensureBgmPlayer(trigger).then(player => {
-      if (!player || !bgmPlayerReady || bgmUnlocked || pendingBgmTrigger?.id !== trigger.id) return;
+      if (!player || !bgmPlayerReady || bgmUnlocked || !sameTrigger(pendingBgmTrigger, trigger)) return;
       if (bgmLoadedVideoId === trigger.videoId) return;
       try {
         bgmLoadedVideoId = trigger.videoId;
@@ -6112,7 +6194,7 @@ function enhancementRuntime(root, options = {}) {
     if (bgmYoutubeLayer) bgmYoutubeLayer.hidden = false;
     bgmFrame.classList.remove("is-external-audio");
     ensureBgmPlayer(trigger).then(player => {
-      if (!player || !bgmPlayerReady || !bgmUnlocked || pendingBgmTrigger?.id !== trigger.id) return;
+      if (!player || !bgmPlayerReady || !bgmUnlocked || !sameTrigger(pendingBgmTrigger, trigger)) return;
       if (bgmHeldForExternalPreview) {
         try {
           if (bgmLoadedVideoId !== trigger.videoId) {
@@ -6132,6 +6214,7 @@ function enhancementRuntime(root, options = {}) {
           player.playVideo();
         }
         activeBgmId = trigger.id;
+        activeBgmKey = triggerIdentity(trigger);
         lastPendingId = trigger.id;
         showBgm(trigger, false);
         scheduleBgmAutoplayCheck(trigger);
@@ -6186,6 +6269,7 @@ function enhancementRuntime(root, options = {}) {
     }
     audio.play().then(() => {
       activeBgmId = trigger.id;
+      activeBgmKey = triggerIdentity(trigger);
       lastPendingId = trigger.id;
       showBgm(trigger, false);
     }).catch(() => setBgmAutoplayBlocked(trigger));
@@ -6207,13 +6291,14 @@ function enhancementRuntime(root, options = {}) {
     if (externalBgmController) {
       externalBgmController.syncTrigger(trigger);
       activeBgmId = trigger.id;
+      activeBgmKey = triggerIdentity(trigger);
       lastPendingId = trigger.id;
       updateCurrentBgm(trigger);
       return;
     }
     if (!bgmFrame) return;
     if (trigger.type === "external") {
-      if (activeBgmId === trigger.id && bgmAudio && !bgmAudio.paused) return;
+      if (activeBgmKey === triggerIdentity(trigger) && bgmAudio && !bgmAudio.paused) return;
       requestExternalBgmPlayback(trigger);
       return;
     }
@@ -6225,7 +6310,7 @@ function enhancementRuntime(root, options = {}) {
       }
       return;
     }
-    if (activeBgmId === trigger.id) return;
+    if (activeBgmKey === triggerIdentity(trigger)) return;
     if (localAutoWindowEnabled()) {
       destroyBgmPlayer();
       if (!bgmYoutubeLayer) bgmFrame.replaceChildren();
@@ -6233,6 +6318,7 @@ function enhancementRuntime(root, options = {}) {
       const bgmResult = switchBgmWindow(trigger);
       if (bgmResult === "opened" || bgmResult === "manual") {
         activeBgmId = trigger.id;
+        activeBgmKey = triggerIdentity(trigger);
         lastPendingId = trigger.id;
         showBgm(trigger, false, true, bgmResult === "manual");
       }
@@ -6243,6 +6329,7 @@ function enhancementRuntime(root, options = {}) {
       if (!bgmYoutubeLayer) bgmFrame.replaceChildren();
       else bgmYoutubeLayer.replaceChildren();
       activeBgmId = trigger.id;
+      activeBgmKey = triggerIdentity(trigger);
       lastPendingId = trigger.id;
       showBgm(trigger, false, true);
       return;
@@ -6318,9 +6405,13 @@ function enhancementRuntime(root, options = {}) {
       topPosition = main.scrollTop + topMarker - rect.top;
       bottomPosition = main.scrollTop + bottomMarker - rect.top;
     }
+    const topEntry = entryAtOrBeforePosition(visibleMainEntries, topPosition);
+    const bottomEntry = entryAtOrBeforePosition(visibleMainEntries, bottomPosition);
     return {
-      index: entryAtOrBeforePosition(visibleMainEntries, topPosition)?.index || 0,
-      bottomIndex: entryAtOrBeforePosition(visibleMainEntries, bottomPosition)?.index || 0
+      index: topEntry?.index || 0,
+      bottomIndex: bottomEntry?.index || 0,
+      order: Number(topEntry?.order ?? topEntry?.index ?? 0),
+      bottomOrder: Number(bottomEntry?.order ?? bottomEntry?.index ?? 0)
     };
   }
 
@@ -6330,13 +6421,11 @@ function enhancementRuntime(root, options = {}) {
     return main.getBoundingClientRect().bottom <= viewportHeight() + 6;
   }
 
-  function bgmReferenceIndex(positions) {
-    const index = Number(positions?.index) || 0;
-    if (!mainAtEnd()) return index;
-    // 페이지 끝에서는 실제로 화면에 들어온 마지막 메시지만 기준으로 삼는다.
-    // 전체 트리거의 마지막 번호를 강제로 적용하면, 마지막 BGM 지점에 도달하지
-    // 않았는데도 문서 끝에서 그 곡으로 바뀌는 문제가 생긴다.
-    return Math.max(index, Number(positions?.bottomIndex) || 0);
+  function bgmReferenceOrder(positions) {
+    const order = Number(positions?.order ?? positions?.index) || 0;
+    if (!mainAtEnd()) return order;
+    // 페이지 끝에서도 실제로 화면에 들어온 마지막 메시지의 내부 순서를 사용한다.
+    return Math.max(order, Number(positions?.bottomOrder ?? positions?.bottomIndex) || 0);
   }
 
   function currentMainIndex() { return currentMainIndices().index; }
@@ -6678,14 +6767,14 @@ function enhancementRuntime(root, options = {}) {
     syncOther(index, { behavior: "auto", force: true });
   });
 
-  function activeBgmTrigger(index) {
+  function activeBgmTrigger(order) {
     let low = 0;
     let high = triggers.length - 1;
     let active = null;
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
       const trigger = triggers[mid];
-      if (trigger.id <= index) {
+      if (trigger._bgmOrder <= order) {
         active = trigger;
         low = mid + 1;
       } else {
@@ -6792,6 +6881,8 @@ function enhancementRuntime(root, options = {}) {
       if (userGesture) {
         bgmUnlocked = true;
         activeBgmId = 0;
+        activeBgmKey = "";
+        lastActiveBgmKey = "__force__";
         const enableButton = panel?.querySelector("[data-bgm-enable]");
         if (enableButton) enableButton.textContent = "BGM 활성화됨";
         if (bgmStatus) bgmStatus.textContent = "장면 이동에 맞춰 BGM을 전환합니다.";
@@ -6822,10 +6913,12 @@ function enhancementRuntime(root, options = {}) {
     if (!mobileViewport() || !lastMobileOffsetKey) updateMobilePanelOffsets();
     const positions = currentMainIndices();
     syncController?.update(now, positions);
-    const bgmIndex = bgmReferenceIndex(positions);
-    if (bgmIndex !== lastTrackedMainIndex) {
-      lastTrackedMainIndex = bgmIndex;
-      const bgmTrigger = activeBgmTrigger(bgmIndex);
+    const bgmOrder = bgmReferenceOrder(positions);
+    lastTrackedMainIndex = bgmOrder;
+    const bgmTrigger = activeBgmTrigger(bgmOrder);
+    const nextBgmKey = triggerIdentity(bgmTrigger);
+    if (nextBgmKey !== lastActiveBgmKey) {
+      lastActiveBgmKey = nextBgmKey;
       updateCurrentBgm(bgmTrigger);
       playBgm(bgmTrigger);
     }
@@ -6910,6 +7003,8 @@ function enhancementRuntime(root, options = {}) {
     bgmUnlocked = true;
     if (typeof options.onBgmUnlock === "function") options.onBgmUnlock();
     activeBgmId = 0;
+    activeBgmKey = "";
+    lastActiveBgmKey = "__force__";
     lastTrackedMainIndex = -1;
     const enableButton = panel?.querySelector("[data-bgm-enable]");
     if (enableButton) enableButton.textContent = "BGM 활성화됨";
@@ -7328,7 +7423,8 @@ function renderPreview(options = {}) {
   const previewBgmTriggers = bgmTriggersForRows(state.visible);
   const previewBgmController = getPersistentPreviewBgmController();
   previewBgmController.configure({
-    enabled: el("bgmAutoplay").checked && previewBgmTriggers.length > 0
+    enabled: el("bgmAutoplay").checked && previewBgmTriggers.length > 0,
+    triggers: previewBgmTriggers
   });
   enhancementRuntime(root, {
     bgmTriggers: previewBgmTriggers,
@@ -7894,13 +7990,13 @@ function compactExportRuntime(root) {
 
     function renderMainRecord(record, logicalIndex, isLast, highlighted) {
       if (record.isSystemLine) {
-        const link = bgmLink(record.id);
+        const link = bgmLink(record.order + 1);
         return `<article class="system-line${highlighted ? " is-search-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="system-text">${withBreaks(record.text)}${link ? `<br>${link}` : ""}</div></article>`;
       }
       const tabTag = record.lowerTab === "main" ? "" : `<span class="tag">- ${esc(record.tab || "main")}</span>`;
       const expressionTag = !record.isExtraTab && record.label ? `<span class="expr-tag">${esc(record.label)}</span>` : "";
       const tone = record.isSystem || record.isExtraTab ? "" : (record.groupTone ? " group-tone-b" : " group-tone-a");
-      const link = bgmLink(record.id);
+      const link = bgmLink(record.order + 1);
       const content = record.grouped
         ? `<div class="grouped-line"><div class="text">${withBreaks(record.text)}</div>${link ? `<div class="grouped-line-tools">${link}</div>` : ""}</div>`
         : `<div class="meta"><strong class="name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${expressionTag}${link}</div><div class="text">${withBreaks(record.text)}</div>`;
@@ -7908,7 +8004,7 @@ function compactExportRuntime(root) {
     }
 
     function renderOtherRecord(record, logicalIndex, isLast, highlighted, synced) {
-      return `<article class="other-row${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${bgmLink(record.id)}<div class="other-text">${withBreaks(record.text)}</div></article>`;
+      return `<article class="other-row${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${bgmLink(record.order + 1)}<div class="other-text">${withBreaks(record.text)}</div></article>`;
     }
 
     class HeightTree {
@@ -8318,9 +8414,15 @@ function compactExportRuntime(root) {
         const bottomPosition = Math.max(viewport.start + 1, viewport.end - 12);
         const topRecord = this.renderedRecordAt(topPosition);
         const bottomRecord = this.renderedRecordAt(bottomPosition);
+        const fallbackTop = this.records[Math.max(0, this.tree.indexAt(topPosition))] || null;
+        const fallbackBottom = this.records[Math.max(0, this.tree.indexAt(bottomPosition))] || null;
+        const resolvedTop = topRecord || fallbackTop;
+        const resolvedBottom = bottomRecord || fallbackBottom;
         return {
-          index: topRecord?.id || this.records[Math.max(0, this.tree.indexAt(topPosition))]?.id || 0,
-          bottomIndex: bottomRecord?.id || this.records[Math.max(0, this.tree.indexAt(bottomPosition))]?.id || 0
+          index: resolvedTop?.id || 0,
+          bottomIndex: resolvedBottom?.id || 0,
+          order: Number(resolvedTop?.order ?? resolvedTop?.id ?? 0),
+          bottomOrder: Number(resolvedBottom?.order ?? resolvedBottom?.id ?? 0)
         };
       }
       captureAnchor() {
@@ -8507,6 +8609,7 @@ function compactExportRuntime(root) {
       otherRecords,
       allRecords,
       mainIds: mainRecords.map(record => record.id),
+      mainOrders: mainRecords.map(record => record.order),
       otherIds: otherRecords.map(record => record.id),
       currentRange: { startId: -Infinity, endId: Infinity, paginateOther: false },
       ensureIdVisible: null,
@@ -9000,7 +9103,14 @@ function exportEnhancementScript(rows, exportOptions = {}) {
   const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
   const triggers = bgmTriggersForRows(rows).map(trigger => {
     const index = rows.findIndex(row => trigger.uid ? row.uid === trigger.uid : Number(row.sourceDisplayId ?? row.id) === Number(trigger.id));
-    return index >= 0 ? { ...trigger, id: index + 1 } : trigger;
+    if (index < 0) return trigger;
+    const row = rows[index];
+    return {
+      ...trigger,
+      id: Number(row.sourceDisplayId ?? row.id) || Number(trigger.id),
+      uid: String(row.uid || trigger.uid || ""),
+      order: index
+    };
   });
   const pageRanges = exportOptions.pageRanges || null;
   if (!useSide && !triggers.length && !pageRanges) return "";
