@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.57">
+<meta name="trpg-app-version" content="6.58">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -498,6 +498,23 @@ label { color: var(--muted); font-size: 13px; }
   min-width: 92px;
   max-width: 120px;
   white-space: nowrap;
+}
+
+.bgm-picker-preview.is-loading [data-bgm-preview-meta]::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  vertical-align: -1px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: trpg-bgm-loading-spin .8s linear infinite;
+}
+
+@keyframes trpg-bgm-loading-spin {
+  to { transform: rotate(360deg); }
 }
 
 .bgm-picker-preview-frame {
@@ -2065,7 +2082,7 @@ html[data-theme="light"] .bgm-track-thumb.is-external { background: rgba(37,99,1
 .preview-shell.is-style-adjusting { contain: layout paint; }
 
 
-/* v6.57 — converter and exported log share the selected fixed theme. */
+/* v6.58 — converter and exported log share the selected fixed theme. */
 .theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -4064,6 +4081,10 @@ function chooseBgmUrlFromPlaylist(options = {}) {
     let previewLoadedVideoId = "";
     let pendingYoutubeItem = null;
     let previewAudio = null;
+    let previewAudioRequestId = 0;
+    let previewAudioLoading = false;
+    let previewAudioSlowTimer = 0;
+    let previewAudioTimeoutTimer = 0;
     let pickerClosed = false;
     let mainBgmHeldForPreview = false;
 
@@ -4144,6 +4165,13 @@ function chooseBgmUrlFromPlaylist(options = {}) {
       });
     }
     function stopPreview({ silent = false, keepMainBgmHeld = false } = {}) {
+      ++previewAudioRequestId;
+      previewAudioLoading = false;
+      preview?.classList.remove("is-loading");
+      window.clearTimeout(previewAudioSlowTimer);
+      window.clearTimeout(previewAudioTimeoutTimer);
+      previewAudioSlowTimer = 0;
+      previewAudioTimeoutTimer = 0;
       try { previewPlayer?.stopVideo(); } catch (error) {}
       if (previewAudio) {
         previewAudio.pause();
@@ -4176,27 +4204,108 @@ function chooseBgmUrlFromPlaylist(options = {}) {
       });
     }
     function playExternal(item) {
+      const requestId = ++previewAudioRequestId;
+      previewAudioLoading = true;
+      preview.classList.add("is-loading");
+      window.clearTimeout(previewAudioSlowTimer);
+      window.clearTimeout(previewAudioTimeoutTimer);
       previewFrame.replaceChildren();
       previewAudio = document.createElement("audio");
       previewAudio.controls = true;
       previewAudio.loop = true;
-      previewAudio.preload = "metadata";
+      previewAudio.preload = "auto";
       previewAudio.src = item.url;
-      previewAudio.addEventListener("playing", () => { status.textContent = "외부 음원 미리듣기 재생 중입니다."; }, { once: true });
-      previewAudio.addEventListener("error", () => { status.textContent = "이 외부 주소를 음원으로 재생하지 못했습니다. 공개된 파일 직접 주소인지 확인하세요."; }, { once: true });
+      previewAudio.dataset.loading = "true";
+      previewMeta.textContent = "외부 음원 · 불러오는 중";
+      previewButton.textContent = "불러오는 중…";
+      previewButton.disabled = true;
+      status.textContent = "외부 음원을 불러오는 중입니다. 링크가 느리면 몇 초 걸릴 수 있어요.";
+      const finishLoading = () => {
+        if (requestId !== previewAudioRequestId) return false;
+        previewAudioLoading = false;
+        preview.classList.remove("is-loading");
+        window.clearTimeout(previewAudioSlowTimer);
+        window.clearTimeout(previewAudioTimeoutTimer);
+        previewAudioSlowTimer = 0;
+        previewAudioTimeoutTimer = 0;
+        if (previewAudio) previewAudio.dataset.loading = "";
+        previewButton.disabled = false;
+        previewButton.textContent = "■ 중지";
+        return true;
+      };
+      previewAudio.addEventListener("loadstart", () => {
+        if (requestId === previewAudioRequestId) status.textContent = "외부 음원에 연결하는 중…";
+      });
+      previewAudio.addEventListener("canplay", () => {
+        if (requestId !== previewAudioRequestId) return;
+        previewMeta.textContent = "외부 음원 · 재생 준비 완료";
+        status.textContent = "외부 음원 준비가 끝났습니다. 재생을 시작합니다.";
+      }, { once: true });
+      previewAudio.addEventListener("playing", () => {
+        if (!finishLoading()) return;
+        previewMeta.textContent = "외부 음원 · 재생 가능";
+        status.textContent = "외부 음원 미리듣기 재생 중입니다.";
+      }, { once: true });
+      previewAudio.addEventListener("waiting", () => {
+        if (requestId === previewAudioRequestId) status.textContent = "외부 음원을 버퍼링하는 중입니다. 잠시 기다려 주세요.";
+      });
+      previewAudio.addEventListener("stalled", () => {
+        if (requestId === previewAudioRequestId) status.textContent = "외부 서버의 응답이 잠시 멈췄습니다. 계속 기다리는 중…";
+      });
+      previewAudio.addEventListener("error", () => {
+        if (requestId !== previewAudioRequestId) return;
+        previewAudioLoading = false;
+        preview.classList.remove("is-loading");
+        window.clearTimeout(previewAudioSlowTimer);
+        window.clearTimeout(previewAudioTimeoutTimer);
+        previewButton.disabled = false;
+        previewButton.textContent = "↻ 다시 시도";
+        previewButton.dataset.playing = "";
+        previewMeta.textContent = "외부 음원 · 확인 실패";
+        status.textContent = "이 외부 주소를 음원으로 재생하지 못했습니다. 공개된 파일 직접 주소인지 확인하세요.";
+      }, { once: true });
       previewFrame.append(previewAudio);
-      previewAudio.play().catch(() => { status.textContent = "브라우저가 자동재생을 차단했습니다. 오디오의 ▶를 눌러 주세요."; });
+      previewAudioSlowTimer = window.setTimeout(() => {
+        if (requestId !== previewAudioRequestId || !previewAudioLoading) return;
+        previewMeta.textContent = "외부 음원 · 응답이 느림";
+        status.textContent = "응답이 느린 링크입니다. 계속 불러오는 중이니 잠시 기다려 주세요.";
+      }, 2500);
+      previewAudioTimeoutTimer = window.setTimeout(() => {
+        if (requestId !== previewAudioRequestId || !previewAudioLoading) return;
+        previewMeta.textContent = "외부 음원 · 계속 불러오는 중";
+        status.textContent = "아직 외부 음원을 불러오는 중입니다. 중복 요청 없이 계속 기다리고 있어요.";
+      }, 10000);
+      previewAudio.play().then(() => finishLoading()).catch(error => {
+        if (requestId !== previewAudioRequestId) return;
+        if (error?.name === "NotAllowedError") {
+          previewAudioLoading = false;
+          preview.classList.remove("is-loading");
+          window.clearTimeout(previewAudioSlowTimer);
+          window.clearTimeout(previewAudioTimeoutTimer);
+          previewButton.disabled = false;
+          previewButton.textContent = "■ 중지";
+          previewMeta.textContent = "외부 음원 · 재생 준비됨";
+          status.textContent = "브라우저가 자동재생을 차단했습니다. 오디오의 ▶를 눌러 주세요.";
+        }
+      });
     }
     function playPreview(item) {
       if (!item?.url) return;
       const key = bgmTrackKey(item);
-      if (previewButton.dataset.playing === "true" && previewKey === key) return stopPreview();
+      if (previewButton.dataset.playing === "true" && previewKey === key) {
+        if (previewAudioLoading) {
+          status.textContent = "이미 외부 음원을 불러오는 중입니다. 중복 요청 없이 기다리고 있어요.";
+          return;
+        }
+        return stopPreview();
+      }
       stopPreview({ silent: true, keepMainBgmHeld: true });
       holdMainBgmForPreview();
       previewItem = item;
       setPreviewInfo(item);
       previewFrame.hidden = false;
       previewButton.textContent = "■ 중지";
+      previewButton.disabled = false;
       previewButton.dataset.playing = "true";
       previewKey = key;
       updatePlayingRows();
@@ -5148,22 +5257,27 @@ function getPersistentPreviewBgmController() {
   const youtubeFrame = document.createElement("div");
   youtubeFrame.style.width = "100%";
   youtubeFrame.style.height = "100%";
-  const audio = document.createElement("audio");
-  audio.className = "trpg-external-audio";
-  audio.controls = true;
-  audio.loop = true;
-  audio.preload = "metadata";
-  audio.hidden = true;
-  frame.replaceChildren(youtubeFrame, audio);
+  const audioPlayers = [0, 1].map(index => {
+    const item = document.createElement("audio");
+    item.className = "trpg-external-audio";
+    item.controls = true;
+    item.loop = true;
+    item.preload = "auto";
+    item.hidden = true;
+    item.dataset.audioSlot = String(index);
+    return item;
+  });
+  frame.replaceChildren(youtubeFrame, ...audioPlayers);
 
   let enabled = false;
   let unlocked = Boolean(state.previewBgmUnlocked);
   let currentTrigger = null;
+  let desiredTrackKey = "";
   let currentTrackKey = "";
   let availableTriggers = [];
   let firstYoutubeTrigger = null;
-  let firstExternalTrigger = null;
   let activeType = "";
+  let activeAudioIndex = -1;
   let player = null;
   let playerReady = false;
   let playerHost = null;
@@ -5174,37 +5288,59 @@ function getPersistentPreviewBgmController() {
   let shouldResumeAfterPreview = false;
   let primingYoutube = false;
   let primeYoutubeTimer = 0;
+  let switchSequence = 0;
+  const externalSlowTimers = [0, 0];
+  const externalTimeoutTimers = [0, 0];
 
   function clearAutoplayCheck() {
     if (autoplayCheckTimer) window.clearTimeout(autoplayCheckTimer);
     autoplayCheckTimer = 0;
   }
+  function clearExternalTimers(index) {
+    window.clearTimeout(externalSlowTimers[index]);
+    window.clearTimeout(externalTimeoutTimers[index]);
+    externalSlowTimers[index] = 0;
+    externalTimeoutTimers[index] = 0;
+  }
   function linkLabel(trigger) { return trigger?.type === "external" ? "음원 열기" : "YouTube 열기"; }
+  function statusLink(trigger) {
+    const link = document.createElement("a");
+    link.href = trigger.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = linkLabel(trigger);
+    return link;
+  }
   function setStatusForTrigger(trigger, prefix = "재생") {
     if (!trigger) {
       status.textContent = unlocked ? "현재 위치의 BGM을 확인합니다." : "활성화 후 스크롤에 맞춰 전환됩니다.";
       return;
     }
-    const link = document.createElement("a");
-    link.href = trigger.url; link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = linkLabel(trigger);
-    status.replaceChildren(`#${trigger.id} BGM ${prefix}: `, link);
+    status.replaceChildren(`#${trigger.id} BGM ${prefix}: `, statusLink(trigger));
+  }
+  function setExternalLoadingStatus(trigger, stage = "loading") {
+    if (!trigger || bgmTrackKey(currentTrigger) !== bgmTrackKey(trigger)) return;
+    const message = stage === "slow"
+      ? `#${trigger.id} 외부 음원 응답이 느립니다. 계속 불러오는 중… `
+      : stage === "timeout"
+        ? `#${trigger.id} 외부 음원을 아직 불러오는 중입니다. 링크 상태를 확인하거나 잠시 기다려 주세요. `
+        : `#${trigger.id} 외부 음원 불러오는 중… `;
+    status.replaceChildren(message, statusLink(trigger));
   }
   function setAutoplayBlocked(trigger) {
     if (!trigger || bgmTrackKey(currentTrigger) !== bgmTrackKey(trigger)) return;
-    const link = document.createElement("a");
-    link.href = trigger.url; link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = linkLabel(trigger);
-    status.replaceChildren(`#${trigger.id} BGM 자동재생이 차단되었습니다. 플레이어의 ▶를 한 번 눌러 주세요. `, link);
+    status.replaceChildren(`#${trigger.id} BGM 자동재생이 차단되었습니다. 플레이어의 ▶를 한 번 눌러 주세요. `, statusLink(trigger));
   }
-  function scheduleAutoplayCheck(trigger) {
+  function scheduleAutoplayCheck(trigger, token) {
     clearAutoplayCheck();
     autoplayCheckTimer = window.setTimeout(() => {
-      if (!playerReady || !player || bgmTrackKey(currentTrigger) !== bgmTrackKey(trigger)) return;
+      if (token !== switchSequence || !playerReady || !player || bgmTrackKey(currentTrigger) !== bgmTrackKey(trigger)) return;
       let playerState = null;
       try { playerState = player.getPlayerState(); } catch (error) {}
       const YTState = window.YT?.PlayerState;
       if (playerState === YTState?.PLAYING || playerState === YTState?.BUFFERING) return;
       setAutoplayBlocked(trigger);
-    }, 1600);
+    }, 2400);
   }
   function playerVars() {
     const vars = { autoplay: 0, controls: 1, playsinline: 1, rel: 0 };
@@ -5212,20 +5348,29 @@ function getPersistentPreviewBgmController() {
     return vars;
   }
   function showYoutubeFrame() {
-    if (activeType === "youtube") return;
     activeType = "youtube";
-    audio.pause();
-    audio.hidden = true;
+    audioPlayers.forEach(item => { item.pause(); item.hidden = true; });
+    activeAudioIndex = -1;
     youtubeFrame.hidden = false;
     frame.classList.remove("is-external-audio");
   }
-  function showAudioFrame() {
-    if (activeType === "external") return;
+  function showAudioFrame(index) {
     activeType = "external";
     try { player?.pauseVideo(); } catch (error) {}
     youtubeFrame.hidden = true;
-    audio.hidden = false;
+    audioPlayers.forEach((item, itemIndex) => {
+      item.hidden = itemIndex !== index;
+      if (itemIndex !== index) item.pause();
+    });
+    activeAudioIndex = index;
     frame.classList.add("is-external-audio");
+  }
+  function refreshEnableButton() {
+    if (!enabled) return;
+    const waitingYoutube = Boolean(firstYoutubeTrigger && !playerReady && !unlocked);
+    enableButton.disabled = waitingYoutube;
+    enableButton.textContent = waitingYoutube ? "BGM 준비 중…" : (unlocked ? "BGM 활성화됨" : "BGM 활성화");
+    if (waitingYoutube) status.textContent = "YouTube 플레이어를 준비하고 있습니다. 잠시 후 활성화할 수 있어요.";
   }
   function ensurePlayer(trigger) {
     if (trigger?.type !== "youtube" || !trigger.videoId) return Promise.resolve(null);
@@ -5252,77 +5397,144 @@ function getPersistentPreviewBgmController() {
               iframe.referrerPolicy = "strict-origin-when-cross-origin";
               iframe.allowFullscreen = true;
             }
+            refreshEnableButton();
             const pending = currentTrigger;
             if (pending?.type === "youtube" && pending.videoId) {
-              try {
-                loadedVideoId = pending.videoId;
-                if (unlocked && !heldForPreview) player.loadVideoById(pending.videoId);
-                else player.cueVideoById(pending.videoId);
-              } catch (error) {}
-            } else if (unlocked && pending?.type === "external") {
-              // 활성화 클릭보다 API 준비가 늦어도, 음소거 재생으로 YouTube 엔진을
-              // 미리 깨워 두면 이후 외부 음원 → YouTube 전환이 자동으로 이어진다.
-              window.setTimeout(primeYoutubeForFutureSwitch, 0);
+              if (unlocked && !heldForPreview) syncTrigger(pending, { force: true });
+              else {
+                try { loadedVideoId = pending.videoId; player.cueVideoById(pending.videoId); } catch (error) {}
+              }
             }
             resolve(player);
           },
           onStateChange(event) {
             const YTState = window.YT?.PlayerState;
-            if (primingYoutube) return;
+            if (primingYoutube) {
+              if (event.data === YTState?.PLAYING) {
+                window.clearTimeout(primeYoutubeTimer);
+                try { player.pauseVideo(); player.unMute?.(); } catch (error) {}
+                primingYoutube = false;
+                if (currentTrigger?.type === "external" && activeAudioIndex >= 0) showAudioFrame(activeAudioIndex);
+              }
+              return;
+            }
             if (event.data === YTState?.PLAYING) {
+              const pending = currentTrigger;
+              if (!pending || pending.type !== "youtube" || pending.videoId !== loadedVideoId) return;
               clearAutoplayCheck();
-              if (currentTrigger) setStatusForTrigger(currentTrigger, "재생");
+              showYoutubeFrame();
+              currentTrackKey = desiredTrackKey;
+              setStatusForTrigger(pending, "재생");
             } else if (event.data === YTState?.ENDED) {
               try { player.seekTo(0, true); player.playVideo(); } catch (error) {}
             }
           },
-          onAutoplayBlocked() { if (currentTrigger) setAutoplayBlocked(currentTrigger); },
+          onAutoplayBlocked() { if (currentTrigger?.type === "youtube") setAutoplayBlocked(currentTrigger); },
           onError() { clearAutoplayCheck(); status.textContent = "YouTube 플레이어가 이 BGM을 재생하지 못했습니다."; }
         }
       });
     })).catch(error => {
       playerInitPromise = null;
+      enableButton.disabled = false;
+      enableButton.textContent = unlocked ? "BGM 활성화됨" : "BGM 활성화";
       status.textContent = error?.message || "YouTube 플레이어를 준비하지 못했습니다.";
       return null;
     });
     return playerInitPromise;
   }
-  function syncExternal(trigger, { force = false } = {}) {
-    const key = bgmTrackKey(trigger);
-    const changed = currentTrackKey !== key || activeType !== "external";
-    if (changed) {
-      showAudioFrame();
-      currentTrackKey = key;
-      audio.src = trigger.url;
-      audio.load();
-    }
-    setStatusForTrigger(trigger, unlocked ? "재생" : "대기");
-    if (!unlocked || heldForPreview) {
-      if (changed || !audio.paused) audio.pause();
+  function preloadNextExternal(trigger) {
+    const index = availableTriggers.findIndex(item => bgmTrackKey(item) === bgmTrackKey(trigger));
+    const next = index >= 0 ? availableTriggers[index + 1] : null;
+    if (!next || next.type !== "external") return;
+    const slot = activeAudioIndex === 0 ? 1 : 0;
+    const target = audioPlayers[slot];
+    const nextKey = bgmTrackKey(next);
+    if (target.dataset.preloadedKey === nextKey || target.dataset.trackKey === nextKey) return;
+    clearExternalTimers(slot);
+    target.pause();
+    target.hidden = true;
+    target.dataset.preloadedKey = nextKey;
+    target.dataset.trackKey = "";
+    target.dataset.requestToken = "";
+    target.dataset.requestKey = "";
+    target.src = next.url;
+    target.load();
+  }
+  function activateExternal(index, trigger, key, token) {
+    if (token !== switchSequence || desiredTrackKey !== key || bgmTrackKey(currentTrigger) !== key) {
+      audioPlayers[index].pause();
       return;
     }
-    if (!force && !changed && !audio.paused) return;
-    audio.play().then(() => setStatusForTrigger(trigger, "재생")).catch(() => setAutoplayBlocked(trigger));
+    clearExternalTimers(index);
+    const target = audioPlayers[index];
+    target.dataset.trackKey = key;
+    target.dataset.preloadedKey = "";
+    showAudioFrame(index);
+    currentTrackKey = key;
+    setStatusForTrigger(trigger, "재생");
+    preloadNextExternal(trigger);
   }
-  function syncYoutube(trigger, { force = false } = {}) {
+  audioPlayers.forEach((item, index) => {
+    item.addEventListener("playing", () => {
+      const token = Number(item.dataset.requestToken || 0);
+      const key = item.dataset.requestKey || "";
+      const trigger = currentTrigger;
+      if (trigger?.type === "external") activateExternal(index, trigger, key, token);
+    });
+    item.addEventListener("waiting", () => {
+      if (Number(item.dataset.requestToken || 0) === switchSequence && currentTrigger?.type === "external") setExternalLoadingStatus(currentTrigger, "slow");
+    });
+    item.addEventListener("error", () => {
+      clearExternalTimers(index);
+      if (Number(item.dataset.requestToken || 0) !== switchSequence || currentTrigger?.type !== "external") return;
+      status.replaceChildren(`#${currentTrigger.id} 외부 음원을 재생하지 못했습니다. 공개된 파일 직접 주소인지 확인하세요. `, statusLink(currentTrigger));
+    });
+  });
+  function syncExternal(trigger, token, { force = false } = {}) {
     const key = bgmTrackKey(trigger);
-    const changed = currentTrackKey !== key || activeType !== "youtube";
-    if (changed) {
-      showYoutubeFrame();
-      currentTrackKey = key;
+    if (!force && currentTrackKey === key && activeType === "external" && activeAudioIndex >= 0 && !audioPlayers[activeAudioIndex].paused) {
+      setStatusForTrigger(trigger, "재생");
+      return;
     }
-    setStatusForTrigger(trigger, unlocked ? "재생" : "대기");
+    setExternalLoadingStatus(trigger);
+    if (!unlocked || heldForPreview) return;
+    let targetIndex = audioPlayers.findIndex(item => item.dataset.preloadedKey === key);
+    if (targetIndex < 0) targetIndex = activeAudioIndex === 0 ? 1 : 0;
+    const target = audioPlayers[targetIndex];
+    clearExternalTimers(targetIndex);
+    target.dataset.requestToken = String(token);
+    target.dataset.requestKey = key;
+    if (target.dataset.preloadedKey !== key && target.src !== trigger.url) {
+      target.pause();
+      target.src = trigger.url;
+      target.load();
+    }
+    target.dataset.preloadedKey = "";
+    externalSlowTimers[targetIndex] = window.setTimeout(() => {
+      if (token === switchSequence) setExternalLoadingStatus(trigger, "slow");
+    }, 2500);
+    externalTimeoutTimers[targetIndex] = window.setTimeout(() => {
+      if (token === switchSequence) setExternalLoadingStatus(trigger, "timeout");
+    }, 10000);
+    target.play().then(() => activateExternal(targetIndex, trigger, key, token)).catch(() => {
+      if (token === switchSequence) setAutoplayBlocked(trigger);
+    });
+  }
+  function syncYoutube(trigger, token, { force = false } = {}) {
+    const key = bgmTrackKey(trigger);
+    setStatusForTrigger(trigger, "준비 중");
     ensurePlayer(trigger).then(readyPlayer => {
-      if (!readyPlayer || !playerReady || bgmTrackKey(currentTrigger) !== key) return;
+      if (!readyPlayer || !playerReady || token !== switchSequence || desiredTrackKey !== key || bgmTrackKey(currentTrigger) !== key) return;
       if (!unlocked) {
         if (loadedVideoId !== trigger.videoId) {
           try { loadedVideoId = trigger.videoId; readyPlayer.cueVideoById(trigger.videoId); } catch (error) {}
         }
+        setStatusForTrigger(trigger, "대기");
         return;
       }
       if (heldForPreview) { try { readyPlayer.pauseVideo(); } catch (error) {} return; }
       try {
-        try { readyPlayer.unMute?.(); } catch (error) {}
+        readyPlayer.unMute?.();
         if (loadedVideoId !== trigger.videoId) {
           loadedVideoId = trigger.videoId;
           readyPlayer.loadVideoById(trigger.videoId);
@@ -5331,20 +5543,31 @@ function getPersistentPreviewBgmController() {
           try { stateValue = readyPlayer.getPlayerState(); } catch (error) {}
           const YTState = window.YT?.PlayerState;
           if (force || (stateValue !== YTState?.PLAYING && stateValue !== YTState?.BUFFERING)) readyPlayer.playVideo();
+          else {
+            showYoutubeFrame();
+            currentTrackKey = key;
+            setStatusForTrigger(trigger, "재생");
+          }
         }
-        scheduleAutoplayCheck(trigger);
+        scheduleAutoplayCheck(trigger, token);
       } catch (error) { setAutoplayBlocked(trigger); }
     });
   }
   function syncTrigger(trigger, options = {}) {
     currentTrigger = trigger ? { ...trigger, ...(bgmTrackFromUrl(trigger.url) || {}) } : null;
     if (!enabled || !currentTrigger?.url) return;
-    if (currentTrigger.type === "external") syncExternal(currentTrigger, options);
-    else syncYoutube(currentTrigger, options);
+    const key = bgmTrackKey(currentTrigger);
+    const force = options.force === true;
+    if (!force && desiredTrackKey === key) return;
+    desiredTrackKey = key;
+    const token = ++switchSequence;
+    if (currentTrigger.type === "external") syncExternal(currentTrigger, token, options);
+    else syncYoutube(currentTrigger, token, options);
   }
   function prepareAlternateYoutube() {
-    if (!enabled || !firstYoutubeTrigger || currentTrigger?.type === "youtube") return;
-    ensurePlayer(firstYoutubeTrigger).then(() => {});
+    if (!enabled || !firstYoutubeTrigger) { refreshEnableButton(); return; }
+    refreshEnableButton();
+    ensurePlayer(firstYoutubeTrigger).then(() => refreshEnableButton());
   }
   function primeYoutubeForFutureSwitch() {
     if (!playerReady || !player || !firstYoutubeTrigger || currentTrigger?.type === "youtube") return;
@@ -5352,10 +5575,8 @@ function getPersistentPreviewBgmController() {
     primingYoutube = true;
     try {
       player.mute?.();
-      if (loadedVideoId !== firstYoutubeTrigger.videoId) {
-        loadedVideoId = firstYoutubeTrigger.videoId;
-        player.loadVideoById(firstYoutubeTrigger.videoId);
-      } else player.playVideo();
+      loadedVideoId = firstYoutubeTrigger.videoId;
+      player.loadVideoById(firstYoutubeTrigger.videoId);
     } catch (error) {
       primingYoutube = false;
       return;
@@ -5363,21 +5584,18 @@ function getPersistentPreviewBgmController() {
     primeYoutubeTimer = window.setTimeout(() => {
       try { player.pauseVideo(); player.unMute?.(); } catch (error) {}
       primingYoutube = false;
-      if (currentTrigger?.type === "external") showAudioFrame();
-    }, 120);
+      if (currentTrigger?.type === "external" && activeAudioIndex >= 0) showAudioFrame(activeAudioIndex);
+    }, 2500);
   }
 
-  audio.addEventListener("ended", () => { try { audio.currentTime = 0; audio.play(); } catch (error) {} });
-  audio.addEventListener("error", () => {
-    if (activeType === "external") status.textContent = "외부 음원을 재생하지 못했습니다. 공개된 파일 직접 주소인지 확인하세요.";
-  });
   enableButton.addEventListener("click", () => {
+    if (enableButton.disabled) return;
     unlocked = true;
     state.previewBgmUnlocked = true;
     enableButton.textContent = "BGM 활성화됨";
     status.textContent = "BGM 활성화됨";
-    if (currentTrigger) syncTrigger(currentTrigger, { force: true });
     primeYoutubeForFutureSwitch();
+    if (currentTrigger) syncTrigger(currentTrigger, { force: true });
   });
 
   persistentPreviewBgmController = {
@@ -5387,30 +5605,31 @@ function getPersistentPreviewBgmController() {
         ? next.triggers.map(trigger => ({ ...trigger, ...(bgmTrackFromUrl(trigger?.url) || {}) })).filter(trigger => trigger?.url)
         : availableTriggers;
       firstYoutubeTrigger = availableTriggers.find(trigger => trigger.type === "youtube") || null;
-      firstExternalTrigger = availableTriggers.find(trigger => trigger.type === "external") || null;
       panel.hidden = !enabled;
       schedulePanelDockingUpdate();
       if (!enabled) {
+        ++switchSequence;
         clearAutoplayCheck();
         window.clearTimeout(primeYoutubeTimer);
         primingYoutube = false;
-        audio.pause();
+        audioPlayers.forEach((item, index) => { clearExternalTimers(index); item.pause(); item.hidden = true; });
         try { player?.pauseVideo(); } catch (error) {}
         return;
       }
       unlocked = Boolean(state.previewBgmUnlocked);
-      enableButton.textContent = unlocked ? "BGM 활성화됨" : "BGM 활성화";
+      refreshEnableButton();
       prepareAlternateYoutube();
-      if (currentTrigger) syncTrigger(currentTrigger);
+      if (currentTrigger) syncTrigger(currentTrigger, { force: true });
     },
     syncTrigger,
     isUnlocked() { return unlocked; },
     pauseForPreview() {
       heldForPreview = true;
       shouldResumeAfterPreview = false;
-      if (activeType === "external") {
-        shouldResumeAfterPreview = !audio.paused;
-        audio.pause();
+      if (activeType === "external" && activeAudioIndex >= 0) {
+        const activeAudio = audioPlayers[activeAudioIndex];
+        shouldResumeAfterPreview = !activeAudio.paused;
+        activeAudio.pause();
         return shouldResumeAfterPreview;
       }
       if (!playerReady || !player) return false;
@@ -5430,7 +5649,6 @@ function getPersistentPreviewBgmController() {
       return true;
     }
   };
-
   return persistentPreviewBgmController;
 }
 
@@ -5483,10 +5701,16 @@ function enhancementRuntime(root, options = {}) {
   let bgmPlayerHost = null;
   let bgmPlayerInitPromise = null;
   let bgmLoadedVideoId = "";
-  let bgmAudio = null;
-  let bgmAudioKey = "";
+  let bgmAudioPlayers = [];
+  let bgmActiveAudioIndex = -1;
+  let bgmDesiredKey = "";
+  let bgmSwitchSequence = 0;
+  const bgmExternalSlowTimers = [0, 0];
+  const bgmExternalTimeoutTimers = [0, 0];
   let pendingBgmTrigger = null;
   let bgmAutoplayCheckTimer = 0;
+  let bgmPrimingYoutube = false;
+  let bgmPrimeYoutubeTimer = 0;
   let bgmHeldForExternalPreview = false;
   let bgmShouldResumeAfterExternalPreview = false;
   let bgmWindow = null;
@@ -6060,47 +6284,70 @@ function enhancementRuntime(root, options = {}) {
     bgmAutoplayCheckTimer = 0;
   }
 
-  function setBgmAutoplayBlocked(trigger) {
-    if (!trigger || !sameTrigger(pendingBgmTrigger, trigger)) return;
-    if (bgmStatus) {
-      const link = doc.createElement("a");
-      link.href = trigger.url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = trigger.type === "external" ? "음원 열기" : "YouTube 열기";
-      bgmStatus.replaceChildren(
-        `#${trigger.id} BGM 자동재생이 차단되었습니다. 플레이어의 ▶를 한 번 눌러 주세요. `,
-        link
-      );
-    }
+  function clearRuntimeExternalTimers(index) {
+    win.clearTimeout(bgmExternalSlowTimers[index]);
+    win.clearTimeout(bgmExternalTimeoutTimers[index]);
+    bgmExternalSlowTimers[index] = 0;
+    bgmExternalTimeoutTimers[index] = 0;
   }
 
-  function scheduleBgmAutoplayCheck(trigger) {
+  function runtimeBgmLink(trigger) {
+    const link = doc.createElement("a");
+    link.href = trigger.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = trigger.type === "external" ? "음원 열기" : "YouTube 열기";
+    return link;
+  }
+
+  function showExternalBgmLoading(trigger, stage = "loading") {
+    if (!trigger || !sameTrigger(pendingBgmTrigger, trigger) || !bgmStatus) return;
+    const message = stage === "slow"
+      ? `#${trigger.id} 외부 음원 응답이 느립니다. 계속 불러오는 중… `
+      : stage === "timeout"
+        ? `#${trigger.id} 외부 음원을 아직 불러오는 중입니다. 잠시 기다리거나 링크를 확인해 주세요. `
+        : `#${trigger.id} 외부 음원 불러오는 중… `;
+    bgmStatus.replaceChildren(message, runtimeBgmLink(trigger));
+  }
+
+  function setBgmAutoplayBlocked(trigger) {
+    if (!trigger || !sameTrigger(pendingBgmTrigger, trigger)) return;
+    if (bgmStatus) bgmStatus.replaceChildren(
+      `#${trigger.id} BGM 자동재생이 차단되었습니다. 플레이어의 ▶를 한 번 눌러 주세요. `,
+      runtimeBgmLink(trigger)
+    );
+  }
+
+  function scheduleBgmAutoplayCheck(trigger, token) {
     clearBgmAutoplayCheck();
     bgmAutoplayCheckTimer = win.setTimeout(() => {
-      if (!bgmPlayerReady || !bgmPlayer || !sameTrigger(pendingBgmTrigger, trigger)) return;
+      if (token !== bgmSwitchSequence || !bgmPlayerReady || !bgmPlayer || !sameTrigger(pendingBgmTrigger, trigger)) return;
       let playerState = null;
       try { playerState = bgmPlayer.getPlayerState(); } catch (error) {}
       const YTState = win.YT?.PlayerState;
       if (playerState === YTState?.PLAYING || playerState === YTState?.BUFFERING) return;
       setBgmAutoplayBlocked(trigger);
-    }, 1600);
+    }, 2400);
   }
 
   function bgmPlayerVars() {
-    const vars = {
-      autoplay: 0,
-      controls: 1,
-      playsinline: 1,
-      rel: 0
-    };
+    const vars = { autoplay: 0, controls: 1, playsinline: 1, rel: 0 };
     if (/^https?:$/.test(win.location.protocol)) vars.origin = win.location.origin;
     return vars;
   }
 
+  function refreshRuntimeEnableButton() {
+    const button = panel?.querySelector("[data-bgm-enable]");
+    if (!button) return;
+    const firstYoutube = triggers.find(trigger => trigger.type === "youtube") || null;
+    const waiting = Boolean(firstYoutube && !bgmPlayerReady && !bgmUnlocked);
+    button.disabled = waiting;
+    button.textContent = waiting ? "BGM 준비 중…" : (bgmUnlocked ? "BGM 활성화됨" : "BGM 활성화");
+    if (waiting && bgmStatus) bgmStatus.textContent = "YouTube 플레이어를 준비하고 있습니다. 잠시 후 활성화할 수 있어요.";
+  }
+
   function ensureBgmPlayer(trigger) {
     if (!bgmFrame || !trigger?.videoId) return Promise.resolve(null);
-    pendingBgmTrigger = trigger;
     if (bgmPlayerReady && bgmPlayer) return Promise.resolve(bgmPlayer);
     if (bgmPlayerInitPromise) return bgmPlayerInitPromise;
 
@@ -6112,15 +6359,9 @@ function enhancementRuntime(root, options = {}) {
     bgmLoadedVideoId = trigger.videoId;
 
     bgmPlayerInitPromise = ensureYoutubeIframeApi().then(YT => new Promise(resolve => {
-      if (!bgmPlayerHost?.isConnected) {
-        resolve(null);
-        return;
-      }
+      if (!bgmPlayerHost?.isConnected) { resolve(null); return; }
       bgmPlayer = new YT.Player(bgmPlayerHost, {
-        width: "100%",
-        height: "100%",
-        videoId: trigger.videoId,
-        playerVars: bgmPlayerVars(),
+        width: "100%", height: "100%", videoId: trigger.videoId, playerVars: bgmPlayerVars(),
         events: {
           onReady(event) {
             bgmPlayerReady = true;
@@ -6132,33 +6373,48 @@ function enhancementRuntime(root, options = {}) {
               iframe.referrerPolicy = "strict-origin-when-cross-origin";
               iframe.allowFullscreen = true;
             }
+            refreshRuntimeEnableButton();
             const pending = pendingBgmTrigger;
-            if (pending?.videoId) {
-              if (bgmUnlocked) requestBgmPlayback(pending);
+            if (pending?.type === "youtube" && pending.videoId) {
+              if (bgmUnlocked) requestBgmPlayback(pending, bgmSwitchSequence);
               else {
-                try {
-                  bgmLoadedVideoId = pending.videoId;
-                  bgmPlayer.cueVideoById(pending.videoId);
-                } catch (error) {}
+                try { bgmLoadedVideoId = pending.videoId; bgmPlayer.cueVideoById(pending.videoId); } catch (error) {}
               }
             }
             resolve(bgmPlayer);
           },
           onStateChange(event) {
             const YTState = win.YT?.PlayerState;
+            if (bgmPrimingYoutube) {
+              if (event.data === YTState?.PLAYING) {
+                win.clearTimeout(bgmPrimeYoutubeTimer);
+                try { bgmPlayer.pauseVideo(); bgmPlayer.unMute?.(); } catch (error) {}
+                bgmPrimingYoutube = false;
+                if (pendingBgmTrigger?.type === "external" && bgmActiveAudioIndex >= 0) {
+                  if (bgmYoutubeLayer) bgmYoutubeLayer.hidden = true;
+                  bgmAudioPlayers.forEach((item, index) => { item.hidden = index !== bgmActiveAudioIndex; });
+                  bgmFrame.classList.add("is-external-audio");
+                }
+              }
+              return;
+            }
             if (event.data === YTState?.PLAYING) {
+              const pending = pendingBgmTrigger;
+              if (!pending || pending.type !== "youtube" || pending.videoId !== bgmLoadedVideoId || bgmDesiredKey !== triggerIdentity(pending)) return;
               clearBgmAutoplayCheck();
-              if (pendingBgmTrigger) showBgm(pendingBgmTrigger, false);
+              bgmAudioPlayers.forEach(item => { item.pause(); item.hidden = true; });
+              bgmActiveAudioIndex = -1;
+              if (bgmYoutubeLayer) bgmYoutubeLayer.hidden = false;
+              bgmFrame.classList.remove("is-external-audio");
+              activeBgmId = pending.id;
+              activeBgmKey = bgmDesiredKey;
+              lastPendingId = pending.id;
+              showBgm(pending, false);
             } else if (event.data === YTState?.ENDED) {
-              try {
-                bgmPlayer.seekTo(0, true);
-                bgmPlayer.playVideo();
-              } catch (error) {}
+              try { bgmPlayer.seekTo(0, true); bgmPlayer.playVideo(); } catch (error) {}
             }
           },
-          onAutoplayBlocked() {
-            if (pendingBgmTrigger) setBgmAutoplayBlocked(pendingBgmTrigger);
-          },
+          onAutoplayBlocked() { if (pendingBgmTrigger?.type === "youtube") setBgmAutoplayBlocked(pendingBgmTrigger); },
           onError() {
             clearBgmAutoplayCheck();
             if (bgmStatus) bgmStatus.textContent = "YouTube 플레이어가 이 BGM을 재생하지 못했습니다. 외부 재생 허용 여부를 확인하세요.";
@@ -6167,10 +6423,11 @@ function enhancementRuntime(root, options = {}) {
       });
     })).catch(error => {
       bgmPlayerInitPromise = null;
+      const button = panel?.querySelector("[data-bgm-enable]");
+      if (button) { button.disabled = false; button.textContent = bgmUnlocked ? "BGM 활성화됨" : "BGM 활성화"; }
       if (bgmStatus) bgmStatus.textContent = error?.message || "YouTube 플레이어를 준비하지 못했습니다.";
       return null;
     });
-
     return bgmPlayerInitPromise;
   }
 
@@ -6180,103 +6437,153 @@ function enhancementRuntime(root, options = {}) {
     ensureBgmPlayer(trigger).then(player => {
       if (!player || !bgmPlayerReady || bgmUnlocked || !sameTrigger(pendingBgmTrigger, trigger)) return;
       if (bgmLoadedVideoId === trigger.videoId) return;
-      try {
-        bgmLoadedVideoId = trigger.videoId;
-        player.cueVideoById(trigger.videoId);
-      } catch (error) {}
+      try { bgmLoadedVideoId = trigger.videoId; player.cueVideoById(trigger.videoId); } catch (error) {}
     });
   }
 
-  function requestBgmPlayback(trigger) {
+  function requestBgmPlayback(trigger, token = bgmSwitchSequence) {
     if (!trigger?.videoId || !bgmFrame) return;
     pendingBgmTrigger = trigger;
-    if (bgmAudio) { bgmAudio.pause(); bgmAudio.hidden = true; }
-    if (bgmYoutubeLayer) bgmYoutubeLayer.hidden = false;
-    bgmFrame.classList.remove("is-external-audio");
+    showBgm(trigger, true);
     ensureBgmPlayer(trigger).then(player => {
-      if (!player || !bgmPlayerReady || !bgmUnlocked || !sameTrigger(pendingBgmTrigger, trigger)) return;
-      if (bgmHeldForExternalPreview) {
-        try {
-          if (bgmLoadedVideoId !== trigger.videoId) {
-            bgmLoadedVideoId = trigger.videoId;
-            player.cueVideoById(trigger.videoId);
-          } else {
-            player.pauseVideo();
-          }
-        } catch (error) {}
-        return;
-      }
+      if (!player || !bgmPlayerReady || !bgmUnlocked || token !== bgmSwitchSequence || bgmDesiredKey !== triggerIdentity(trigger) || !sameTrigger(pendingBgmTrigger, trigger)) return;
+      if (bgmHeldForExternalPreview) { try { player.pauseVideo(); } catch (error) {} return; }
       try {
+        player.unMute?.();
         if (bgmLoadedVideoId !== trigger.videoId) {
           bgmLoadedVideoId = trigger.videoId;
           player.loadVideoById(trigger.videoId);
         } else {
-          player.playVideo();
+          let stateValue = null;
+          try { stateValue = player.getPlayerState(); } catch (error) {}
+          const YTState = win.YT?.PlayerState;
+          if (stateValue !== YTState?.PLAYING && stateValue !== YTState?.BUFFERING) player.playVideo();
         }
-        activeBgmId = trigger.id;
-        activeBgmKey = triggerIdentity(trigger);
-        lastPendingId = trigger.id;
-        showBgm(trigger, false);
-        scheduleBgmAutoplayCheck(trigger);
-      } catch (error) {
-        setBgmAutoplayBlocked(trigger);
-      }
+        scheduleBgmAutoplayCheck(trigger, token);
+      } catch (error) { setBgmAutoplayBlocked(trigger); }
     });
   }
 
-  function ensureExternalAudio(trigger) {
-    if (!bgmFrame || trigger?.type !== "external" || !trigger.url) return null;
-    if (!bgmAudio) {
-      bgmAudio = doc.createElement("audio");
-      bgmAudio.className = "trpg-external-audio";
-      bgmAudio.controls = true;
-      bgmAudio.loop = true;
-      bgmAudio.preload = "metadata";
-      bgmAudio.addEventListener("playing", () => {
-        clearBgmAutoplayCheck();
-        if (pendingBgmTrigger) showBgm(pendingBgmTrigger, false);
+  function ensureRuntimeExternalPlayers() {
+    if (!bgmFrame || bgmAudioPlayers.length) return bgmAudioPlayers;
+    bgmAudioPlayers = [0, 1].map(index => {
+      const item = doc.createElement("audio");
+      item.className = "trpg-external-audio";
+      item.controls = true;
+      item.loop = true;
+      item.preload = "auto";
+      item.hidden = true;
+      item.dataset.audioSlot = String(index);
+      item.__trpgActivateExternal = () => {
+        const token = Number(item.dataset.requestToken || 0);
+        const key = item.dataset.requestKey || "";
+        const pending = pendingBgmTrigger;
+        if (token !== bgmSwitchSequence || !pending || pending.type !== "external" || bgmDesiredKey !== key || triggerIdentity(pending) !== key) {
+          item.pause();
+          return;
+        }
+        clearRuntimeExternalTimers(index);
+        try { bgmPlayer?.pauseVideo(); } catch (error) {}
+        if (bgmYoutubeLayer) bgmYoutubeLayer.hidden = true;
+        bgmAudioPlayers.forEach((otherAudio, otherIndex) => {
+          otherAudio.hidden = otherIndex !== index;
+          if (otherIndex !== index) otherAudio.pause();
+        });
+        bgmActiveAudioIndex = index;
+        bgmFrame.classList.add("is-external-audio");
+        activeBgmId = pending.id;
+        activeBgmKey = key;
+        lastPendingId = pending.id;
+        showBgm(pending, false);
+        const currentIndex = triggers.findIndex(candidate => triggerIdentity(candidate) === key);
+        const next = currentIndex >= 0 ? triggers[currentIndex + 1] : null;
+        if (next?.type === "external") {
+          const preloadIndex = index === 0 ? 1 : 0;
+          const preloadAudio = bgmAudioPlayers[preloadIndex];
+          const nextKey = triggerIdentity(next);
+          if (preloadAudio.dataset.preloadedKey !== nextKey) {
+            clearRuntimeExternalTimers(preloadIndex);
+            preloadAudio.pause();
+            preloadAudio.hidden = true;
+            preloadAudio.dataset.preloadedKey = nextKey;
+            preloadAudio.dataset.requestToken = "";
+            preloadAudio.dataset.requestKey = "";
+            preloadAudio.src = next.url;
+            preloadAudio.load();
+          }
+        }
+      };
+      item.addEventListener("playing", item.__trpgActivateExternal);
+      item.addEventListener("waiting", () => {
+        if (Number(item.dataset.requestToken || 0) === bgmSwitchSequence && pendingBgmTrigger?.type === "external") showExternalBgmLoading(pendingBgmTrigger, "slow");
       });
-      bgmAudio.addEventListener("error", () => {
-        if (bgmStatus) bgmStatus.textContent = "외부 음원을 재생하지 못했습니다. 공개된 파일 직접 주소인지 확인하세요.";
+      item.addEventListener("error", () => {
+        clearRuntimeExternalTimers(index);
+        if (Number(item.dataset.requestToken || 0) !== bgmSwitchSequence || pendingBgmTrigger?.type !== "external" || !bgmStatus) return;
+        bgmStatus.replaceChildren(`#${pendingBgmTrigger.id} 외부 음원을 재생하지 못했습니다. 공개된 파일 직접 주소인지 확인하세요. `, runtimeBgmLink(pendingBgmTrigger));
       });
-    }
-    if (!bgmAudio.isConnected) bgmFrame.append(bgmAudio);
-    try { bgmPlayer?.pauseVideo(); } catch (error) {}
-    if (bgmYoutubeLayer) bgmYoutubeLayer.hidden = true;
-    bgmAudio.hidden = false;
-    bgmFrame.classList.add("is-external-audio");
-    const key = trigger.url;
-    if (bgmAudioKey !== key) {
-      bgmAudioKey = key;
-      bgmAudio.src = trigger.url;
-      bgmAudio.load();
-    }
-    return bgmAudio;
+      bgmFrame.append(item);
+      return item;
+    });
+    return bgmAudioPlayers;
   }
 
-  function requestExternalBgmPlayback(trigger) {
+  function requestExternalBgmPlayback(trigger, token = bgmSwitchSequence) {
     pendingBgmTrigger = trigger;
-    const audio = ensureExternalAudio(trigger);
-    if (!audio) return;
-    if (!bgmUnlocked) {
+    const players = ensureRuntimeExternalPlayers();
+    if (!players.length) return;
+    const key = triggerIdentity(trigger);
+    showExternalBgmLoading(trigger);
+    let targetIndex = players.findIndex(item => item.dataset.preloadedKey === key);
+    if (targetIndex < 0) targetIndex = bgmActiveAudioIndex === 0 ? 1 : 0;
+    const audio = players[targetIndex];
+    clearRuntimeExternalTimers(targetIndex);
+    audio.dataset.requestToken = String(token);
+    audio.dataset.requestKey = key;
+    if (audio.dataset.preloadedKey !== key && audio.src !== trigger.url) {
       audio.pause();
-      showBgm(trigger, true);
-      return;
+      audio.src = trigger.url;
+      audio.load();
     }
-    if (bgmHeldForExternalPreview) {
-      audio.pause();
-      return;
-    }
-    audio.play().then(() => {
-      activeBgmId = trigger.id;
-      activeBgmKey = triggerIdentity(trigger);
-      lastPendingId = trigger.id;
-      showBgm(trigger, false);
-    }).catch(() => setBgmAutoplayBlocked(trigger));
+    audio.dataset.preloadedKey = "";
+    if (!bgmUnlocked) { showBgm(trigger, true); return; }
+    if (bgmHeldForExternalPreview) return;
+    bgmExternalSlowTimers[targetIndex] = win.setTimeout(() => {
+      if (token === bgmSwitchSequence) showExternalBgmLoading(trigger, "slow");
+    }, 2500);
+    bgmExternalTimeoutTimers[targetIndex] = win.setTimeout(() => {
+      if (token === bgmSwitchSequence) showExternalBgmLoading(trigger, "timeout");
+    }, 10000);
+    audio.play().then(() => audio.__trpgActivateExternal?.()).catch(() => {
+      if (token === bgmSwitchSequence) setBgmAutoplayBlocked(trigger);
+    });
+  }
+
+  function primeRuntimeYoutubeForFutureSwitch() {
+    const firstYoutube = triggers.find(trigger => trigger.type === "youtube") || null;
+    if (!bgmPlayerReady || !bgmPlayer || !firstYoutube || pendingBgmTrigger?.type === "youtube") return;
+    win.clearTimeout(bgmPrimeYoutubeTimer);
+    bgmPrimingYoutube = true;
+    try {
+      bgmPlayer.mute?.();
+      bgmLoadedVideoId = firstYoutube.videoId;
+      bgmPlayer.loadVideoById(firstYoutube.videoId);
+    } catch (error) { bgmPrimingYoutube = false; return; }
+    bgmPrimeYoutubeTimer = win.setTimeout(() => {
+      try { bgmPlayer.pauseVideo(); bgmPlayer.unMute?.(); } catch (error) {}
+      bgmPrimingYoutube = false;
+      if (pendingBgmTrigger?.type === "external" && bgmActiveAudioIndex >= 0) {
+        if (bgmYoutubeLayer) bgmYoutubeLayer.hidden = true;
+        bgmAudioPlayers.forEach((item, index) => { item.hidden = index !== bgmActiveAudioIndex; });
+        bgmFrame.classList.add("is-external-audio");
+      }
+    }, 2500);
   }
 
   function destroyBgmPlayer() {
     clearBgmAutoplayCheck();
+    win.clearTimeout(bgmPrimeYoutubeTimer);
+    bgmPrimingYoutube = false;
     pendingBgmTrigger = null;
     bgmPlayerReady = false;
     bgmLoadedVideoId = "";
@@ -6297,9 +6604,23 @@ function enhancementRuntime(root, options = {}) {
       return;
     }
     if (!bgmFrame) return;
+    const key = triggerIdentity(trigger);
+    if (activeBgmKey === key) {
+      if (trigger.type === "external") {
+        const activeAudio = bgmActiveAudioIndex >= 0 ? bgmAudioPlayers[bgmActiveAudioIndex] : null;
+        if (activeAudio && !activeAudio.paused) return;
+      } else {
+        let stateValue = null;
+        try { stateValue = bgmPlayer?.getPlayerState?.(); } catch (error) {}
+        const YTState = win.YT?.PlayerState;
+        if (stateValue === YTState?.PLAYING || stateValue === YTState?.BUFFERING) return;
+      }
+    }
+    pendingBgmTrigger = trigger;
+    bgmDesiredKey = key;
+    const token = ++bgmSwitchSequence;
     if (trigger.type === "external") {
-      if (activeBgmKey === triggerIdentity(trigger) && bgmAudio && !bgmAudio.paused) return;
-      requestExternalBgmPlayback(trigger);
+      requestExternalBgmPlayback(trigger, token);
       return;
     }
     if (!bgmUnlocked) {
@@ -6310,7 +6631,6 @@ function enhancementRuntime(root, options = {}) {
       }
       return;
     }
-    if (activeBgmKey === triggerIdentity(trigger)) return;
     if (localAutoWindowEnabled()) {
       destroyBgmPlayer();
       if (!bgmYoutubeLayer) bgmFrame.replaceChildren();
@@ -6334,7 +6654,7 @@ function enhancementRuntime(root, options = {}) {
       showBgm(trigger, false, true);
       return;
     }
-    requestBgmPlayback(trigger);
+    requestBgmPlayback(trigger, token);
   }
 
   function lastEntryBeforeMarker(entries, marker) {
@@ -6999,9 +7319,17 @@ function enhancementRuntime(root, options = {}) {
     stopAllBgmWindows();
   });
   on(win, "pagehide", stopAllBgmWindows);
+  const firstRuntimeYoutubeTrigger = triggers.find(trigger => trigger.type === "youtube") || null;
+  if (panel && firstRuntimeYoutubeTrigger && !bgmUnlocked) {
+    refreshRuntimeEnableButton();
+    ensureBgmPlayer(firstRuntimeYoutubeTrigger).then(() => refreshRuntimeEnableButton());
+  }
   on(panel?.querySelector("[data-bgm-enable]"), "click", () => {
+    const clickedButton = panel?.querySelector("[data-bgm-enable]");
+    if (clickedButton?.disabled) return;
     bgmUnlocked = true;
     if (typeof options.onBgmUnlock === "function") options.onBgmUnlock();
+    primeRuntimeYoutubeForFutureSwitch();
     activeBgmId = 0;
     activeBgmKey = "";
     lastActiveBgmKey = "__force__";
@@ -7022,9 +7350,10 @@ function enhancementRuntime(root, options = {}) {
     pauseForPreview() {
       bgmHeldForExternalPreview = true;
       bgmShouldResumeAfterExternalPreview = false;
-      if (pendingBgmTrigger?.type === "external" && bgmAudio) {
-        bgmShouldResumeAfterExternalPreview = !bgmAudio.paused;
-        bgmAudio.pause();
+      if (pendingBgmTrigger?.type === "external" && bgmActiveAudioIndex >= 0) {
+        const activeAudio = bgmAudioPlayers[bgmActiveAudioIndex];
+        bgmShouldResumeAfterExternalPreview = !!activeAudio && !activeAudio.paused;
+        activeAudio?.pause();
         return bgmShouldResumeAfterExternalPreview;
       }
       if (!bgmPlayerReady || !bgmPlayer) return false;
@@ -7040,8 +7369,10 @@ function enhancementRuntime(root, options = {}) {
       bgmHeldForExternalPreview = false;
       bgmShouldResumeAfterExternalPreview = false;
       if (!shouldResume || !bgmUnlocked || !pendingBgmTrigger) return false;
-      if (pendingBgmTrigger.type === "external") requestExternalBgmPlayback(pendingBgmTrigger);
-      else requestBgmPlayback(pendingBgmTrigger);
+      const token = ++bgmSwitchSequence;
+      bgmDesiredKey = triggerIdentity(pendingBgmTrigger);
+      if (pendingBgmTrigger.type === "external") requestExternalBgmPlayback(pendingBgmTrigger, token);
+      else requestBgmPlayback(pendingBgmTrigger, token);
       return true;
     }
   };
@@ -7055,10 +7386,16 @@ function enhancementRuntime(root, options = {}) {
     fallbackRaf = 0;
     syncController?.destroy();
     win.clearTimeout(resizeRefreshTimer);
+    ++bgmSwitchSequence;
     destroyBgmPlayer();
-    if (bgmAudio) { bgmAudio.pause(); bgmAudio.removeAttribute("src"); bgmAudio.load(); }
-    bgmAudio = null;
-    bgmAudioKey = "";
+    bgmAudioPlayers.forEach((item, index) => {
+      clearRuntimeExternalTimers(index);
+      item.pause();
+      item.removeAttribute("src");
+      item.load();
+    });
+    bgmAudioPlayers = [];
+    bgmActiveAudioIndex = -1;
     stopAllBgmWindows();
     bgmHeldForExternalPreview = false;
     bgmShouldResumeAfterExternalPreview = false;
