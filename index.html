@@ -1,11 +1,22 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.49">
+<meta name="trpg-app-version" content="6.52">
+<meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
+<script>
+(() => {
+  try {
+    const savedTheme = window.localStorage.getItem("trpg-log-converter:theme");
+    document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+  } catch (error) {
+    document.documentElement.dataset.theme = "dark";
+  }
+})();
+</script>
 <style>
 :root {
   color-scheme: dark;
@@ -20,6 +31,11 @@
   --quiet: rgba(255,255,255,.34);
   --accent: #8fc7ff;
   --danger: #ff8c8c;
+  --control-bg: #343434;
+  --control-hover: #414141;
+  --field-bg: #1d1d1d;
+  --sidebar-bg: #202020;
+  --toolbar-bg: #202020;
   --radius: 8px;
   --avatar-size: 42px;
   --font-size: 15px;
@@ -41,7 +57,7 @@ button, input, select, textarea {
 
 button {
   border: 1px solid var(--line);
-  background: #343434;
+  background: var(--control-bg);
   color: var(--text);
   border-radius: 6px;
   min-height: 32px;
@@ -49,7 +65,7 @@ button {
   cursor: pointer;
 }
 
-button:hover { background: #414141; }
+button:hover { background: var(--control-hover); }
 button:disabled {
   opacity: .42;
   cursor: not-allowed;
@@ -58,7 +74,7 @@ button:disabled {
 input[type="file"] {
   width: 100%;
   border: 1px dashed var(--line);
-  background: #1f1f1f;
+  background: var(--field-bg);
   border-radius: 6px;
   padding: 10px;
   color: var(--muted);
@@ -69,7 +85,7 @@ input[type="search"], input[type="text"], input[type="number"], select, textarea
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--text);
-  background: #1d1d1d;
+  background: var(--field-bg);
   min-height: 32px;
   padding: 6px 8px;
 }
@@ -91,7 +107,7 @@ label { color: var(--muted); font-size: 13px; }
 
 .sidebar {
   border-right: 1px solid var(--line);
-  background: #202020;
+  background: var(--sidebar-bg);
   padding: 16px;
   overflow: auto;
   max-height: 100vh;
@@ -126,7 +142,7 @@ label { color: var(--muted); font-size: 13px; }
 .guide-details {
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #1d1d1d;
+  background: var(--field-bg);
   overflow: hidden;
 }
 
@@ -200,7 +216,7 @@ label { color: var(--muted); font-size: 13px; }
 .toolbar {
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
-  background: #202020;
+  background: var(--toolbar-bg);
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto;
   gap: 10px;
@@ -1919,6 +1935,220 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
   background: rgba(143,199,255,.17) !important;
 }
 
+
+/* v6.51 — export scope, draft recovery, task feedback and app theme */
+.section-title .section-count,
+.subsection-title .section-count {
+  color: var(--muted, #94a3b8);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.filter-summary,
+.export-scope-summary,
+.export-validation-summary {
+  border: 1px solid rgba(148,163,184,.22);
+  border-radius: 8px;
+  background: rgba(15,23,42,.28);
+  padding: 8px 10px;
+  line-height: 1.45;
+}
+.export-scope-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(148,163,184,.22);
+  border-radius: 10px;
+  background: rgba(15,23,42,.2);
+}
+.export-scope-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.export-scope-option input { flex: 0 0 auto; }
+.export-scope-card.is-filtered {
+  border-color: rgba(245,158,11,.55);
+  background: rgba(120,53,15,.16);
+}
+.export-validation-summary[hidden],
+.draft-recovery[hidden] { display: none !important; }
+.draft-recovery {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(59,130,246,.5);
+  border-radius: 10px;
+  background: rgba(30,64,175,.16);
+}
+.draft-recovery strong { display: block; margin-bottom: 4px; }
+.draft-recovery p { margin: 0 0 8px; color: var(--muted, #cbd5e1); font-size: 12px; line-height: 1.45; }
+.draft-recovery-actions { display: flex; gap: 8px; }
+.draft-recovery-actions button { flex: 1; }
+.export-actions button[aria-busy="true"],
+.sticky-export-actions button[aria-busy="true"] { cursor: progress; }
+.preview-shell.is-style-adjusting { contain: layout paint; }
+
+
+/* v6.52 — converter and exported log share the selected fixed theme. */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 88px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.theme-toggle-icon {
+  width: 1.1em;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1;
+}
+.theme-toggle-label { font-size: 12px; }
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #edf1f5;
+  --panel: #ffffff;
+  --panel-2: #f4f6f8;
+  --panel-3: #e8edf2;
+  --line: rgba(15,23,42,.16);
+  --line-soft: rgba(15,23,42,.09);
+  --text: #172033;
+  --muted: rgba(15,23,42,.66);
+  --quiet: rgba(15,23,42,.46);
+  --accent: #2563a6;
+  --danger: #bd3737;
+  --accent-strong: #2563a6;
+  --accent-soft: rgba(37,99,166,.11);
+  --success: #16845a;
+  --warning: #8a5d00;
+  --control-bg: #f5f7fa;
+  --control-hover: #e7edf3;
+  --field-bg: #ffffff;
+  --sidebar-bg: #f8fafc;
+  --toolbar-bg: rgba(255,255,255,.96);
+}
+html[data-theme="light"] body { background: var(--bg); color: var(--text); }
+html[data-theme="light"] ::selection { background: rgba(37,99,166,.2); color: #0f172a; }
+html[data-theme="light"] input[type="file"] { background: #f7f9fb; }
+html[data-theme="light"] input[type="search"],
+html[data-theme="light"] input[type="text"],
+html[data-theme="light"] input[type="number"],
+html[data-theme="light"] select,
+html[data-theme="light"] textarea { box-shadow: inset 0 1px 1px rgba(15,23,42,.025); }
+html[data-theme="light"] .sidebar { box-shadow: 5px 0 18px rgba(15,23,42,.035); }
+html[data-theme="light"] .toolbar { box-shadow: 0 3px 14px rgba(15,23,42,.04); }
+html[data-theme="light"] .section,
+html[data-theme="light"] .guide-details,
+html[data-theme="light"] .file-upload-details,
+html[data-theme="light"] .advanced-upload,
+html[data-theme="light"] .advanced-export {
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,250,252,.94));
+}
+html[data-theme="light"] .soft-button,
+html[data-theme="light"] .secondary-button { background: #f3f6f9; color: var(--text); }
+html[data-theme="light"] .soft-button:hover,
+html[data-theme="light"] .secondary-button:hover { background: #e5ebf1; }
+html[data-theme="light"] .version-badge { color: #174f86; background: rgba(37,99,166,.1); border-color: rgba(37,99,166,.24); }
+html[data-theme="light"] .section-badge.required { color: #875800; background: rgba(217,145,0,.09); border-color: rgba(154,103,0,.23); }
+html[data-theme="light"] .section-badge.optional { background: rgba(15,23,42,.035); }
+html[data-theme="light"] .file-drop-zone { background: rgba(37,99,166,.045); border-color: rgba(37,99,166,.3); }
+html[data-theme="light"] .file-drop-zone strong,
+html[data-theme="light"] .copy-help-note b,
+html[data-theme="light"] .trouble-list dt { color: #1e5f9c; }
+html[data-theme="light"] .upload-card { background: #ffffff; }
+html[data-theme="light"] .upload-card:hover { background: #f2f6fa; border-color: rgba(37,99,166,.3); }
+html[data-theme="light"] .upload-card.has-file { background: rgba(22,132,90,.055); border-color: rgba(22,132,90,.25); }
+html[data-theme="light"] .upload-icon { color: #1e5f9c; background: rgba(37,99,166,.09); }
+html[data-theme="light"] .upload-card.has-file .upload-copy em,
+html[data-theme="light"] .advanced-upload.has-file summary span { color: #14704d; }
+html[data-theme="light"] .status-box { background: #f4f7f9; }
+html[data-theme="light"] .help-note { background: rgba(37,99,166,.045); border-color: rgba(37,99,166,.16); }
+html[data-theme="light"] .empty-icon { color: #1e5f9c; background: rgba(37,99,166,.065); border-color: rgba(37,99,166,.2); }
+
+html[data-theme="light"] .preview-shell {
+  background: linear-gradient(180deg, rgba(255,255,255,.72), transparent 190px), #e7ecf1;
+}
+html[data-theme="light"] .ccfolia-wrap { background: rgba(255,255,255,.96); color: var(--text); box-shadow: 0 8px 28px rgba(15,23,42,.07); }
+html[data-theme="light"] .other-wrap { background: #f7f9fb; }
+html[data-theme="light"] .other-title { background: #edf2f6; color: rgba(15,23,42,.66); }
+html[data-theme="light"] .other-row { border-bottom-color: rgba(15,23,42,.09); }
+html[data-theme="light"] .other-text { color: rgba(15,23,42,.78); }
+html[data-theme="light"] .name,
+html[data-theme="light"] .other-name { color: var(--name-color, #334155); }
+html[data-theme="light"] .empty-state { background: rgba(255,255,255,.72); }
+html[data-theme="light"] .log-row,
+html[data-theme="light"] .log-row.group-tone-a { background: #ffffff; border-bottom-color: rgba(15,23,42,.1); }
+html[data-theme="light"] .log-row:nth-child(even),
+html[data-theme="light"] .log-row.group-tone-b { background: #f4f7f9; }
+html[data-theme="light"] .log-row:hover { background: #eaf1f7; }
+html[data-theme="light"] .log-row.group-tone-a.has-continuation:hover,
+html[data-theme="light"] .log-row.group-tone-a.is-continuation:hover { background: #ffffff; }
+html[data-theme="light"] .log-row.group-tone-b.has-continuation:hover,
+html[data-theme="light"] .log-row.group-tone-b.is-continuation:hover { background: #f4f7f9; }
+html[data-theme="light"] .log-row.is-extra-tab { background: rgba(37,99,166,.045); border-left-color: rgba(37,99,166,.32); }
+html[data-theme="light"] .log-row.is-extra-tab:hover { background: rgba(37,99,166,.08); }
+html[data-theme="light"] .log-row.is-system,
+html[data-theme="light"] .system-line { background: rgba(15,23,42,.035); border-bottom-color: rgba(15,23,42,.08); }
+html[data-theme="light"] .system-text,
+html[data-theme="light"] .is-system .text { color: rgba(15,23,42,.62); }
+html[data-theme="light"] .is-extra-tab .text { color: rgba(15,23,42,.78); }
+html[data-theme="light"] .avatar { background: rgba(15,23,42,.07); border-color: rgba(15,23,42,.12); }
+html[data-theme="light"] .tab-avatar { color: #245a8b; background: rgba(37,99,166,.09); border-color: rgba(37,99,166,.2); }
+html[data-theme="light"] .expr-tag { color: rgba(15,23,42,.58); background: rgba(15,23,42,.045); border-color: rgba(15,23,42,.1); }
+html[data-theme="light"] .split-button { color: rgba(15,23,42,.62); background: rgba(255,255,255,.88); border-color: rgba(15,23,42,.14); }
+html[data-theme="light"] .split-button:hover,
+html[data-theme="light"] .split-button:focus-visible { color: #174f86; background: rgba(37,99,166,.1); border-color: rgba(37,99,166,.28); }
+html[data-theme="light"] .row-actions .main-bgm-button.is-set { color: #174f86; background: rgba(37,99,166,.1); border-color: rgba(37,99,166,.28); }
+html[data-theme="light"] .row-actions,
+html[data-theme="light"] .other-actions { background: rgba(255,255,255,.94); box-shadow: 0 2px 10px rgba(15,23,42,.14); }
+html[data-theme="light"] .row-actions.has-split,
+html[data-theme="light"] .other-actions.has-split { background: rgba(229,247,238,.97); }
+html[data-theme="light"] .split-boundary-before { color: rgba(15,23,42,.58); }
+html[data-theme="light"] .split-action-toast { background: rgba(255,255,255,.98); color: #172033; box-shadow: 0 8px 24px rgba(15,23,42,.18); }
+
+html[data-theme="light"] .filter-list,
+html[data-theme="light"] .export-links a,
+html[data-theme="light"] .bgm-trigger-list { background: #ffffff; }
+html[data-theme="light"] .bgm-trigger-row { background: rgba(15,23,42,.022); }
+html[data-theme="light"] .bgm-trigger-jump:hover,
+html[data-theme="light"] .bgm-trigger-jump:focus-visible { background: rgba(15,23,42,.045); }
+html[data-theme="light"] .bgm-trigger-track { color: rgba(15,23,42,.54); }
+html[data-theme="light"] .bgm-trigger-edit:hover,
+html[data-theme="light"] .bgm-trigger-edit:focus-visible { color: #1e5f9c; }
+html[data-theme="light"] .bgm-playlist-item { background: rgba(15,23,42,.02); }
+html[data-theme="light"] .bgm-playlist-item:hover { background: rgba(37,99,166,.065); }
+html[data-theme="light"] .bgm-track-remove { border-color: rgba(255,255,255,.2); }
+html[data-theme="light"] .bgm-picker-preview { background: rgba(15,23,42,.025); }
+html[data-theme="light"] .bgm-panel,
+html[data-theme="light"] .preview-persistent-bgm-panel { background: rgba(255,255,255,.94); box-shadow: 0 8px 24px rgba(15,23,42,.15); }
+html[data-theme="light"] .bgm-now { background: rgba(255,255,255,.9); color: #1e5f9c; }
+
+html[data-theme="light"] .app-dialog { background: #ffffff; border-color: rgba(15,23,42,.15); box-shadow: 0 28px 90px rgba(15,23,42,.24); }
+html[data-theme="light"] .dialog-head { background: #f4f7f9; }
+html[data-theme="light"] .help-tabs button { background: #f3f6f9; }
+html[data-theme="light"] .help-tabs button.is-active { color: #fff; background: #347fc6; }
+html[data-theme="light"] .tutorial-steps li { background: #f7f9fb; }
+html[data-theme="light"] .tutorial-steps li > span { color: #1e5f9c; background: rgba(37,99,166,.1); }
+html[data-theme="light"] .sticky-actions { background: rgba(255,255,255,.96); border-top-color: rgba(15,23,42,.14); box-shadow: 0 -10px 28px rgba(15,23,42,.09); }
+html[data-theme="light"] .filter-summary,
+html[data-theme="light"] .export-scope-summary,
+html[data-theme="light"] .export-validation-summary,
+html[data-theme="light"] .export-scope-card { background: rgba(255,255,255,.66); border-color: rgba(15,23,42,.14); }
+html[data-theme="light"] .export-scope-card.is-filtered { background: rgba(255,247,230,.86); border-color: rgba(202,124,0,.4); }
+html[data-theme="light"] .draft-recovery { background: rgba(219,234,254,.7); border-color: rgba(37,99,235,.35); }
+html[data-theme="light"] .app-dialog::backdrop,
+html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); }
+
+@media (max-width: 560px) {
+  .theme-toggle { min-width: 38px; width: 38px; padding-inline: 5px; }
+  .theme-toggle-label { display: none; }
+}
+
 </style>
 </head>
 <body>
@@ -1974,6 +2204,14 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
         </div>
       </details>
       <div id="fileStatus" class="status status-box persistent-status" aria-live="polite" hidden></div>
+      <div id="draftRecovery" class="draft-recovery" hidden>
+        <strong>이 로그의 이전 편집 작업이 있습니다.</strong>
+        <p id="draftRecoveryText">BGM·분할점·필터 상태를 복구할 수 있습니다.</p>
+        <div class="draft-recovery-actions">
+          <button id="restoreDraftBtn" type="button" class="primary-button">이전 작업 복구</button>
+          <button id="discardDraftBtn" type="button" class="soft-button">새로 시작</button>
+        </div>
+      </div>
     </section>
 
     <section class="section" id="section-style">
@@ -2013,14 +2251,15 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
     </section>
 
     <section class="section" id="section-filter">
-      <div class="section-title"><h2>필터</h2></div>
+      <div class="section-title"><h2>필터</h2><span id="filterCountSummary" class="section-count">0 / 0</span></div>
       <div class="stack">
         <label>검색</label>
         <input id="searchBox" type="search" placeholder="이름이나 대사 검색">
-        <div class="subsection-title"><h3>탭</h3><button id="toggleTabs" type="button">전체</button></div>
+        <div class="subsection-title"><h3>탭 <span id="tabFilterCount" class="section-count">0/0</span></h3><button id="toggleTabs" type="button">모두 해제</button></div>
         <div id="tabFilters" class="filter-list"></div>
-        <div class="subsection-title"><h3>캐릭터</h3><button id="toggleChars" type="button">전체</button></div>
+        <div class="subsection-title"><h3>캐릭터 <span id="charFilterCount" class="section-count">0/0</span></h3><button id="toggleChars" type="button">모두 해제</button></div>
         <div id="charFilters" class="filter-list"></div>
+        <div id="filterSummary" class="status filter-summary">표시할 로그가 없습니다.</div>
       </div>
     </section>
 
@@ -2047,6 +2286,14 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
     <section class="section export-section" id="section-export">
       <div class="section-title"><h2>내보내기</h2></div>
       <div class="stack">
+        <div id="exportScopeCard" class="export-scope-card">
+          <div class="subsection-title"><h3>내보낼 범위</h3><span id="exportScopeCount" class="section-count">0개</span></div>
+          <label class="export-scope-option" for="exportFilteredOnly">
+            <input id="exportFilteredOnly" type="checkbox">
+            <span>현재 필터 결과만 내보내기</span>
+          </label>
+          <div id="exportScopeSummary" class="status export-scope-summary">로그 분석 후 범위를 확인할 수 있습니다.</div>
+        </div>
         <details class="advanced-export">
           <summary>고급 내보내기 설정</summary>
           <div class="advanced-export-body">
@@ -2071,6 +2318,7 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
             <button id="exportGuideBtn" type="button">배포·감상 안내 TXT 저장</button>
           </div>
         </details>
+        <div id="exportValidationSummary" class="status export-validation-summary" hidden></div>
         <div class="export-actions">
           <button id="copyBtn" class="primary-button" disabled>HTML 복사</button>
           <button id="saveBtn" class="secondary-button" disabled>HTML 파일 저장</button>
@@ -2096,9 +2344,12 @@ button.is-copy-error { background:#8a3434!important; border-color:#bb4e4e!import
         <span id="pageLabel" class="status">/ 1</span>
         <button id="nextBtn" disabled>다음</button>
       </div>
-      <div class="pager">
+      <div class="pager toolbar-actions">
         <button id="resetFiltersBtn" disabled>필터 초기화</button>
-        <button id="toolbarHelpBtn" class="soft-button" type="button">?</button>
+        <button id="themeToggleBtn" class="soft-button theme-toggle" type="button" aria-pressed="false" title="라이트 모드로 전환">
+          <span class="theme-toggle-icon" aria-hidden="true">☀</span><span class="theme-toggle-label">라이트</span>
+        </button>
+        <button id="toolbarHelpBtn" class="soft-button" type="button" aria-label="도움말">?</button>
       </div>
     </div>
     <section id="preview" class="preview-shell">
@@ -2244,6 +2495,13 @@ const state = {
   page: 1,
   previewBgmUnlocked: false,
   splitOrderHints: new Map(),
+  splitUidHints: new Map(),
+  bgmTriggerByUid: new Map(),
+  workKey: "",
+  pendingDraft: null,
+  draftDecisionPending: false,
+  exportBusy: false,
+  lastExportValidation: null,
   inlineImageCache: new Map(),
   lastImageAssetStats: null,
   lastCompactStats: null,
@@ -2258,8 +2516,11 @@ const otherFile = el("otherFile");
 const jsonFile = el("jsonFile");
 const APP_VERSION = document.querySelector('meta[name="trpg-app-version"]')?.content?.trim() || "dev";
 const PREFERENCE_STORAGE_KEY = "trpg-log-converter:last-preferences";
+const THEME_STORAGE_KEY = "trpg-log-converter:theme";
 const PREFERENCE_SCHEMA_VERSION = 2;
 const DEFAULT_PAGE_SIZE = "1000";
+const WORK_DRAFT_SCHEMA_VERSION = 1;
+const WORK_DRAFT_PREFIX = "trpg-log-converter:work-draft:";
 const PREFERENCE_FIELDS = [
   "fontSize", "lineHeight", "avatarSize", "pageSize",
   "groupRows", "sideOther", "showExpression", "hideEmpty", "hideSystem",
@@ -2271,6 +2532,47 @@ function applyAppVersion() {
   document.title = `TRPG 로그 변환기 v${APP_VERSION}`;
   if (el("versionBadge")) el("versionBadge").textContent = `WEB v${APP_VERSION}`;
   if (el("footerVersion")) el("footerVersion").textContent = `TRPG 로그 변환기 v${APP_VERSION}`;
+}
+
+function normalizeAppTheme(value) {
+  return String(value || "").toLowerCase() === "light" ? "light" : "dark";
+}
+
+function loadAppTheme() {
+  const stored = appStorage()?.getItem(THEME_STORAGE_KEY);
+  return normalizeAppTheme(stored || document.documentElement.dataset.theme || "dark");
+}
+
+function syncThemeToggle(theme = document.documentElement.dataset.theme) {
+  const current = normalizeAppTheme(theme);
+  const button = el("themeToggleBtn");
+  if (!button) return;
+  const nextIsLight = current === "dark";
+  const icon = button.querySelector(".theme-toggle-icon");
+  const label = button.querySelector(".theme-toggle-label");
+  if (icon) icon.textContent = nextIsLight ? "☀" : "☾";
+  if (label) label.textContent = nextIsLight ? "라이트" : "다크";
+  button.setAttribute("aria-pressed", String(current === "light"));
+  button.setAttribute("aria-label", nextIsLight ? "라이트 모드로 전환" : "다크 모드로 전환");
+  button.title = nextIsLight ? "라이트 모드로 전환" : "다크 모드로 전환";
+}
+
+function applyAppTheme(theme, { persist = false } = {}) {
+  const next = normalizeAppTheme(theme);
+  document.documentElement.dataset.theme = next;
+  document.documentElement.style.colorScheme = next;
+  const themeMeta = el("themeColorMeta");
+  if (themeMeta) themeMeta.setAttribute("content", next === "light" ? "#edf1f5" : "#181818");
+  syncThemeToggle(next);
+  if (persist) appStorage()?.setItem(THEME_STORAGE_KEY, next);
+  return next;
+}
+
+function toggleAppTheme() {
+  const current = normalizeAppTheme(document.documentElement.dataset.theme);
+  const next = current === "dark" ? "light" : "dark";
+  applyAppTheme(next, { persist: true });
+  return next;
 }
 
 function readControlValue(control) {
@@ -2285,9 +2587,15 @@ function writeControlValue(control, value) {
   } else control.value = String(value);
 }
 
+
+function appStorage() {
+  if (window.__trpgStorage) return window.__trpgStorage;
+  try { return window.localStorage; } catch (error) { return null; }
+}
+
 function loadLastPreferences() {
   try {
-    const saved = JSON.parse(localStorage.getItem(PREFERENCE_STORAGE_KEY) || "null");
+    const saved = JSON.parse(appStorage()?.getItem(PREFERENCE_STORAGE_KEY) || "null");
     if (!saved || typeof saved !== "object") return;
 
     const needsPageSizeMigration = Number(saved.__schemaVersion || 0) < PREFERENCE_SCHEMA_VERSION;
@@ -2301,7 +2609,7 @@ function loadLastPreferences() {
     if (needsPageSizeMigration) {
       saved.__schemaVersion = PREFERENCE_SCHEMA_VERSION;
       saved.pageSize = readControlValue(el("pageSize")) || DEFAULT_PAGE_SIZE;
-      localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify(saved));
+      appStorage()?.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify(saved));
     }
   } catch (error) {
     console.warn("직전 설정을 불러오지 못했습니다.", error);
@@ -2315,7 +2623,7 @@ function saveLastPreferences() {
       const control = el(id);
       if (control) saved[id] = readControlValue(control);
     });
-    localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify(saved));
+    appStorage()?.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify(saved));
   } catch (error) {
     console.warn("직전 설정을 저장하지 못했습니다.", error);
   }
@@ -2329,6 +2637,201 @@ function debounce(fn, wait = 150) {
   }
   debounced.cancel = () => { clearTimeout(timer); timer = 0; };
   return debounced;
+}
+
+
+/* MODULE: identity — display id와 내부 uid/order를 분리한다. */
+function stableTextHash(value) {
+  let hash = 2166136261;
+  const text = String(value ?? "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function deterministicMessageUid(message, order) {
+  const seed = [
+    normalizedTab(message?.tab || "main"),
+    normalizedCharacterName(message?.name || "system"),
+    normalizeText(message?.text || ""),
+    message?.messageId || "",
+    message?.sourceIndex ?? "",
+    order
+  ].join("\u001f");
+  return `m-${order.toString(36)}-${stableTextHash(seed)}`;
+}
+
+function messageOrder(message) {
+  const explicit = Number(message?.order);
+  if (Number.isFinite(explicit) && explicit >= 0) return explicit;
+  const legacy = Number(message?._order);
+  if (Number.isFinite(legacy) && legacy >= 0) return legacy;
+  const index = state.messages.indexOf(message);
+  return index >= 0 ? index : null;
+}
+
+function messageByUid(uid) {
+  return state.messages.find(message => message.uid === uid) || null;
+}
+
+function messageByIdentity({ uid = "", id = 0, order = null } = {}) {
+  if (uid) {
+    const matched = messageByUid(uid);
+    if (matched) return matched;
+  }
+  const numericOrder = Number(order);
+  if (Number.isFinite(numericOrder) && state.messages[numericOrder]) return state.messages[numericOrder];
+  return state.messages.find(message => Number(message.id) === Number(id)) || null;
+}
+
+/* MODULE: work draft — 원본 파일은 저장하지 않고 편집 상태만 보존한다. */
+function buildWorkKey(file, text) {
+  if (!file || !text) return "";
+  const sample = `${String(text).slice(0, 2048)}\u001f${String(text).slice(-2048)}`;
+  const signature = [file.name, file.size, file.lastModified, String(text).length, stableTextHash(sample)].join("|");
+  return `${WORK_DRAFT_PREFIX}${stableTextHash(signature)}`;
+}
+
+function workDraftPayload() {
+  return {
+    schemaVersion: WORK_DRAFT_SCHEMA_VERSION,
+    appVersion: APP_VERSION,
+    updatedAt: Date.now(),
+    title: state.title,
+    messageCount: state.messages.length,
+    bgmUrl: el("bgmUrl")?.value || "",
+    bgmTriggers: el("bgmTriggers")?.value || "",
+    manualSplits: el("manualSplits")?.value || "",
+    manualOtherSplits: el("manualOtherSplits")?.value || "",
+    splitOrderHints: [...state.splitOrderHints.entries()],
+    splitUidHints: [...state.splitUidHints.entries()],
+    selectedTabs: [...state.selectedTabs],
+    selectedChars: [...state.selectedChars],
+    search: el("searchBox")?.value || "",
+    page: state.page,
+    exportFilteredOnly: !!el("exportFilteredOnly")?.checked,
+    controls: Object.fromEntries(PREFERENCE_FIELDS.map(id => [id, readControlValue(el(id))]))
+  };
+}
+
+function loadWorkDraft(key = state.workKey) {
+  if (!key) return null;
+  try {
+    const draft = JSON.parse(appStorage()?.getItem(key) || "null");
+    if (!draft || Number(draft.schemaVersion) !== WORK_DRAFT_SCHEMA_VERSION) return null;
+    return draft;
+  } catch (error) {
+    console.warn("임시 작업을 읽지 못했습니다.", error);
+    return null;
+  }
+}
+
+function saveWorkDraftNow() {
+  if (!state.workKey || !state.messages.length || state.draftDecisionPending) return false;
+  try {
+    appStorage()?.setItem(state.workKey, JSON.stringify(workDraftPayload()));
+    return true;
+  } catch (error) {
+    console.warn("임시 작업을 저장하지 못했습니다.", error);
+    return false;
+  }
+}
+
+const scheduleWorkDraftSave = debounce(saveWorkDraftNow, 450);
+
+function hideDraftRecovery() {
+  const banner = el("draftRecovery");
+  if (banner) banner.hidden = true;
+}
+
+function offerWorkDraftRecovery() {
+  const draft = state.pendingDraft || loadWorkDraft();
+  state.pendingDraft = draft;
+  const banner = el("draftRecovery");
+  if (!banner || !draft) {
+    state.draftDecisionPending = false;
+    hideDraftRecovery();
+    scheduleWorkDraftSave();
+    return;
+  }
+  state.draftDecisionPending = true;
+  const updated = Number(draft.updatedAt) ? new Date(draft.updatedAt).toLocaleString("ko-KR") : "저장 시각 없음";
+  const count = Number(draft.messageCount || 0).toLocaleString();
+  if (el("draftRecoveryText")) el("draftRecoveryText").textContent = `${updated} · ${count}개 메시지 작업. BGM·분할점·필터 상태를 복구할 수 있습니다.`;
+  banner.hidden = false;
+}
+
+function applyWorkDraft(draft) {
+  if (!draft) return false;
+  if (typeof draft.bgmUrl === "string") el("bgmUrl").value = draft.bgmUrl;
+  if (typeof draft.bgmTriggers === "string") el("bgmTriggers").value = draft.bgmTriggers;
+  if (typeof draft.manualSplits === "string") el("manualSplits").value = draft.manualSplits;
+  if (typeof draft.manualOtherSplits === "string") el("manualOtherSplits").value = draft.manualOtherSplits;
+  Object.entries(draft.controls || {}).forEach(([id, value]) => writeControlValue(el(id), value));
+  if (el("exportFilteredOnly")) el("exportFilteredOnly").checked = !!draft.exportFilteredOnly;
+  state.splitOrderHints = new Map(Array.isArray(draft.splitOrderHints) ? draft.splitOrderHints : []);
+  state.splitUidHints = new Map(Array.isArray(draft.splitUidHints) ? draft.splitUidHints : []);
+  const validTabs = new Set(state.tabs);
+  const validChars = new Set(state.chars);
+  state.selectedTabs = new Set((draft.selectedTabs || []).filter(value => validTabs.has(value)));
+  state.selectedChars = new Set((draft.selectedChars || []).filter(value => validChars.has(value)));
+  if (!state.selectedTabs.size && state.tabs.length) state.selectedTabs = new Set(state.tabs);
+  if (!state.selectedChars.size && state.chars.length) state.selectedChars = new Set(state.chars);
+  el("searchBox").value = String(draft.search || "");
+  state.page = Math.max(1, Number(draft.page) || 1);
+  applyStyleControls();
+  rebuildBgmTriggerMap();
+  renderFilterList("tabFilters", state.tabs, state.selectedTabs, updateView);
+  renderFilterList("charFilters", state.chars, state.selectedChars, updateView);
+  el("clearSplitsBtn").disabled = !el("manualSplits").value.trim() && !el("manualOtherSplits").value.trim();
+  updateView();
+  return true;
+}
+
+/* MODULE: counters and export scope */
+function exportUsesFilteredRows() {
+  return !!el("exportFilteredOnly")?.checked;
+}
+
+function currentExportRows() {
+  return (exportUsesFilteredRows() ? state.visible : state.messages).slice();
+}
+
+function updateFilterAndExportSummary() {
+  const visible = state.visible.length;
+  const total = state.messages.length;
+  const tabsSelected = state.selectedTabs.size;
+  const charsSelected = state.selectedChars.size;
+  if (el("filterCountSummary")) el("filterCountSummary").textContent = `${visible.toLocaleString()} / ${total.toLocaleString()}`;
+  if (el("filterSummary")) el("filterSummary").textContent = `표시 ${visible.toLocaleString()}개 / 전체 ${total.toLocaleString()}개`;
+  if (el("tabFilterCount")) el("tabFilterCount").textContent = `${tabsSelected}/${state.tabs.length}`;
+  if (el("charFilterCount")) el("charFilterCount").textContent = `${charsSelected}/${state.chars.length}`;
+  if (el("toggleTabs")) el("toggleTabs").textContent = tabsSelected === state.tabs.length ? "모두 해제" : "모두 선택";
+  if (el("toggleChars")) el("toggleChars").textContent = charsSelected === state.chars.length ? "모두 해제" : "모두 선택";
+
+  const rows = currentExportRows();
+  const filtered = exportUsesFilteredRows();
+  const scopeCard = el("exportScopeCard");
+  scopeCard?.classList.toggle("is-filtered", filtered);
+  if (el("exportScopeCount")) el("exportScopeCount").textContent = `${rows.length.toLocaleString()}개`;
+  if (el("exportScopeSummary")) {
+    el("exportScopeSummary").textContent = total
+      ? `${filtered ? "현재 필터 결과" : "전체 로그"} ${rows.length.toLocaleString()}개를 내보냅니다.${filtered ? ` 전체 ${total.toLocaleString()}개 중 선택된 범위입니다.` : " 화면 필터는 미리보기에만 적용됩니다."}`
+      : "로그 분석 후 범위를 확인할 수 있습니다.";
+  }
+  const hasRows = rows.length > 0;
+  const disabled = !total || !hasRows || state.exportBusy;
+  ["copyBtn", "saveBtn", "stickyCopyBtn", "stickySaveBtn"].forEach(id => {
+    const button = el(id);
+    if (button) button.disabled = disabled;
+  });
+  const scopeLabel = filtered ? "필터" : "전체";
+  if (el("copyBtn")) el("copyBtn").textContent = `HTML 복사 · ${scopeLabel} ${rows.length.toLocaleString()}개`;
+  if (el("saveBtn")) el("saveBtn").textContent = `HTML 파일 저장 · ${scopeLabel} ${rows.length.toLocaleString()}개`;
+  if (el("stickyCopyBtn")) el("stickyCopyBtn").textContent = `복사 ${rows.length.toLocaleString()}`;
+  if (el("stickySaveBtn")) el("stickySaveBtn").textContent = `저장 ${rows.length.toLocaleString()}`;
 }
 /* 북마크릿 배포 원본: 아래 문자열과 TXT는 동일 원본에서 생성 */
 const KKUL_ROOM_HELPER_BOOKMARKLET = "javascript:(function () { const ACTIVE_KEY = \"__kkulRoomHelperActive\"; if (window[ACTIVE_KEY]) { alert(\"이미 도우미가 실행 중입니다.\\n기존 패널의 [완료] 또는 닫기를 먼저 눌러주세요.\"); return; } window[ACTIVE_KEY] = true; const FONT = \"'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif\"; const BLUE = \"#2563eb\"; const BORDER = \"#e2e8f0\"; const TEXT = \"#0f172a\"; const MUTED = \"#64748b\"; let stopped = false; let rafId = 0; let intervalId = 0; let direction = 0; let touchY = 0; let sequence = 0; let activeTabName = \"\"; let manualTabName = \"\"; let pendingTabName = \"\"; let tabSwitchStartedAt = 0; let tabSwitchTimer = 0; let transitionFingerprint = \"\"; let lastVisibleFingerprint = \"\"; let collectionArmed = true; let collectionDeadline = Date.now() + 900; let armFromFingerprint = \"\"; const seenViewportFingerprints = new Set(); const collectedTabs = new Set(); const records = []; const recordByStableKey = new Map(); const lastUnkeyedBatchByTab = new Map(); const unreliableStableKeys = new Set(); const panel = document.createElement(\"div\"); panel.style.cssText = \"position:fixed;left:20px;bottom:20px;z-index:2147483647;background:#fff;padding:14px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28);font-family:\" + FONT + \";min-width:220px;max-width:320px;border:1px solid \" + BORDER + \";\"; const title = document.createElement(\"div\"); title.style.cssText = \"font-size:13px;font-weight:700;color:\" + TEXT + \";margin-bottom:4px;\"; title.textContent = \"코코포리아 표정 수집\"; const count = document.createElement(\"div\"); count.style.cssText = \"font-size:18px;font-weight:700;color:\" + BLUE + \";margin-bottom:5px;\"; count.textContent = \"탐색 중…\"; const guide = document.createElement(\"div\"); guide.style.cssText = \"font-size:11px;color:\" + MUTED + \";margin-bottom:10px;line-height:1.5;white-space:pre-line;\"; guide.textContent = \"북마크릿은 켜 둔 채, 원하는 탭으로 직접 이동하고 채팅을 위로 스크롤해 주세요. 화면 밖의 가상 버퍼는 수집하지 않습니다.\"; const actions = document.createElement(\"div\"); actions.style.cssText = \"display:flex;gap:6px;\"; const finishButton = document.createElement(\"button\"); finishButton.textContent = \"완료\"; finishButton.style.cssText = \"flex:1;padding:8px;cursor:pointer;font-size:13px;background:\" + BLUE + \";color:#fff;border:none;border-radius:6px;font-weight:700;font-family:\" + FONT + \";\"; finishButton.onmouseover = function () { finishButton.style.background = \"#1d4ed8\"; }; finishButton.onmouseout = function () { finishButton.style.background = BLUE; }; const closeButton = document.createElement(\"button\"); closeButton.textContent = \"닫기\"; closeButton.style.cssText = \"padding:8px 12px;cursor:pointer;font-size:13px;background:#fff;color:\" + TEXT + \";border:1px solid \" + BORDER + \";border-radius:6px;font-family:\" + FONT + \";\"; actions.appendChild(finishButton); actions.appendChild(closeButton); panel.appendChild(title); panel.appendChild(count); panel.appendChild(guide); panel.appendChild(actions); document.body.appendChild(panel); function cleanMultiline(value) { return String(value || \"\") .replace(/\\u00a0/g, \" \") .replace(/[ \\t]+/g, \" \") .replace(/\\s*\\n\\s*/g, \"\\n\") .trim(); } function cleanInline(value) { return cleanMultiline(value).replace(/\\s+/g, \" \").trim(); } function cleanCollectedMessageText(value) { return cleanMultiline(value).replace(/\\s*(?:\\[(?:편집\\s*완료|편집됨|edited|編集済み)\\]|[（(](?:edited|編集済み)[）)])\\s*$/i, \"\").trim(); } function cleanMessageName(value) { const name = cleanInline(value); const separator = name.lastIndexOf(\" - \"); if (separator < 1) return name; const suffix = name.slice(separator + 3).trim(); const clock = \"(?:(?:오전|오후|午前|午後|AM|PM)\\\\s*)?\\\\d{1,2}:\\\\d{2}(?::\\\\d{2})?\"; const isDate = new RegExp(\"^(?:\\\\d{4}[.\\\\/-]\\\\d{1,2}[.\\\\/-]\\\\d{1,2}|\\\\d{1,2}[.\\\\/-]\\\\d{1,2})(?:\\\\s+\" + clock + \")?$\", \"i\").test(suffix); const isRelative = new RegExp(\"^(?:今日|昨日|一昨日|오늘|어제|그제|today|yesterday)(?:\\\\s+\" + clock + \")?$\", \"i\").test(suffix); const isWeekday = new RegExp(\"^(?:(?:先々週|先週|今週|지난주|저번주|이번주|last\\\\s+week|previous\\\\s+week|this\\\\s+week)\\\\s*(?:の)?\\\\s*)?(?:月曜(?:日)?|火曜(?:日)?|水曜(?:日)?|木曜(?:日)?|金曜(?:日)?|土曜(?:日)?|日曜(?:日)?|월요일|화요일|수요일|목요일|금요일|토요일|일요일|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\\\s+\" + clock + \"$\", \"i\").test(suffix); const isTime = new RegExp(\"^\" + clock + \"$\", \"i\").test(suffix); return isDate || isRelative || isWeekday || isTime ? name.slice(0, separator).trim() : name; } function detectTime(value) { const text = cleanInline(value); if (!text || text.length > 90) return \"\"; return /(\\d{1,2}:\\d{2}(?::\\d{2})?|\\d{4}[.\\/-]\\d{1,2}[.\\/-]\\d{1,2}|오전|오후|午前|午後|AM|PM)/i.test(text) ? text : \"\"; } function isVisible(node) { if (!node || !node.getBoundingClientRect) return false; const style = getComputedStyle(node); if (style.display === \"none\" || style.visibility === \"hidden\") return false; const rect = node.getBoundingClientRect(); return rect.width > 0 && rect.height > 0; } function backgroundImageUrl(value) { const match = String(value || \"\").match(/url\\([\"']?(.*?)[\"']?\\)/i); return match ? match[1] : \"\"; } function findMessageRoot(node) { if (!node) return null; const closest = node.closest('.MuiListItem-root,[role=\"listitem\"],[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset]'); if (closest) return closest; let current = node; for (let depth = 0; depth < 7 && current && current !== document.body; depth += 1, current = current.parentElement) { if (current.querySelector && current.querySelector('img,.MuiAvatar-root,.MuiListItemAvatar-root,[class*=\"Avatar\"]')) return current; } return null; } function findRows() { const found = new Set(); document.querySelectorAll('[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset],.MuiListItem-root,[role=\"listitem\"]').forEach(function (node) { if (node.querySelector('.MuiListItemText-primary,.MuiListItemText-secondary,[class*=\"ListItemText-primary\"],[class*=\"ListItemText-secondary\"]')) found.add(node); }); document.querySelectorAll('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]').forEach(function (node) { const root = findMessageRoot(node); if (root) found.add(root); }); const rows = Array.from(found).filter(isVisible); const canonical = rows.filter(function (node) { return !rows.some(function (other) { return other !== node && node.contains(other) && other.querySelector && other.querySelector('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]'); }); }); canonical.sort(function (a, b) { const ar = a.getBoundingClientRect(); const br = b.getBoundingClientRect(); return ar.top - br.top || ar.left - br.left || (ar.width * ar.height) - (br.width * br.height); }); return canonical.filter(function (node, index, array) { const rect = node.getBoundingClientRect(); for (let cursor = index - 1; cursor >= 0; cursor -= 1) { const other = array[cursor]; const otherRect = other.getBoundingClientRect(); if (rect.top - otherRect.bottom > 8) break; const overlapY = Math.max(0, Math.min(rect.bottom, otherRect.bottom) - Math.max(rect.top, otherRect.top)); const overlapX = Math.max(0, Math.min(rect.right, otherRect.right) - Math.max(rect.left, otherRect.left)); if (overlapY >= Math.min(rect.height, otherRect.height) * 0.8 && overlapX >= Math.min(rect.width, otherRect.width) * 0.8) return false; } return true; }); } function normalizeBuiltInTabLabel(value) { const label = cleanInline(value).replace(/\\s*[（(]\\d+[）)]\\s*$/, \"\").trim(); const compact = label.replace(/\\s+/g, \"\"); const match = compact.match(/^(main|메인|メイン|info|정보|情報|other|잡담|기타|雑談|その他)\\d+$/i); return match ? match[1] : label; } function tabLabel(node) { return normalizeBuiltInTabLabel((node && (node.getAttribute(\"aria-label\") || node.getAttribute(\"title\") || node.textContent)) || \"\"); } function tabsInGroup(group) { if (!group) return []; return Array.from(group.querySelectorAll('[role=\"tab\"],button.MuiTab-root,.MuiTab-root')).filter(function (node, index, array) { return isVisible(node) && tabLabel(node) && array.indexOf(node) === index; }); } function findChatTabs() { const groups = new Set(); document.querySelectorAll('[role=\"tablist\"],.MuiTabs-root,.MuiTabs-flexContainer').forEach(function (node) { if (isVisible(node)) groups.add(node); }); document.querySelectorAll('[role=\"tab\"],button.MuiTab-root,.MuiTab-root').forEach(function (tab) { if (!isVisible(tab)) return; groups.add(tab.closest('[role=\"tablist\"],.MuiTabs-root,.MuiTabs-flexContainer') || tab.parentElement); }); const rows = findRows(); const firstRect = rows.length ? rows[0].getBoundingClientRect() : null; let best = []; let bestScore = -Infinity; groups.forEach(function (group) { const tabs = tabsInGroup(group); if (tabs.length < 2 || tabs.length > 30) return; const rect = group.getBoundingClientRect(); let score = tabs.length * 4; if (tabs.some(function (tab) { return tab.getAttribute(\"aria-selected\") === \"true\" || tab.classList.contains(\"Mui-selected\"); })) score += 30; if (firstRect) { const overlap = Math.max(0, Math.min(rect.right, firstRect.right) - Math.max(rect.left, firstRect.left)); const ratio = overlap / Math.max(1, Math.min(rect.width, firstRect.width)); score += ratio * 45; const distance = Math.abs(firstRect.top - rect.bottom); score += Math.max(0, 55 - distance / 4); if (rect.top > firstRect.bottom + 120) score -= 80; } if (score > bestScore) { bestScore = score; best = tabs; } }); return best; } function selectedTab(tabs) { return (tabs || []).find(function (tab) { return tab.getAttribute(\"aria-selected\") === \"true\" || tab.classList.contains(\"Mui-selected\") || tab.getAttribute(\"tabindex\") === \"0\"; }) || (tabs || [])[0] || null; } function currentTabName() { if (manualTabName) return manualTabName; const tabs = findChatTabs(); const active = selectedTab(tabs); return tabLabel(active) || activeTabName || \"main\"; } function textCandidates(root) { return Array.from(root.querySelectorAll(\"p,span,div\")).filter(function (node) { if (!isVisible(node) || node.closest('button,input,textarea,select,[role=\"button\"]')) return false; if (node.querySelector(\"p,span,div\") && cleanInline(node.textContent) === Array.from(node.children).map(function (child) { return cleanInline(child.textContent); }).join(\" \").trim()) return false; const text = cleanMultiline(node.textContent); return !!text && text.length < 5000; }); } function findNameAndText(root) { let name = root.querySelector('.MuiListItemText-primary,[class*=\"ListItemText-primary\"],[data-message-name]'); let text = root.querySelector('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]'); if (name && text) return { name: name, text: text }; const candidates = textCandidates(root); if (!text) { const ranked = candidates.map(function (node) { const value = cleanMultiline(node.textContent); let score = value.length; if (value.indexOf(\"\\n\") >= 0) score += 30; if (detectTime(value)) score -= 200; if (node === name || (name && name.contains(node))) score -= 500; return { node: node, score: score }; }).sort(function (a, b) { return b.score - a.score; }); text = ranked.length ? ranked[0].node : null; } if (!name && text) { const preceding = candidates.filter(function (node) { if (node === text || text.contains(node) || node.contains(text)) return false; const value = cleanInline(node.textContent); if (!value || value.length > 120 || detectTime(value)) return false; return (node.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0; }); name = preceding.length ? preceding[preceding.length - 1] : null; } return name && text ? { name: name, text: text } : null; } function imageUrl(root) { const preferred = root.querySelector('.MuiListItemAvatar-root img,.MuiAvatar-root img,[class*=\"ListItemAvatar\"] img,[class*=\"Avatar\"] img'); const images = preferred ? [preferred] : Array.from(root.querySelectorAll(\"img\")); for (let index = 0; index < images.length; index += 1) { const image = images[index]; const url = image.currentSrc || image.src || image.getAttribute(\"src\") || \"\"; if (url && !/^data:image\\/svg/i.test(url)) return url; } const candidates = [root].concat(Array.from(root.querySelectorAll('.MuiListItemAvatar-root,.MuiAvatar-root,[class*=\"Avatar\"],[style*=\"background-image\"]'))); for (let index = 0; index < candidates.length; index += 1) { const node = candidates[index]; const url = backgroundImageUrl(getComputedStyle(node).backgroundImage) || backgroundImageUrl(node.style && node.style.backgroundImage); if (url && url !== \"none\") return url; } return \"\"; } function messageTime(root, nameNode, textNode) { const attributes = [\"datetime\", \"title\", \"aria-label\"]; const candidates = Array.from(root.querySelectorAll('time,[datetime],[title],[aria-label],.MuiTypography-caption,[class*=\"caption\"]')); for (let index = 0; index < candidates.length; index += 1) { const node = candidates[index]; if (node === nameNode || node === textNode || nameNode.contains(node) || textNode.contains(node)) continue; for (let attrIndex = 0; attrIndex < attributes.length; attrIndex += 1) { const value = detectTime(node.getAttribute(attributes[attrIndex])); if (value) return value; } const value = detectTime(node.textContent); if (value) return value; } return \"\"; } function numericIndex(root) { const values = [ root.dataset && root.dataset.index, root.dataset && root.dataset.itemIndex, root.dataset && root.dataset.virtuosoIndex, root.getAttribute(\"aria-posinset\") ]; for (let index = 0; index < values.length; index += 1) { if (values[index] != null && values[index] !== \"\" && !isNaN(Number(values[index]))) return Number(values[index]); } return null; } function explicitId(root) { const attributes = [\"data-message-id\", \"data-chat-id\", \"data-id\", \"data-key\"]; for (let index = 0; index < attributes.length; index += 1) { const value = root.getAttribute(attributes[index]); if (value && value.length >= 6) return attributes[index] + \":\" + value; } return \"\"; } function canonicalImageKey(value) { const url = String(value || \"\").trim(); if (!url) return \"\"; try { const parsed = new URL(url, location.href); if (/ccfolia-cdn\\.net$/i.test(parsed.hostname) || /storage\\.ccfolia/i.test(parsed.hostname)) parsed.search = \"\"; parsed.hash = \"\"; return parsed.href; } catch (error) { return url.replace(/[?#].*$/, \"\"); } } function visibleRowsFingerprint(rows) {\n  const sourceRows = rows && rows.length ? rows : captureRows(findRows(), null);\n  return sourceRows.map(function (root) {\n    const pair = findNameAndText(root);\n    if (!pair) return \"\";\n    return JSON.stringify([\n      cleanMessageName(pair.name.textContent),\n      cleanCollectedMessageText(pair.text.innerText || pair.text.textContent),\n      canonicalImageKey(imageUrl(root)),\n      explicitId(root) || numericIndex(root)\n    ]);\n  }).filter(Boolean).join(\"␞\");\n} function extract(root, activeTab) { const pair = findNameAndText(root); if (!pair) return null; const rawName = cleanMessageName(pair.name.textContent); const text = cleanCollectedMessageText(pair.text.innerText || pair.text.textContent); const imgUrl = imageUrl(root); if (!rawName || !text || !imgUrl) return null; let tab = cleanInline(activeTab || currentTabName()) || \"main\"; let name = rawName; const tabMatch = rawName.match(/^\\[([^\\]]+)\\]\\s*(.+)$/); if (tabMatch) { tab = tabMatch[1].trim(); name = tabMatch[2].trim(); } const time = messageTime(root, pair.name, pair.text); const index = numericIndex(root); const id = explicitId(root); const signature = JSON.stringify([tab.toLowerCase(), cleanInline(name).toLowerCase(), text, canonicalImageKey(imgUrl)]); const tabPrefix = \"tab:\" + tab.toLowerCase() + \"|\"; const stableKey = id ? tabPrefix + \"id:\" + id : (index != null ? tabPrefix + \"index:\" + index : \"\"); const rect = root.getBoundingClientRect(); return { stableKey: stableKey, fallbackKey: signature, signature: signature, top: rect.top, bottom: rect.bottom, data: { name: name, tab: tab, text: text, imgUrl: imgUrl, messageId: id || undefined, idx: index == null ? undefined : index, time: time || undefined, __seq: sequence++ } }; } function updateRecord(target, incoming) { if (!target || !incoming) return; if (incoming.data.imgUrl) target.data.imgUrl = incoming.data.imgUrl; if (incoming.data.time) target.data.time = incoming.data.time; if (incoming.data.messageId) target.data.messageId = incoming.data.messageId; if (incoming.data.idx || incoming.data.idx === 0) target.data.idx = incoming.data.idx; if (incoming.stableKey) target.stableKey = incoming.stableKey; } function appendRecord(incoming) { if (!incoming) return; const stableKey = incoming.stableKey && !unreliableStableKeys.has(incoming.stableKey) ? incoming.stableKey : \"\"; if (stableKey && recordByStableKey.has(stableKey)) { const existingIndex = recordByStableKey.get(stableKey); const existing = records[existingIndex]; if (existing && existing.signature === incoming.signature) { updateRecord(existing, incoming); return; } unreliableStableKeys.add(stableKey); recordByStableKey.delete(stableKey); incoming.stableKey = \"\"; } const index = records.length; records.push(incoming); if (stableKey) recordByStableKey.set(stableKey, index); } function mergeBatch(batch) { if (!batch.length) return; const keyed = batch.filter(function (item) { return !!item.stableKey; }); keyed.forEach(appendRecord); const unkeyed = batch.filter(function (item) { return !item.stableKey; }); if (!unkeyed.length) return; const tabKey = String(activeTabName || \"main\").toLowerCase(); const previous = lastUnkeyedBatchByTab.get(tabKey) || []; const currentSignatures = unkeyed.map(function (item) { return item.signature; }); const previousSignatures = previous.map(function (item) { return item.signature; }); function overlapSuffixPrefix(left, right) { const limit = Math.min(left.length, right.length); for (let size = limit; size > 0; size -= 1) { let same = true; for (let i = 0; i < size; i += 1) { if (left[left.length - size + i] !== right[i]) { same = false; break; } } if (same) return size; } return 0; } const downOverlap = overlapSuffixPrefix(previousSignatures, currentSignatures); const upOverlap = overlapSuffixPrefix(currentSignatures, previousSignatures); let additions = unkeyed; if (direction > 0 && downOverlap) additions = unkeyed.slice(downOverlap); else if (direction < 0 && upOverlap) additions = unkeyed.slice(0, Math.max(0, unkeyed.length - upOverlap)); else if (!direction) { const overlap = Math.max(downOverlap, upOverlap); if (overlap === unkeyed.length && overlap === previous.length) additions = []; } additions.forEach(appendRecord); lastUnkeyedBatchByTab.set(tabKey, unkeyed); } function armCollection(timeout) { collectionArmed = true; collectionDeadline = Date.now() + (timeout || 700); armFromFingerprint = lastVisibleFingerprint; } function currentChatScrollHost(rows) {\n  const candidates = rows && rows.length ? rows : findRows();\n  if (!candidates.length) return null;\n  let node = candidates[0].parentElement;\n  while (node && node !== document.body && node !== document.documentElement) {\n    const style = getComputedStyle(node);\n    if (/(?:auto|scroll|overlay)/.test(style.overflowY || \"\") && node.scrollHeight > node.clientHeight + 3) return node;\n    node = node.parentElement;\n  }\n  return document.scrollingElement || document.documentElement;\n} function captureViewport(host) {\n  const isDocumentHost = !host || host === document.body || host === document.documentElement || host === document.scrollingElement;\n  if (isDocumentHost) return { top: 0, bottom: window.innerHeight || document.documentElement.clientHeight || 0, height: window.innerHeight || document.documentElement.clientHeight || 0 };\n  const rect = host.getBoundingClientRect();\n  const top = Math.max(0, rect.top);\n  const bottom = Math.min(window.innerHeight || document.documentElement.clientHeight || rect.bottom, rect.bottom);\n  return { top: top, bottom: bottom, height: Math.max(1, bottom - top) };\n} function captureRows(rows, host) {\n  const sourceRows = rows || findRows();\n  if (!sourceRows.length) return [];\n  const scrollHost = host || currentChatScrollHost(sourceRows);\n  const viewport = captureViewport(scrollHost);\n  const ahead = Math.min(88, Math.max(34, viewport.height * 0.12));\n  const behind = Math.min(28, Math.max(12, viewport.height * 0.04));\n  const topMargin = direction < 0 ? ahead : behind;\n  const bottomMargin = direction > 0 ? ahead : behind;\n  const topLimit = viewport.top - topMargin;\n  const bottomLimit = viewport.bottom + bottomMargin;\n  return sourceRows.filter(function (row) {\n    const rect = row.getBoundingClientRect();\n    return rect.bottom >= topLimit && rect.top <= bottomLimit;\n  });\n} function isChatScrollTarget(target) { const host = currentChatScrollHost(); if (!host) return true; return target === host || target === document || target === window || target === document.body || target === document.documentElement || target === document.scrollingElement; } function updateCollectorStatus() { const nextCount = records.length ? records.length + \"개 · \" + collectedTabs.size + \"개 탭\" : \"탐색 중…\"; if (count.textContent !== nextCount) count.textContent = nextCount; const nextGuide = records.length ? \"현재 \" + activeTabName + \" 탭 수집 중 · 새로 확인된 메시지만 추가하며, 같은 행의 재렌더링은 제외하며, 실제 메시지 ID를 함께 저장합니다.\" : \"현재 \" + activeTabName + \" 탭을 읽고 있습니다. 채팅을 위로 스크롤해 주세요. 화면 밖의 가상 버퍼는 수집하지 않습니다.\"; if (guide.textContent !== nextGuide) guide.textContent = nextGuide; } function scan() {\n  if (stopped) return;\n  const detectedTab = cleanInline(currentTabName()) || activeTabName || \"main\";\n  if (detectedTab !== activeTabName) {\n    activeTabName = detectedTab;\n    pendingTabName = detectedTab;\n    tabSwitchStartedAt = Date.now();\n    transitionFingerprint = lastVisibleFingerprint;\n    direction = 0;\n    armCollection(950);\n    guide.textContent = activeTabName + \" 탭으로 전환됨 · 메시지 화면을 불러오는 중…\";\n    clearTimeout(tabSwitchTimer);\n    tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 210);\n    return;\n  }\n\n  const allRows = findRows();\n  const initialScrollHost = currentChatScrollHost(allRows);\n  if (initialScrollHost && initialScrollHost.__kkulLastScrollTop == null) initialScrollHost.__kkulLastScrollTop = Number(initialScrollHost.scrollTop || 0);\n  const viewportRows = captureRows(allRows, initialScrollHost);\n  const currentFingerprint = visibleRowsFingerprint(viewportRows);\n\n  if (pendingTabName) {\n    const elapsed = Date.now() - tabSwitchStartedAt;\n    const stillPreviousRows = !!transitionFingerprint && currentFingerprint === transitionFingerprint;\n    if (elapsed < 170 || (stillPreviousRows && elapsed < 620)) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, stillPreviousRows ? 120 : 70);\n      return;\n    }\n    pendingTabName = \"\";\n    transitionFingerprint = \"\";\n  }\n\n  const batch = [];\n  const stableSeen = new Set();\n  const unkeyedSeen = new Map();\n  viewportRows.forEach(function (root) {\n    const item = extract(root, activeTabName);\n    if (!item) return;\n    if (item.stableKey && stableSeen.has(item.stableKey)) return;\n    if (item.stableKey) stableSeen.add(item.stableKey);\n    const prior = unkeyedSeen.get(item.fallbackKey);\n    if (prior && (!item.stableKey || !prior.stableKey) && Math.max(0, Math.min(prior.bottom, item.bottom) - Math.max(prior.top, item.top)) >= Math.min(prior.bottom - prior.top, item.bottom - item.top) * 0.65) return;\n    unkeyedSeen.set(item.fallbackKey, item);\n    batch.push(item);\n  });\n\n  const viewportFingerprint = activeTabName.toLowerCase() + \"|\" + currentFingerprint;\n  if (!collectionArmed) {\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (armFromFingerprint && currentFingerprint === armFromFingerprint) {\n    if (Date.now() < collectionDeadline) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 90);\n    } else collectionArmed = false;\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (currentFingerprint && seenViewportFingerprints.has(viewportFingerprint)) {\n    collectionArmed = false;\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (!batch.length) {\n    if (Date.now() < collectionDeadline) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 90);\n    } else collectionArmed = false;\n    updateCollectorStatus();\n    return;\n  }\n\n  mergeBatch(batch);\n  collectedTabs.add(activeTabName);\n  if (currentFingerprint) seenViewportFingerprints.add(viewportFingerprint);\n  collectionArmed = false;\n  lastVisibleFingerprint = currentFingerprint;\n  updateCollectorStatus();\n} function scheduleScan() { if (stopped || rafId) return; rafId = requestAnimationFrame(function () { rafId = 0; scan(); }); } function onScroll(event) { const target = event.target === document ? document.scrollingElement : event.target; if (!target || typeof target.scrollTop !== \"number\" || !isChatScrollTarget(target)) return; const previous = Number(target.__kkulLastScrollTop == null ? target.scrollTop : target.__kkulLastScrollTop); const current = Number(target.scrollTop); target.__kkulLastScrollTop = current; if (current === previous) return; direction = current > previous ? 1 : -1; armCollection(750); scheduleScan(); setTimeout(scheduleScan, 70); setTimeout(scheduleScan, 180); } function onWheel(event) { if (event.deltaY) direction = event.deltaY > 0 ? 1 : -1; } function onTouchMove(event) { const current = event.touches && event.touches[0] ? event.touches[0].clientY : 0; if (touchY && current !== touchY) direction = current < touchY ? 1 : -1; touchY = current; } function onDocumentClick(event) { const target = event.target && event.target.closest ? event.target.closest('[role=\"tab\"],button.MuiTab-root,.MuiTab-root') : null; if (!target) return; const chatTabs = findChatTabs(); if (chatTabs.length && chatTabs.indexOf(target) < 0) return; const clickedLabel = tabLabel(target); if (clickedLabel) { manualTabName = clickedLabel; armCollection(950); guide.textContent = clickedLabel + \" 탭 선택 감지 · 메시지 화면을 불러오는 중…\"; } setTimeout(scheduleScan, 20); setTimeout(scheduleScan, 120); setTimeout(scheduleScan, 280); setTimeout(scheduleScan, 650); } const observer = new MutationObserver(function (mutations) { const external = mutations.some(function (mutation) { return !panel.contains(mutation.target); }); if (!external) return; const tabChanged = mutations.some(function (mutation) { return mutation.type === \"attributes\" && (mutation.attributeName === \"aria-selected\" || mutation.attributeName === \"tabindex\" || mutation.attributeName === \"class\") && mutation.target && mutation.target.matches && mutation.target.matches('[role=\"tab\"],button.MuiTab-root,.MuiTab-root'); }); if (tabChanged || pendingTabName || collectionArmed) scheduleScan(); }); observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: [\"src\", \"style\", \"data-index\", \"data-item-index\", \"data-virtuoso-index\", \"aria-selected\", \"tabindex\", \"class\"] }); window.addEventListener(\"scroll\", onScroll, true); window.addEventListener(\"wheel\", onWheel, true); window.addEventListener(\"touchmove\", onTouchMove, true); document.addEventListener(\"click\", onDocumentClick, true); intervalId = setInterval(function () { const detected = cleanInline(currentTabName()) || activeTabName || \"main\"; if (detected !== activeTabName) { armCollection(950); scheduleScan(); } }, 900); scheduleScan(); function stop() { stopped = true; clearInterval(intervalId); clearTimeout(tabSwitchTimer); if (rafId) cancelAnimationFrame(rafId); window.removeEventListener(\"scroll\", onScroll, true); window.removeEventListener(\"wheel\", onWheel, true); window.removeEventListener(\"touchmove\", onTouchMove, true); document.removeEventListener(\"click\", onDocumentClick, true); observer.disconnect(); window[ACTIVE_KEY] = false; } function roomName() {\n  let xpathTitle = \"\";\n  try {\n    const roomTitleNode = document.evaluate(\n      '//*[@id=\"root\"]/div/header/div/button[1]/h6',\n      document,\n      null,\n      XPathResult.FIRST_ORDERED_NODE_TYPE,\n      null\n    ).singleNodeValue;\n    xpathTitle = cleanInline(roomTitleNode && roomTitleNode.textContent);\n  } catch (error) {}\n\n  const selectorTitle = Array.from(document.querySelectorAll(\n    '#root > div > header > div > button:first-of-type h6, #root header button:first-of-type h6, header button h6'\n  )).map(function (node) {\n    return cleanInline(node.textContent);\n  }).find(function (value) {\n    return value && value.length <= 160;\n  }) || \"\";\n\n  const titleText = cleanInline(document.title)\n    .replace(/\\s*[|｜–—-]\\s*(?:CCFOLIA|ココフォリア).*$/i, \"\")\n    .replace(/^\\s*(?:CCFOLIA|ココフォリア)\\s*[|｜–—-]?\\s*/i, \"\")\n    .trim();\n\n  const heading = Array.from(document.querySelectorAll(\"h1,h2,h6\"))\n    .map(function (node) { return cleanInline(node.textContent); })\n    .find(function (value) {\n      return value && value.length <= 100 && !/채팅|chat|코코포리아|ccfolia/i.test(value);\n    });\n\n  return xpathTitle\n    || selectorTitle\n    || (titleText && !/^(?:CCFOLIA|ココフォリア)$/i.test(titleText) ? titleText : \"\")\n    || heading\n    || \"코코포리아_표정정보\";\n} function safeFilename(value) { const cleaned = cleanInline(value) .replace(/[\\\\/:*?\"<>|]/g, \"_\") .replace(/[. ]+$/g, \"\") .slice(0, 120); return (cleaned || \"코코포리아_표정정보\") + \".txt\"; } function exportData() { const output = records.map(function (record, index) { const data = Object.assign({}, record.data); if (!Number.isFinite(data.idx)) delete data.idx; delete data.__seq; if (!data.time) delete data.time; if (!data.messageId) delete data.messageId; return data; }); const indexed = output.filter(function (item) { return Number.isFinite(item.idx); }); if (indexed.length >= Math.max(2, 0.7 * output.length)) { output.sort(function (a, b) { return a.idx - b.idx; }); } return output; } function downloadText(filename, text) { const blob = new Blob([\"\\ufeff\", text], { type: \"text/plain;charset=utf-8\" }); const url = URL.createObjectURL(blob); const anchor = document.createElement(\"a\"); anchor.href = url; anchor.download = filename; anchor.style.display = \"none\"; document.body.appendChild(anchor); anchor.click(); setTimeout(function () { URL.revokeObjectURL(url); anchor.remove(); }, 1000); } function showResult(data) { const json = JSON.stringify({ kind: \"messages\", data: data }); const overlay = document.createElement(\"div\"); overlay.style.cssText = \"position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:\" + FONT + \";\"; const card = document.createElement(\"div\"); card.style.cssText = \"background:#fff;padding:22px 22px 18px;border-radius:12px;max-width:640px;width:90%;color:\" + TEXT + \";box-shadow:0 20px 60px rgba(0,0,0,.3);\"; const heading = document.createElement(\"div\"); heading.style.cssText = \"font-size:15px;font-weight:700;margin-bottom:10px;\"; const tabCount = new Set(data.map(function (item) { return item.tab || \"main\"; })).size; heading.textContent = \"완료 - \" + tabCount + \"개 탭 · 총 \" + data.length + \"개\"; const textarea = document.createElement(\"textarea\"); textarea.value = json; textarea.readOnly = true; textarea.style.cssText = \"width:100%;height:140px;font-family:monospace;font-size:11px;box-sizing:border-box;border:1px solid \" + BORDER + \";border-radius:8px;padding:8px;background:#f8fafc;color:\" + TEXT + \";resize:none;\"; const status = document.createElement(\"div\"); status.style.cssText = \"margin-top:10px;font-size:13px;min-height:20px;color:\" + MUTED + \";\"; status.textContent = \"TXT 다운로드를 누르면 룸 이름으로 바로 저장됩니다.\"; const buttons = document.createElement(\"div\"); buttons.style.cssText = \"display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;\"; const downloadButton = document.createElement(\"button\"); downloadButton.textContent = \"TXT 다운로드\"; downloadButton.style.cssText = \"flex:1 1 150px;padding:10px;cursor:pointer;font-size:14px;background:\" + BLUE + \";color:#fff;border:none;border-radius:8px;font-weight:700;font-family:\" + FONT + \";\"; const copyButton = document.createElement(\"button\"); copyButton.textContent = \"복사하기\"; copyButton.style.cssText = \"flex:1 1 120px;padding:10px;cursor:pointer;font-size:14px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:8px;font-weight:700;font-family:\" + FONT + \";\"; const dismissButton = document.createElement(\"button\"); dismissButton.textContent = \"닫기\"; dismissButton.style.cssText = \"padding:10px 18px;cursor:pointer;font-size:14px;background:#fff;color:\" + TEXT + \";border:1px solid \" + BORDER + \";border-radius:8px;font-family:\" + FONT + \";\"; downloadButton.onclick = function () { const filename = safeFilename(roomName()); downloadText(filename, json); status.textContent = filename + \" 저장을 시작했습니다.\"; status.style.color = \"#16a34a\"; downloadButton.textContent = \"저장됨\"; }; function copySuccess() { status.textContent = \"복사 완료!\"; status.style.color = \"#16a34a\"; copyButton.textContent = \"복사됨\"; } function copyFallback() { textarea.focus(); textarea.select(); textarea.setSelectionRange(0, json.length); try { if (!document.execCommand(\"copy\")) throw new Error(\"copy failed\"); copySuccess(); } catch (error) { status.textContent = \"복사 실패. Ctrl+A → Ctrl+C로 직접 복사해 주세요.\"; status.style.color = \"#dc2626\"; } } copyButton.onclick = function () { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json).then(copySuccess).catch(copyFallback); } else copyFallback(); }; dismissButton.onclick = function () { overlay.remove(); }; buttons.appendChild(downloadButton); buttons.appendChild(copyButton); buttons.appendChild(dismissButton); card.appendChild(heading); card.appendChild(textarea); card.appendChild(status); card.appendChild(buttons); overlay.appendChild(card); document.body.appendChild(overlay); } finishButton.onclick = function () { scan(); const data = exportData(); stop(); if (panel.parentNode) panel.remove(); if (data.length) showResult(data); else alert(\"메시지를 찾지 못했습니다.\\n채팅 패널을 열고 메시지가 보이는 상태에서 다시 실행해 주세요.\"); }; closeButton.onclick = function () { stop(); panel.remove(); }; })();";
@@ -2449,16 +2952,17 @@ function syncStickyActions(analyzed = Boolean(state.messages.length)) {
   const analyzeButton = el("stickyAnalyzeBtn");
   const exportActions = el("stickyExportActions");
   const hasFile = Boolean(state.orderText || orderFile?.files?.length);
-  const ready = analyzed && !el("saveBtn")?.disabled;
-  const showStickyExport = ready && !primaryExportActionsVisible;
+  const ready = analyzed;
+  const canExport = ready && currentExportRows().length > 0 && !state.exportBusy;
+  const showStickyExport = canExport && !primaryExportActionsVisible;
   if (analyzeButton) {
     analyzeButton.hidden = ready;
     analyzeButton.disabled = !hasFile;
     analyzeButton.textContent = hasFile ? "로그 분석하기" : "파일을 선택하세요";
   }
   if (exportActions) exportActions.hidden = !showStickyExport;
-  if (el("stickyCopyBtn")) el("stickyCopyBtn").disabled = !ready;
-  if (el("stickySaveBtn")) el("stickySaveBtn").disabled = !ready;
+  if (el("stickyCopyBtn")) el("stickyCopyBtn").disabled = !canExport;
+  if (el("stickySaveBtn")) el("stickySaveBtn").disabled = !canExport;
   if (sticky) sticky.hidden = ready && !showStickyExport;
 }
 
@@ -2632,6 +3136,7 @@ function parseCompactExportRows(doc) {
       const images = Array.isArray(data.i) ? data.i : [];
       const tabs = Array.isArray(data.t) ? data.t : [];
       const texts = Array.isArray(data.x) ? data.x : [];
+      const uids = Array.isArray(data.q) ? data.q : [];
       const localRows = [];
       let localId = 0;
 
@@ -2641,8 +3146,11 @@ function parseCompactExportRows(doc) {
         const profileIndex = Number(data.r[cursor + 2]) || 0;
         const textIndex = Number(data.r[cursor + 3]) || 0;
         const profile = data.p[profileIndex] || [];
+        const rowIndex = localRows.length;
         localRows.push({
           id: nextBaseId + localId,
+          uid: String(uids[rowIndex] || ""),
+          order: rows.length + rowIndex,
           tab: String(tabs[tabIndex] ?? "main"),
           name: String(names[Number(profile[0]) || 0] ?? "system"),
           text: String(texts[textIndex] ?? ""),
@@ -2686,8 +3194,11 @@ function parseExportedRows(doc) {
     const useSource = avatar?.querySelector("use")?.getAttribute("href") || avatar?.querySelector("use")?.getAttribute("xlink:href") || "";
     const assetId = avatar?.dataset.avatarAsset || useSource.replace(/^#/, "");
     const parsedSourceIndex = Number(article.dataset.sourceIndex);
+    const parsedOrder = Number(article.dataset.order);
     rows.push({
       id,
+      uid: article.dataset.uid || "",
+      order: Number.isFinite(parsedOrder) ? parsedOrder : undefined,
       sourceIndex: Number.isFinite(parsedSourceIndex) ? parsedSourceIndex : undefined,
       messageId: article.dataset.messageId || article.dataset.chatId || "",
       tab: isOther ? "other" : tagText || "main",
@@ -2697,7 +3208,11 @@ function parseExportedRows(doc) {
       imgUrl: directSource || imageAssets.get(assetId) || ""
     });
   });
-  return rows.sort((a, b) => a.id - b.id);
+  return rows.sort((a, b) => {
+    const orderA = Number.isFinite(Number(a.order)) ? Number(a.order) : Number(a.id);
+    const orderB = Number.isFinite(Number(b.order)) ? Number(b.order) : Number(b.id);
+    return orderA - orderB;
+  });
 }
 
 function parseOrderHtml(source, filename, forcedTab = "") {
@@ -2985,12 +3500,16 @@ function applyMatches(messages) {
         stats.system += 1;
       }
     }
+    const order = index;
+    const uid = String(message.uid || "").trim() || deterministicMessageUid(message, order);
     return {
       ...message,
       id,
+      uid,
+      order,
       imgUrl,
       match,
-      _order: index,
+      _order: order,
       searchText: normalizeText(`${message.name || ""}
 ${tab}
 ${message.text || ""}`).toLowerCase()
@@ -3604,23 +4123,32 @@ function chooseBgmUrlFromPlaylist(options = {}) {
 }
 
 function parseBgmTriggerLines(value) {
-  const byId = new Map();
+  const byIdentity = new Map();
   String(value || "").split(/\n+/).forEach(line => {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) return;
-    const match = trimmed.match(/^(\d+)\s*(?:[,|=\t ]+)\s*(\S+)/);
+    const match = trimmed.match(/^(\d+)(?:@([A-Za-z0-9_-]+))?\s*(?:[,|=\t ]+)\s*(\S+)/);
     if (!match) return;
     const id = Number(match[1]);
-    const url = match[2].trim();
+    const uid = String(match[2] || "").trim();
+    const url = match[3].trim();
     const videoId = youtubeIdFromUrl(url);
     if (!Number.isFinite(id) || !videoId) return;
-    byId.set(id, { id, url, videoId });
+    const message = messageByIdentity({ uid, id });
+    const resolvedUid = uid || message?.uid || "";
+    const order = messageOrder(message);
+    const key = resolvedUid ? `uid:${resolvedUid}` : `id:${id}`;
+    byIdentity.set(key, { id, uid: resolvedUid, order, url, videoId });
   });
-  return [...byId.values()].sort((a, b) => a.id - b.id);
+  return [...byIdentity.values()].sort((a, b) => {
+    const orderA = Number.isFinite(Number(a.order)) ? Number(a.order) : Infinity;
+    const orderB = Number.isFinite(Number(b.order)) ? Number(b.order) : Infinity;
+    return orderA - orderB || a.id - b.id || String(a.uid).localeCompare(String(b.uid));
+  });
 }
 
 function formatBgmTrigger(trigger) {
-  return `${trigger.id} ${trigger.url}`;
+  return `${trigger.id}${trigger.uid ? `@${trigger.uid}` : ""} ${trigger.url}`;
 }
 
 let bgmTriggerMap = new Map();
@@ -3688,7 +4216,12 @@ function addDirectBgmToPlaylist(videoId, url) {
 }
 
 function rebuildBgmTriggerMap() {
-  bgmTriggerMap = new Map(parseBgmTriggerLines(el("bgmTriggers")?.value || "").map(trigger => [trigger.id, trigger]));
+  const triggers = parseBgmTriggerLines(el("bgmTriggers")?.value || "");
+  state.bgmTriggerByUid = new Map(triggers.filter(trigger => trigger.uid).map(trigger => [trigger.uid, trigger]));
+  bgmTriggerMap = new Map();
+  triggers.forEach(trigger => {
+    if (!trigger.uid && !bgmTriggerMap.has(trigger.id)) bgmTriggerMap.set(trigger.id, trigger);
+  });
   renderBgmTriggerList();
   return bgmTriggerMap;
 }
@@ -3706,12 +4239,26 @@ function bgmTitleForTrigger(trigger, titleByVideoId) {
     || "곡명 불러오는 중…";
 }
 
+function updateBgmTitleNodes(videoId, title) {
+  const resolved = normalizeText(title || "YouTube 영상").replace(/\s+/g, " ").trim() || "YouTube 영상";
+  document.querySelectorAll(`[data-bgm-video-id="${CSS.escape(String(videoId || ""))}"]`).forEach(node => {
+    node.textContent = resolved;
+    node.title = resolved;
+    const jump = node.closest(".bgm-trigger-jump");
+    if (jump) {
+      const number = jump.querySelector(".bgm-trigger-id")?.textContent || "";
+      const chat = jump.querySelector(".bgm-trigger-chat")?.textContent || "";
+      jump.title = `${number} ${chat} · ${resolved}`.trim();
+    }
+  });
+}
+
 function renderBgmTriggerList() {
   const root = el("bgmTriggerList");
   const count = el("bgmTriggerCount");
   if (!root) return;
   const previousScrollTop = root.scrollTop;
-  const triggers = [...bgmTriggerMap.values()].sort((a, b) => a.id - b.id);
+  const triggers = parseBgmTriggerLines(el("bgmTriggers")?.value || "");
   const titleByVideoId = new Map(
     bgmPlaylistItems().map(item => [item.videoId, item.title || "YouTube 영상"])
   );
@@ -3725,9 +4272,10 @@ function renderBgmTriggerList() {
     return;
   }
   const messagesById = new Map(state.messages.map(message => [Number(message.id), message]));
+  const messagesByUid = new Map(state.messages.map(message => [message.uid, message]));
   const fragment = document.createDocumentFragment();
   triggers.forEach(trigger => {
-    const message = messagesById.get(Number(trigger.id));
+    const message = (trigger.uid && messagesByUid.get(trigger.uid)) || messagesById.get(Number(trigger.id));
     const chatLabel = message ? compactBgmChatLabel(message) : "로그 분석 후 이동 가능";
     const trackTitle = bgmTitleForTrigger(trigger, titleByVideoId);
 
@@ -3738,6 +4286,7 @@ function renderBgmTriggerList() {
     jumpButton.type = "button";
     jumpButton.className = "bgm-trigger-jump";
     jumpButton.dataset.bgmJumpId = String(trigger.id);
+    if (trigger.uid) jumpButton.dataset.bgmJumpUid = trigger.uid;
     jumpButton.title = message
       ? `#${trigger.id} ${chatLabel} · ${trackTitle}`
       : `#${trigger.id} · ${trackTitle}`;
@@ -3750,15 +4299,14 @@ function renderBgmTriggerList() {
     chat.textContent = chatLabel;
     const track = document.createElement("span");
     track.className = "bgm-trigger-track";
+    track.dataset.bgmVideoId = trigger.videoId;
     track.textContent = trackTitle;
     track.title = trackTitle;
     if (!titleByVideoId.has(trigger.videoId) && !bgmFetchedTitleByVideoId.has(trigger.videoId)) {
-      fetchYoutubeTitleForTrigger(trigger).then(() => {
-        if (bgmTriggerMap.has(Number(trigger.id))) renderBgmTriggerList();
-      });
+      fetchYoutubeTitleForTrigger(trigger).then(title => updateBgmTitleNodes(trigger.videoId, title));
     }
     jumpButton.append(number, chat, track);
-    if (message) jumpButton.addEventListener("click", () => jumpToBgmChat(trigger.id));
+    if (message) jumpButton.addEventListener("click", () => jumpToBgmChat(trigger));
     else jumpButton.disabled = true;
 
     const actions = document.createElement("div");
@@ -3769,7 +4317,7 @@ function renderBgmTriggerList() {
     editButton.textContent = "수정";
     editButton.title = `#${trigger.id} BGM 수정`;
     editButton.setAttribute("aria-label", `#${trigger.id} BGM 수정`);
-    editButton.addEventListener("click", () => addBgmTrigger(trigger.id));
+    editButton.addEventListener("click", () => addBgmTrigger(trigger));
 
     actions.append(editButton);
     row.append(jumpButton, actions);
@@ -3781,21 +4329,25 @@ function renderBgmTriggerList() {
   });
 }
 
-function pageNumberForBgmJump(rows, id) {
+function pageNumberForBgmJump(rows, identity) {
   if (!rows.length) return 1;
+  const message = messageByIdentity(identity || {});
+  if (!message) return 1;
   const sceneRanges = bgmSceneRangesForRows(rows);
   if (sceneRanges) {
-    const index = sceneRanges.findIndex(range => id >= range.startId && id < range.endId);
+    const order = messageOrder(message);
+    const index = sceneRanges.findIndex(range => order >= range.startOrder && order < range.endOrder);
     return index >= 0 ? index + 1 : 1;
   }
-  const index = rows.findIndex(row => Number(row.id) === Number(id));
+  const index = rows.findIndex(row => row.uid === message.uid);
   const selectedPageSize = Number(el("pageSize").value);
   const pageSize = selectedPageSize > 0 ? selectedPageSize : Math.max(1, rows.length);
   return index >= 0 ? Math.floor(index / pageSize) + 1 : 1;
 }
 
-function jumpToBgmChat(id) {
-  const message = state.messages.find(item => Number(item.id) === Number(id));
+function jumpToBgmChat(identity) {
+  const trigger = typeof identity === "object" ? identity : { id: Number(identity) };
+  const message = messageByIdentity(trigger);
   if (!message) return;
 
   let filterChanged = false;
@@ -3831,13 +4383,13 @@ function jumpToBgmChat(id) {
     const rows = sideOtherEnabled()
       ? state.visible.filter(item => normalizedTab(item.tab) !== "other")
       : state.visible;
-    state.page = pageNumberForBgmJump(rows, message.id);
+    state.page = pageNumberForBgmJump(rows, { uid: message.uid, id: message.id, order: messageOrder(message) });
   }
   updateView();
 
   const alignJumpTarget = ({ highlight = false } = {}) => {
     const preview = el("preview");
-    const target = preview?.querySelector(`[data-index="${Number(message.id)}"]`);
+    const target = preview?.querySelector(`[data-uid="${CSS.escape(message.uid)}"]`) || preview?.querySelector(`[data-index="${Number(message.id)}"]`);
     if (!target) return false;
     const main = target.closest(".ccfolia-wrap") || preview;
     const mainStyle = window.getComputedStyle(main);
@@ -3861,8 +4413,8 @@ function jumpToBgmChat(id) {
       ? new CustomEvent("trpg-preview-sync-other-now", { detail: { index: Number(message.id) } })
       : new Event("trpg-preview-sync-other-now");
     preview.dispatchEvent(syncEvent);
-    const trigger = bgmTriggerMap.get(Number(message.id));
-    if (trigger && el("bgmAutoplay")?.checked) getPersistentPreviewBgmController().syncTrigger(trigger);
+    const activeTrigger = state.bgmTriggerByUid.get(message.uid) || bgmTriggerMap.get(Number(message.id));
+    if (activeTrigger && el("bgmAutoplay")?.checked) getPersistentPreviewBgmController().syncTrigger(activeTrigger);
     if (highlight) {
       target.classList.add("is-bgm-jump-target");
       window.setTimeout(() => target.classList.remove("is-bgm-jump-target"), 1800);
@@ -3903,13 +4455,15 @@ function converterSettingsPayload() {
     splitAsPages: el("splitAsPages").checked,
     splitOtherAsPages: el("splitOtherAsPages").checked,
     sideOther: el("sideOther").checked,
-    notionStatic: !!el("notionStatic")?.checked
+    notionStatic: !!el("notionStatic")?.checked,
+    exportTheme: currentExportTheme()
   };
 }
 
 function bgmTriggersForRows(rows) {
+  const uids = new Set(rows.map(row => row.uid));
   const ids = new Set(rows.map(row => row.id));
-  return parseBgmTriggerLines(el("bgmTriggers").value).filter(trigger => ids.has(trigger.id));
+  return parseBgmTriggerLines(el("bgmTriggers").value).filter(trigger => trigger.uid ? uids.has(trigger.uid) : ids.has(trigger.id));
 }
 
 function bgmScenePagesEnabled() {
@@ -3926,16 +4480,24 @@ function splitOtherAsPagesEnabled() {
 
 function bgmSceneRangesForRows(rows) {
   if (!bgmScenePagesEnabled() || !rows.length) return null;
-  const triggerIds = parseBgmTriggerLines(el("bgmTriggers").value)
-    .map(trigger => trigger.id)
-    .filter(id => rows.some(row => row.id >= id));
-  const boundaryTriggerIds = triggerIds[0] > rows[0].id ? triggerIds.slice(1) : triggerIds;
-  const startIds = [...new Set([rows[0].id, ...boundaryTriggerIds])].sort((a, b) => a - b);
-  if (!startIds.length) return null;
-  const ranges = startIds.map((startId, index) => ({
-    startId,
-    endId: startIds[index + 1] || Infinity
-  })).filter(range => rows.some(row => row.id >= range.startId && row.id < range.endId));
+  const rowUids = new Set(rows.map(row => row.uid));
+  const rowIds = new Set(rows.map(row => row.id));
+  const triggerOrders = parseBgmTriggerLines(el("bgmTriggers").value)
+    .filter(trigger => trigger.uid ? rowUids.has(trigger.uid) : rowIds.has(trigger.id))
+    .map(trigger => messageOrder(messageByIdentity(trigger)))
+    .filter(order => Number.isFinite(order));
+  const firstOrder = messageOrder(rows[0]);
+  const starts = [...new Set([firstOrder, ...triggerOrders])].sort((a, b) => a - b);
+  if (starts.length > 1 && starts[0] < firstOrder) starts.shift();
+  const ranges = starts.map((startOrder, index) => ({
+    startOrder,
+    endOrder: starts[index + 1] ?? Infinity,
+    startId: rows.find(row => messageOrder(row) >= startOrder)?.id || rows[0].id,
+    endId: rows.find(row => messageOrder(row) >= (starts[index + 1] ?? Infinity))?.id || Infinity
+  })).filter(range => rows.some(row => {
+    const order = messageOrder(row);
+    return order >= range.startOrder && order < range.endOrder;
+  }));
   return ranges.length ? ranges : null;
 }
 
@@ -3954,24 +4516,26 @@ function splitBoundaryEntries() {
 
 function pageRangesFromAfterIds(rows, splitPoints) {
   if (!rows.length) return null;
-  const minId = Math.min(...rows.map(row => row.id));
-  const maxId = Math.max(...rows.map(row => row.id));
   const entries = (splitPoints || [])
-    .map(item => typeof item === "number" ? { id: item, label: "" } : { id: Number(item.id), label: String(item.label || "").trim() })
-    .filter(entry => Number.isFinite(entry.id) && entry.id >= minId && entry.id < maxId)
-    .sort((a, b) => a.id - b.id);
-  if (!entries.length) return null;
-  const ranges = [{ startId: minId, endId: entries[0].id + 1, label: entries[0].label }];
-  for (let i = 1; i < entries.length; i++) {
-    ranges.push({
-      startId: entries[i - 1].id + 1,
-      endId: entries[i].id + 1,
-      label: entries[i].label
-    });
-  }
-  ranges.push({ startId: entries.at(-1).id + 1, endId: Infinity, label: "" });
-  const visibleRanges = ranges.filter(range => rows.some(row => row.id >= range.startId && row.id < range.endId));
-  return visibleRanges.length > 1 ? visibleRanges : null;
+    .map(item => typeof item === "number" ? { id: item, target: "main", label: "" } : { ...item, id: Number(item.id), label: String(item.label || "").trim() })
+    .map(entry => ({ ...entry, order: resolvedSplitOrder(entry) }))
+    .filter(entry => Number.isFinite(entry.order))
+    .sort((a, b) => a.order - b.order);
+  const positions = entries.map(entry => {
+    let position = -1;
+    rows.forEach((row, index) => { if (messageOrder(row) <= entry.order) position = index; });
+    return { position, label: entry.label };
+  }).filter(entry => entry.position >= 0 && entry.position < rows.length - 1);
+  if (!positions.length) return null;
+  const ranges = [];
+  let start = 0;
+  positions.forEach(entry => {
+    const end = entry.position + 1;
+    if (end > start) ranges.push({ startId: start + 1, endId: end + 1, label: entry.label });
+    start = end;
+  });
+  if (start < rows.length) ranges.push({ startId: start + 1, endId: Infinity, label: "" });
+  return ranges.length > 1 ? ranges : null;
 }
 
 function labelForCountRange(index) {
@@ -3983,8 +4547,8 @@ function pageRangesFromCount(rows, count) {
   const ranges = [];
   for (let i = 0; i < rows.length; i += count) {
     ranges.push({
-      startId: rows[i].id,
-      endId: rows[i + count]?.id || Infinity,
+      startId: i + 1,
+      endId: i + count + 1 <= rows.length ? i + count + 1 : Infinity,
       label: labelForCountRange(ranges.length)
     });
   }
@@ -3992,7 +4556,7 @@ function pageRangesFromCount(rows, count) {
 }
 
 function splitPageRangesForRows(rows) {
-  const boundaries = splitBoundaryEntries();
+  const boundaries = previewSplitEntries();
   if (boundaries.length) return pageRangesFromAfterIds(rows, boundaries);
   return pageRangesFromCount(rows, Number(el("splitSize").value));
 }
@@ -4025,20 +4589,23 @@ function pagingInfoForRows(rows) {
 
 function rowsForPaging(rows, paging) {
   if (paging.mode === "bgm") {
-    return rows.filter(row => row.id >= paging.range.startId && row.id < paging.range.endId);
+    return rows.filter(row => {
+      const order = messageOrder(row);
+      return order >= paging.range.startOrder && order < paging.range.endOrder;
+    });
   }
   return rows.slice(paging.start, paging.end);
 }
 
 function previousRowForPaging(rows, paging) {
-  const firstId = paging.mode === "bgm" ? paging.range.startId : rows[paging.start]?.id;
-  if (!firstId) return null;
-  const index = rows.findIndex(row => row.id >= firstId);
+  const firstOrder = paging.mode === "bgm" ? paging.range.startOrder : messageOrder(rows[paging.start]);
+  if (!Number.isFinite(firstOrder)) return null;
+  const index = rows.findIndex(row => messageOrder(row) >= firstOrder);
   return index > 0 ? rows[index - 1] : null;
 }
 
 function bgmTriggerForMessage(message) {
-  return bgmTriggerMap.get(message.id) || null;
+  return state.bgmTriggerByUid.get(message.uid) || bgmTriggerMap.get(message.id) || null;
 }
 
 function previewScrollSnapshot(root) {
@@ -4064,16 +4631,26 @@ function escapeScriptJson(value) {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
-async function addBgmTrigger(id) {
-  const existingTrigger = bgmTriggerMap.get(id) || parseBgmTriggerLines(el("bgmTriggers").value).find(trigger => trigger.id === id) || null;
+async function addBgmTrigger(identity) {
+  const target = typeof identity === "object" ? identity : { id: Number(identity) };
+  const message = messageByIdentity(target);
+  if (!message) return;
+  const existingTrigger = state.bgmTriggerByUid.get(message.uid)
+    || bgmTriggerMap.get(message.id)
+    || parseBgmTriggerLines(el("bgmTriggers").value).find(trigger => trigger.uid === message.uid || (!trigger.uid && trigger.id === message.id))
+    || null;
   const prompted = await chooseBgmUrlFromPlaylist({ currentTrigger: existingTrigger });
   if (prompted === null) return;
 
-  const triggers = parseBgmTriggerLines(el("bgmTriggers").value).filter(trigger => trigger.id !== id);
+  const triggers = parseBgmTriggerLines(el("bgmTriggers").value).filter(trigger => {
+    if (trigger.uid) return trigger.uid !== message.uid;
+    return trigger.id !== message.id;
+  });
   if (prompted === BGM_REMOVE) {
     el("bgmTriggers").value = triggers.map(formatBgmTrigger).join("\n");
     rebuildBgmTriggerMap();
     renderPreview({ preserveScroll: true });
+    scheduleWorkDraftSave();
     return;
   }
 
@@ -4085,11 +4662,12 @@ async function addBgmTrigger(id) {
   }
   const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://youtu.be/${videoId}`;
   addDirectBgmToPlaylist(videoId, url);
-  triggers.push({ id, url, videoId });
-  triggers.sort((a, b) => a.id - b.id);
+  triggers.push({ id: message.id, uid: message.uid, order: messageOrder(message), url, videoId });
+  triggers.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
   el("bgmTriggers").value = triggers.map(formatBgmTrigger).join("\n");
   rebuildBgmTriggerMap();
   renderPreview({ preserveScroll: true });
+  scheduleWorkDraftSave();
 }
 
 
@@ -6004,6 +6582,18 @@ function applyStyleControls() {
   document.documentElement.style.setProperty("--avatar-size", `${el("avatarSize").value}px`);
 }
 
+const scheduleStyleLayoutRefresh = debounce(() => {
+  el("preview")?.classList.remove("is-style-adjusting");
+  window.dispatchEvent(new Event("resize"));
+}, 80);
+
+function updateStyleOnly() {
+  applyStyleControls();
+  el("preview")?.classList.add("is-style-adjusting");
+  scheduleStyleLayoutRefresh();
+  scheduleWorkDraftSave();
+}
+
 function updateView() {
   applyStyleControls();
   state.visible = filteredMessages();
@@ -6014,7 +6604,9 @@ function updateView() {
   el("pageLabel").textContent = `/ ${paging.pageCount.toLocaleString()}${paging.mode === "bgm" ? " BGM구간" : ""}`;
   el("prevBtn").disabled = state.page <= 1;
   el("nextBtn").disabled = state.page >= paging.pageCount;
+  updateFilterAndExportSummary();
   renderPreview();
+  scheduleWorkDraftSave();
 }
 
 function renderAvatar(message, imageAssetIds = null) {
@@ -6043,10 +6635,11 @@ function previewSplitEntries() {
     { target: "other", value: el("manualOtherSplits")?.value || "" }
   ].forEach(source => {
     parseSplitEntries(source.value).forEach(entry => {
-      const key = `${source.target}:${entry.id}`;
+      const key = `${source.target}:${entry.uid ? `uid:${entry.uid}` : `id:${entry.id}`}`;
       const previous = byKey.get(key);
       byKey.set(key, {
         id: entry.id,
+        uid: entry.uid || previous?.uid || "",
         target: source.target,
         label: entry.label || previous?.label || ""
       });
@@ -6066,14 +6659,20 @@ function splitTargetMatchesRow(row, target = "main") {
 }
 
 function messageRenderOrder(row) {
-  const stored = Number(row?._order);
-  if (Number.isFinite(stored) && stored >= 0) return stored;
-  const index = state.messages.indexOf(row);
-  return index >= 0 ? index : null;
+  return messageOrder(row);
 }
 
 function resolvedSplitOrder(entry) {
   const key = `${entry.target || "main"}:${Number(entry.id)}`;
+  if (entry.uid) {
+    const directRow = messageByUid(entry.uid);
+    if (directRow && splitTargetMatchesRow(directRow, entry.target)) return messageOrder(directRow);
+  }
+  const hintedUid = state.splitUidHints?.get(key);
+  if (hintedUid) {
+    const uidRow = messageByUid(hintedUid);
+    if (uidRow && splitTargetMatchesRow(uidRow, entry.target)) return messageOrder(uidRow);
+  }
   const hinted = Number(state.splitOrderHints?.get(key));
   if (Number.isFinite(hinted) && hinted >= 0) {
     const row = state.messages[hinted];
@@ -6093,15 +6692,15 @@ function splitBoundaryHtml(entry) {
   const splitOrder = resolvedSplitOrder(entry);
   const hasFollowingMessage = splitOrder != null && splitOrder < state.messages.length - 1;
   const marker = `✂ #${entry.id}${entry.label ? ` · ${entry.label}` : ""}`;
-  const boundaryKey = `${entry.target || "main"}:${entry.id}`;
+  const boundaryKey = `${entry.target || "main"}:${entry.uid ? `uid:${entry.uid}` : `id:${entry.id}`}`;
   if (!hasFollowingMessage) {
-    return `<div class="split-boundary is-terminal" data-split-boundary="${entry.id}" data-split-key="${escapeHtml(boundaryKey)}" role="separator" aria-label="#${entry.id} 로그 마지막 분할점">
+    return `<div class="split-boundary is-terminal" data-split-boundary="${entry.id}" data-split-uid="${escapeHtml(entry.uid || "")}" data-split-key="${escapeHtml(boundaryKey)}" role="separator" aria-label="#${entry.id} 로그 마지막 분할점">
       <span class="split-boundary-before">↑ 이 위까지 마지막 HTML에 포함</span>
       <span class="split-boundary-mark">${escapeHtml(marker)}</span>
       <span class="split-boundary-after">로그 끝이라 새 HTML은 추가로 생기지 않음</span>
     </div>`;
   }
-  return `<div class="split-boundary" data-split-boundary="${entry.id}" data-split-key="${escapeHtml(boundaryKey)}" role="separator" aria-label="#${entry.id} 뒤에서 HTML 분할">
+  return `<div class="split-boundary" data-split-boundary="${entry.id}" data-split-uid="${escapeHtml(entry.uid || "")}" data-split-key="${escapeHtml(boundaryKey)}" role="separator" aria-label="#${entry.id} 뒤에서 HTML 분할">
     <span class="split-boundary-before">↑ 이 위까지 이전 HTML</span>
     <span class="split-boundary-mark">${escapeHtml(marker)}</span>
     <span class="split-boundary-after">↓ 이 아래부터 다음 HTML</span>
@@ -6179,14 +6778,14 @@ function renderOtherRowsWithSplitBoundaries(rows) {
 }
 
 function splitButton(message, target = "main") {
-  const isSet = hasManualSplit(message.id, target);
+  const isSet = hasManualSplit(message.id, target, message.uid);
   const label = isSet ? "분할점 제거" : "이 채팅 뒤에서 분할";
   const order = messageRenderOrder(message);
-  return `<button type="button" class="split-button split-toggle${isSet ? " is-set" : ""}" data-split-target="${target}" data-split-id="${message.id}"${order != null ? ` data-split-order="${order}"` : ""} title="${label}" aria-label="${label}" aria-pressed="${isSet ? "true" : "false"}">${label}</button>`;
+  return `<button type="button" class="split-button split-toggle${isSet ? " is-set" : ""}" data-split-target="${target}" data-split-id="${message.id}" data-split-uid="${escapeHtml(message.uid || "")}"${order != null ? ` data-split-order="${order}"` : ""} title="${label}" aria-label="${label}" aria-pressed="${isSet ? "true" : "false"}">${label}</button>`;
 }
 
 function rowActionButtons(message, target = "main") {
-  const hasSplit = hasManualSplit(message.id, target);
+  const hasSplit = hasManualSplit(message.id, target, message.uid);
   return `<div class="row-actions${hasSplit ? " has-split" : ""}">${splitButton(message, target)}${bgmButton(message, true)}</div>`;
 }
 
@@ -6194,7 +6793,7 @@ function bgmButton(message, wide = false) {
   const hasBgm = !!bgmTriggerForMessage(message);
   const label = hasBgm ? "BGM 수정·해제" : "BGM 지정";
   const visibleText = wide ? "BGM ♬" : label;
-  return `<button type="button" class="split-button bgm-button${wide ? " main-bgm-button" : ""}${hasBgm ? " is-set" : ""}" data-bgm-id="${message.id}" title="${label}" aria-label="${label}">${visibleText}</button>`;
+  return `<button type="button" class="split-button bgm-button${wide ? " main-bgm-button" : ""}${hasBgm ? " is-set" : ""}" data-bgm-id="${message.id}" data-bgm-uid="${escapeHtml(message.uid || "")}" data-bgm-order="${messageOrder(message) ?? ""}" title="${label}" aria-label="${label}">${visibleText}</button>`;
 }
 
 function bgmLink(trigger) {
@@ -6213,10 +6812,10 @@ function compactOtherText(value) {
 
 function renderOtherRow(message, interactive = false) {
   const bgmTrigger = bgmTriggerForMessage(message);
-  return `<article class="other-row" data-index="${message.id}">
+  return `<article class="other-row" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
     <strong class="other-name" style="--name-color:${escapeHtml(safeCssColor(message.color || "#dddddd"))}">${escapeHtml(message.name)}</strong>
     ${bgmLink(bgmTrigger)}
-    ${interactive ? `<div class="other-actions${hasManualSplit(message.id, "other") ? " has-split" : ""}">${splitButton(message, "other")}${bgmButton(message)}</div>` : ""}
+    ${interactive ? `<div class="other-actions${hasManualSplit(message.id, "other", message.uid) ? " has-split" : ""}">${splitButton(message, "other")}${bgmButton(message)}</div>` : ""}
     <div class="other-text">${escapeHtml(compactOtherText(message.text)).replace(/\n/g, "<br>")}</div>
   </article>`;
 }
@@ -6241,7 +6840,7 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
   const tab = normalizedTab(message.tab || "main");
   if ((message.name || "").toLowerCase() === "system") {
     const bgmTrigger = bgmTriggerForMessage(message);
-    return `<article class="system-line" data-index="${message.id}">
+    return `<article class="system-line" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
       <div class="system-text">${escapeHtml(message.text).replace(/\n/g, "<br>")}${bgmTrigger ? `<br>${bgmLink(bgmTrigger)}` : ""}</div>
       ${interactive ? rowActionButtons(message, "main") : ""}
     </article>`;
@@ -6267,7 +6866,7 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
         ${bgmLink(bgmTrigger)}
       </div>
       <div class="text">${escapeHtml(message.text).replace(/\n/g, "<br>")}</div>`;
-  return `<article class="log-row${isSystem ? " is-system" : ""}${isExtraTab ? " is-extra-tab" : ""}${grouped ? " is-continuation" : ""}${hasContinuation ? " has-continuation" : ""}${toneClass}" data-index="${message.id}">
+  return `<article class="log-row${isSystem ? " is-system" : ""}${isExtraTab ? " is-extra-tab" : ""}${grouped ? " is-continuation" : ""}${hasContinuation ? " has-continuation" : ""}${toneClass}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
     ${interactive ? rowActionButtons(message, "main") : ""}
     ${avatarHtml}
     <div class="message">${contentHtml}</div>
@@ -6297,9 +6896,13 @@ function renderPreview(options = {}) {
     button.addEventListener("click", () => toggleManualSplit(Number(button.dataset.splitId), button.dataset.splitTarget, button));
   });
   root.querySelectorAll(".bgm-button[data-bgm-id]").forEach(button => {
-    button.addEventListener("click", () => addBgmTrigger(Number(button.dataset.bgmId)));
+    button.addEventListener("click", () => addBgmTrigger({
+      id: Number(button.dataset.bgmId),
+      uid: button.dataset.bgmUid || "",
+      order: Number(button.dataset.bgmOrder)
+    }));
   });
-  const previewBgmTriggers = bgmTriggersForRows(state.visible.length ? state.visible : state.messages);
+  const previewBgmTriggers = bgmTriggersForRows(state.visible);
   const previewBgmController = getPersistentPreviewBgmController();
   previewBgmController.configure({
     enabled: el("bgmAutoplay").checked && previewBgmTriggers.length > 0
@@ -6330,41 +6933,53 @@ function parseSplitEntries(value) {
     .map(line => line.trim())
     .filter(Boolean)
     .forEach(line => {
-      const labeled = line.match(/^(\d+)(?:\s+(.+))?$/);
+      const labeled = line.match(/^(\d+)(?:@([A-Za-z0-9_-]+))?(?:\s+(.+))?$/);
       if (labeled) {
-        entries.push({ id: Number(labeled[1]), label: (labeled[2] || "").trim() });
+        entries.push({ id: Number(labeled[1]), uid: String(labeled[2] || ""), label: (labeled[3] || "").trim() });
         return;
       }
       line.split(/[\s,;]+/).forEach(token => {
-        const id = Number(token.trim());
-        if (Number.isFinite(id) && id > 0) entries.push({ id, label: "" });
+        const tokenMatch = token.match(/^(\d+)(?:@([A-Za-z0-9_-]+))?$/);
+        if (!tokenMatch) return;
+        entries.push({ id: Number(tokenMatch[1]), uid: String(tokenMatch[2] || ""), label: "" });
       });
     });
-  const byId = new Map();
+  const byIdentity = new Map();
   entries
     .filter(entry => Number.isFinite(entry.id) && entry.id > 0)
     .forEach(entry => {
-      const previous = byId.get(entry.id);
-      byId.set(entry.id, { id: entry.id, label: entry.label || previous?.label || "" });
+      const key = entry.uid ? `uid:${entry.uid}` : `id:${entry.id}`;
+      const previous = byIdentity.get(key);
+      byIdentity.set(key, { id: entry.id, uid: entry.uid || previous?.uid || "", label: entry.label || previous?.label || "" });
     });
-  return [...byId.values()].sort((a, b) => a.id - b.id);
+  return [...byIdentity.values()].sort((a, b) => {
+    const orderA = resolvedSplitOrder({ ...a, target: "main" });
+    const orderB = resolvedSplitOrder({ ...b, target: "main" });
+    if (Number.isFinite(orderA) && Number.isFinite(orderB) && orderA !== orderB) return orderA - orderB;
+    return a.id - b.id || String(a.uid).localeCompare(String(b.uid));
+  });
 }
 
 function splitInputForTarget(target = "main") {
   return target === "other" && state.otherText ? el("manualOtherSplits") : el("manualSplits");
 }
 
-function hasManualSplit(id, target = "main") {
+function hasManualSplit(id, target = "main", uid = "") {
   const input = splitInputForTarget(target);
-  return parseSplitEntries(input?.value || "").some(entry => entry.id === Number(id));
+  return parseSplitEntries(input?.value || "").some(entry => entry.uid ? entry.uid === uid : entry.id === Number(id));
 }
 
 function writeSplitEntries(input, entries) {
   const normalized = [...entries]
     .filter(entry => Number.isFinite(Number(entry.id)) && Number(entry.id) > 0)
-    .map(entry => ({ id: Number(entry.id), label: String(entry.label || "").trim() }))
-    .sort((a, b) => a.id - b.id);
-  input.value = normalized.map(entry => `${entry.id}${entry.label ? ` ${entry.label}` : ""}`).join("\n");
+    .map(entry => ({ id: Number(entry.id), uid: String(entry.uid || ""), label: String(entry.label || "").trim() }))
+    .sort((a, b) => {
+      const orderA = resolvedSplitOrder({ ...a, target: input === el("manualOtherSplits") ? "other" : "main" });
+      const orderB = resolvedSplitOrder({ ...b, target: input === el("manualOtherSplits") ? "other" : "main" });
+      if (Number.isFinite(orderA) && Number.isFinite(orderB) && orderA !== orderB) return orderA - orderB;
+      return a.id - b.id;
+    });
+  input.value = normalized.map(entry => `${entry.id}${entry.uid ? `@${entry.uid}` : ""}${entry.label ? ` ${entry.label}` : ""}`).join("\n");
   el("clearSplitsBtn").disabled = !el("manualSplits").value.trim() && !el("manualOtherSplits").value.trim();
 }
 
@@ -6372,7 +6987,7 @@ function syncSplitButtonStates() {
   document.querySelectorAll(".split-button[data-split-id]").forEach(button => {
     const id = Number(button.dataset.splitId);
     const target = button.dataset.splitTarget || "main";
-    const isSet = hasManualSplit(id, target);
+    const isSet = hasManualSplit(id, target, button.dataset.splitUid || "");
     const label = isSet ? "분할점 제거" : "이 채팅 뒤에서 분할";
     button.classList.toggle("is-set", isSet);
     button.parentElement?.classList.toggle("has-split", isSet);
@@ -6403,8 +7018,8 @@ function showSplitActionToast(button, message, removed = false) {
   }, 1400);
 }
 
-function revealSplitBoundary(id, target = "main") {
-  const splitKey = `${target}:${Number(id)}`;
+function revealSplitBoundary(id, target = "main", uid = "") {
+  const splitKey = `${target}:${uid ? `uid:${uid}` : `id:${Number(id)}`}`;
   let boundaries = [...document.querySelectorAll(`[data-split-key="${CSS.escape(splitKey)}"]`)];
   if (!boundaries.length) boundaries = [...document.querySelectorAll(`[data-split-boundary="${Number(id)}"]`)];
   if (!boundaries.length) return;
@@ -6418,15 +7033,18 @@ function toggleManualSplit(id, target = "main", sourceButton = null) {
   const input = splitInputForTarget(target);
   const splitKey = `${target}:${Number(id)}`;
   const sourceOrder = Number(sourceButton?.dataset.splitOrder);
+  const sourceUid = String(sourceButton?.dataset.splitUid || "");
   const entries = parseSplitEntries(input.value);
-  const existingIndex = entries.findIndex(entry => entry.id === Number(id));
+  const existingIndex = entries.findIndex(entry => sourceUid ? entry.uid === sourceUid : (!entry.uid && entry.id === Number(id)));
   const removed = existingIndex >= 0;
   if (removed) {
     entries.splice(existingIndex, 1);
     state.splitOrderHints.delete(splitKey);
+    state.splitUidHints.delete(splitKey);
   } else {
-    entries.push({ id: Number(id), label: "" });
+    entries.push({ id: Number(id), uid: sourceUid, label: "" });
     if (Number.isFinite(sourceOrder) && sourceOrder >= 0) state.splitOrderHints.set(splitKey, sourceOrder);
+    if (sourceUid) state.splitUidHints.set(splitKey, sourceUid);
   }
   writeSplitEntries(input, entries);
   syncSplitButtonStates();
@@ -6436,26 +7054,32 @@ function toggleManualSplit(id, target = "main", sourceButton = null) {
     ? message
     : `${message} 이 채팅까지 이전 HTML에 포함되고, 다음 채팅부터 새 HTML이 시작됩니다.`);
   renderPreview({ preserveScroll: true });
-  if (!removed) revealSplitBoundary(id, target);
+  if (!removed) revealSplitBoundary(id, target, sourceUid);
+  scheduleWorkDraftSave();
 }
 
 function splitRowsByAfterIds(rows, splitPoints) {
-  const points = parseSplitPoints(splitPoints).filter(point => rows.some(row => row.id <= point));
-  if (!points.length) return [rows];
+  const entries = (splitPoints || []).map(item => typeof item === "number" ? { id: item, target: "main" } : item);
+  const orders = entries.map(resolvedSplitOrder).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!orders.length) return [rows];
   const parts = [];
   let cursor = 0;
-  for (const point of points) {
-    const next = rows.findIndex((row, index) => index >= cursor && row.id > point);
-    const end = next === -1 ? rows.length : next;
+  orders.forEach(order => {
+    let end = cursor;
+    while (end < rows.length && messageOrder(rows[end]) <= order) end += 1;
     if (end > cursor) parts.push(rows.slice(cursor, end));
     cursor = end;
-  }
+  });
   if (cursor < rows.length) parts.push(rows.slice(cursor));
   return parts.length ? parts : [rows];
 }
 
 function splitRowsByRanges(rows, ranges) {
-  return ranges.map(range => rows.filter(row => row.id >= range.startId && row.id < range.endId));
+  return ranges.map(range => {
+    const start = Math.max(0, Number(range.startId || 1) - 1);
+    const end = Number.isFinite(Number(range.endId)) ? Math.max(start, Number(range.endId) - 1) : rows.length;
+    return rows.slice(start, end);
+  }).filter(part => part.length);
 }
 
 function inlineImagesEnabled() {
@@ -6601,7 +7225,7 @@ async function inlineImageUrl(url) {
   }
 }
 
-async function prepareRowsForExport(rows) {
+async function prepareRowsForExport(rows, onProgress = null) {
   if (!inlineImagesEnabled()) {
     state.lastImageAssetStats = null;
     return rows;
@@ -6612,12 +7236,16 @@ async function prepareRowsForExport(rows) {
     return rows;
   }
   setStatus(`이미지 ${urls.length.toLocaleString()}개를 HTML에 내장하는 중입니다...`);
+  onProgress?.(`이미지 0 / ${urls.length.toLocaleString()} 처리 중`);
   let cursor = 0;
+  let completed = 0;
   const workerCount = Math.min(6, urls.length);
   await Promise.all(Array.from({ length: workerCount }, async () => {
     while (cursor < urls.length) {
       const index = cursor++;
       await inlineImageUrl(urls[index]);
+      completed += 1;
+      onProgress?.(`이미지 ${completed.toLocaleString()} / ${urls.length.toLocaleString()} 처리 중`);
     }
   }));
   const results = urls.map(url => state.inlineImageCache.get(`${url}\u001f${inlineImageMaxSize()}\u001f${inlineImageQuality()}`) || url);
@@ -6656,6 +7284,7 @@ function createCompactLogPayload(rows, useSide) {
   const labels = [];
   const profiles = [];
   const rowData = [];
+  const rowUids = [];
   const nameMap = new Map();
   const colorMap = new Map();
   const imageMap = new Map();
@@ -6690,16 +7319,18 @@ function createCompactLogPayload(rows, useSide) {
     }
     const id = Number(row.id) || 0;
     rowData.push(id - previousId, tabIndex, profileIndex, textIndex);
+    rowUids.push(String(row.uid || ""));
     previousId = id;
   }
 
   const triggerData = [];
   for (const trigger of bgmTriggersForRows(rows)) {
-    triggerData.push(Number(trigger.id) || 0, String(trigger.url || ""));
+    const index = rows.findIndex(row => trigger.uid ? row.uid === trigger.uid : Number(row.sourceDisplayId ?? row.id) === Number(trigger.id));
+    if (index >= 0) triggerData.push(index + 1, String(trigger.url || ""));
   }
 
   return {
-    v: 4,
+    v: 5,
     s: useSide ? 1 : 0,
     g: el("groupRows").checked ? 1 : 0,
     n: names,
@@ -6710,6 +7341,7 @@ function createCompactLogPayload(rows, useSide) {
     l: labels,
     p: profiles,
     r: rowData,
+    q: rowUids,
     u: triggerData
   };
 }
@@ -6732,6 +7364,7 @@ function compactExportRuntime(root) {
     const labels = Array.isArray(data.l) ? data.l : [];
     const profiles = Array.isArray(data.p) ? data.p : [];
     const encodedRows = Array.isArray(data.r) ? data.r : [];
+    const uids = Array.isArray(data.q) ? data.q : [];
     const triggerValues = Array.isArray(data.u) ? data.u : [];
     const triggerMap = new Map();
     for (let i = 0; i + 1 < triggerValues.length; i += 2) {
@@ -6775,6 +7408,8 @@ function compactExportRuntime(root) {
       const labelIndex = Number(profile[3]);
       const label = Number.isFinite(labelIndex) && labelIndex >= 0 ? String(labels[labelIndex] ?? "") : "";
       const text = String(texts[Number(encodedRows[cursor + 3]) || 0] ?? "");
+      const rowOrder = allRecords.length;
+      const uid = String(uids[rowOrder] || "");
       const lowerTab = tab.toLowerCase();
       const isOther = !!data.s && lowerTab === "other";
       const isExtraTab = !isOther && lowerTab !== "main" && lowerTab !== "other";
@@ -6787,7 +7422,7 @@ function compactExportRuntime(root) {
       const isSystem = !isOther && !isSystemLine && !isExtraTab && (!image || name.toLowerCase() === "system");
       if (!isOther && !grouped) mainGroupOrdinal += 1;
       const record = {
-        id, tab, lowerTab, name, color, imageIndex, image, label, text,
+        id, uid, order: rowOrder, tab, lowerTab, name, color, imageIndex, image, label, text,
         kind: isOther ? "other" : "main",
         isOther, isExtraTab, isSystemLine, isSystem, grouped,
         groupTone: Math.max(0, mainGroupOrdinal) % 2,
@@ -6819,7 +7454,7 @@ function compactExportRuntime(root) {
     function renderMainRecord(record, logicalIndex, isLast, highlighted) {
       if (record.isSystemLine) {
         const link = bgmLink(record.id);
-        return `<article class="system-line${highlighted ? " is-search-target" : ""}" data-index="${record.id}" data-virtual-index="${logicalIndex}"><div class="system-text">${withBreaks(record.text)}${link ? `<br>${link}` : ""}</div></article>`;
+        return `<article class="system-line${highlighted ? " is-search-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="system-text">${withBreaks(record.text)}${link ? `<br>${link}` : ""}</div></article>`;
       }
       const tabTag = record.lowerTab === "main" ? "" : `<span class="tag">- ${esc(record.tab || "main")}</span>`;
       const expressionTag = !record.isExtraTab && record.label ? `<span class="expr-tag">${esc(record.label)}</span>` : "";
@@ -6828,11 +7463,11 @@ function compactExportRuntime(root) {
       const content = record.grouped
         ? `<div class="grouped-line"><div class="text">${withBreaks(record.text)}</div>${link ? `<div class="grouped-line-tools">${link}</div>` : ""}</div>`
         : `<div class="meta"><strong class="name" style="--name-color:${esc(record.color)}">${esc(record.name)}</strong>${tabTag}${expressionTag}${link}</div><div class="text">${withBreaks(record.text)}</div>`;
-      return `<article class="log-row${record.isSystem ? " is-system" : ""}${record.isExtraTab ? " is-extra-tab" : ""}${record.grouped ? " is-continuation" : ""}${record.hasContinuation ? " has-continuation" : ""}${tone}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" data-index="${record.id}" data-virtual-index="${logicalIndex}">${renderAvatar(record)}<div class="message">${content}</div></article>`;
+      return `<article class="log-row${record.isSystem ? " is-system" : ""}${record.isExtraTab ? " is-extra-tab" : ""}${record.grouped ? " is-continuation" : ""}${record.hasContinuation ? " has-continuation" : ""}${tone}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}">${renderAvatar(record)}<div class="message">${content}</div></article>`;
     }
 
     function renderOtherRecord(record, logicalIndex, isLast, highlighted, synced) {
-      return `<article class="other-row${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" data-index="${record.id}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)}">${esc(record.name)}</strong>${bgmLink(record.id)}<div class="other-text">${withBreaks(record.text)}</div></article>`;
+      return `<article class="other-row${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)}">${esc(record.name)}</strong>${bgmLink(record.id)}<div class="other-text">${withBreaks(record.text)}</div></article>`;
     }
 
     class HeightTree {
@@ -7676,7 +8311,63 @@ function compactRendererScript() {
   return `<script>(()=>{const script=document.currentScript;const app=script?.closest?.("[data-trpg-log-app]")||document.getElementById("trpg-log-app")||document;(${compactExportRuntime.toString()})(app);})();<\/script>`;
 }
 
-function exportCssRaw() {
+function currentExportTheme() {
+  return normalizeAppTheme(document.documentElement.dataset.theme || "dark");
+}
+
+function exportThemePalette(theme = currentExportTheme()) {
+  const normalized = normalizeAppTheme(theme);
+  return normalized === "light"
+    ? { theme: "light", background: "#edf1f5", themeColor: "#edf1f5" }
+    : { theme: "dark", background: "#181818", themeColor: "#181818" };
+}
+
+function exportLightCssRaw() {
+  return `:root{color-scheme:light;--line:rgba(15,23,42,.12);--muted:rgba(15,23,42,.58)}
+body{background:#edf1f5;color:#172033}
+.page button{border-color:rgba(15,23,42,.14);background:#fff;color:#172033;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.page button:hover{background:#eef3f7}
+.scene-pager-label{color:rgba(15,23,42,.58)}
+.ccfolia-wrap{background:#fff;border-color:rgba(15,23,42,.12);box-shadow:0 8px 28px rgba(15,23,42,.07)}
+.other-wrap{background:#f7f9fb;border-color:rgba(15,23,42,.12)}
+.other-row{border-bottom-color:rgba(15,23,42,.09)}
+.other-row.is-sync-target{background:rgba(37,99,166,.09)}
+.other-name{color:var(--name-color,#334155)}
+.other-text{color:rgba(15,23,42,.78)}
+.log-row,.log-row.is-odd{background:#fff;border-bottom-color:rgba(15,23,42,.1)}
+.log-row:nth-child(even),.log-row.is-even{background:#f4f7f9}
+.log-row.is-system{background:rgba(15,23,42,.035)}
+.system-line{background:rgba(15,23,42,.03);border-bottom-color:rgba(15,23,42,.08)}
+.system-text{color:rgba(15,23,42,.6)}
+.log-row.is-extra-tab{background:rgba(37,99,166,.045);border-left-color:rgba(37,99,166,.32)}
+.log-row.is-extra-tab:hover{background:rgba(37,99,166,.08)}
+.avatar{background:rgba(15,23,42,.07);border-color:rgba(15,23,42,.12);color:rgba(15,23,42,.38)}
+.tab-avatar{color:#245a8b;background:rgba(37,99,166,.09);border-color:rgba(37,99,166,.2)}
+.name{color:var(--name-color,#334155)}
+.tag{color:rgba(15,23,42,.42)}
+.is-extra-tab .tag{color:rgba(37,99,166,.78)}
+.expr-tag{color:rgba(15,23,42,.58);background:rgba(15,23,42,.045);border-color:rgba(15,23,42,.1)}
+.bgm-link:hover{color:#174f86;background:rgba(37,99,166,.1)}
+.bgm-now{background:rgba(255,255,255,.92);color:#1e5f9c;border-color:rgba(37,99,166,.28);box-shadow:0 8px 24px rgba(15,23,42,.15)}
+.bgm-now:hover{color:#174f86;background:#fff}
+.text{color:#273244}
+.is-system .text{color:rgba(15,23,42,.66)}
+.is-extra-tab .text{color:rgba(15,23,42,.78)}
+.bgm-panel{background:rgba(255,255,255,.94);border-color:rgba(15,23,42,.14);box-shadow:0 8px 24px rgba(15,23,42,.15)}
+.bgm-panel:hover,.bgm-panel:focus-within{background:#fff}
+.bgm-frame{background:#e7ebef}
+.bgm-note{color:rgba(15,23,42,.58)}
+.bgm-tag{color:#1e5f9c;border-color:rgba(37,99,166,.28)}
+.trpg-search{background:rgba(255,255,255,.96);border-color:rgba(15,23,42,.14);box-shadow:0 8px 28px rgba(15,23,42,.16)}
+.trpg-search input{background:#fff;color:#172033;border-color:rgba(15,23,42,.14)}
+.trpg-search input::placeholder{color:rgba(15,23,42,.42)}
+.trpg-search-count{color:rgba(15,23,42,.58)}
+.trpg-virtual-window .log-row:last-child{border-bottom-color:rgba(15,23,42,.1)}
+.log-row.is-search-target,.system-line.is-search-target,.other-row.is-search-target{outline-color:rgba(37,99,166,.92);background:rgba(37,99,166,.12)!important}
+@media(max-width:700px){.scene-pager{background:rgba(237,241,245,.94)}}`;
+}
+
+function exportCssRaw(theme = currentExportTheme()) {
   const fontSize = Number(el("fontSize").value);
   const lineHeight = Number(el("lineHeight").value);
   const avatarSize = Number(el("avatarSize").value);
@@ -7760,7 +8451,7 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .log-row.is-odd{background:#313131}
 .log-row.is-even{background:#383838}
 .log-row.is-search-target,.system-line.is-search-target,.other-row.is-search-target{position:relative;z-index:1;outline:2px solid rgba(143,199,255,.92);outline-offset:-2px;background:rgba(143,199,255,.15)!important}
-@media(max-width:700px){.trpg-search-shell{top:6px}.trpg-search{grid-template-columns:minmax(90px,1fr) auto auto auto;width:calc(100vw - 16px);padding:5px}.trpg-search-count{grid-column:1/3;min-height:15px;text-align:left}.trpg-search button{min-height:29px;padding:3px 7px}.trpg-search input{height:30px}.trpg-virtual-body{contain:layout style}}`;
+@media(max-width:700px){.trpg-search-shell{top:6px}.trpg-search{grid-template-columns:minmax(90px,1fr) auto auto auto;width:calc(100vw - 16px);padding:5px}.trpg-search-count{grid-column:1/3;min-height:15px;text-align:left}.trpg-search button{min-height:29px;padding:3px 7px}.trpg-search input{height:30px}.trpg-virtual-body{contain:layout style}}${normalizeAppTheme(theme) === "light" ? exportLightCssRaw() : ""}`;
 }
 
 function scopeExportCss(css, scope = "#trpg-log-app") {
@@ -7854,8 +8545,8 @@ function scopeExportCss(css, scope = "#trpg-log-app") {
   return walk(css);
 }
 
-function exportCss(scope = "[data-trpg-log-app]") {
-  return scopeExportCss(exportCssRaw(), scope);
+function exportCss(scope = "[data-trpg-log-app]", theme = currentExportTheme()) {
+  return scopeExportCss(exportCssRaw(theme), scope);
 }
 
 let exportInstanceSequence = 0;
@@ -7866,7 +8557,10 @@ function createExportInstanceId() {
 
 function exportEnhancementScript(rows, exportOptions = {}) {
   const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
-  const triggers = bgmTriggersForRows(rows);
+  const triggers = bgmTriggersForRows(rows).map(trigger => {
+    const index = rows.findIndex(row => trigger.uid ? row.uid === trigger.uid : Number(row.sourceDisplayId ?? row.id) === Number(trigger.id));
+    return index >= 0 ? { ...trigger, id: index + 1 } : trigger;
+  });
   const pageRanges = exportOptions.pageRanges || null;
   if (!useSide && !triggers.length && !pageRanges) return "";
   const options = {
@@ -7891,7 +8585,132 @@ function notionStaticExportEnabled() {
   return !!el("notionStatic")?.checked;
 }
 
+
+/* MODULE: export identity — 출력 내부 인덱스는 1..N 순서를 사용한다. */
+function normalizeRowsForExportRuntime(rows) {
+  return rows.map((row, index) => ({
+    ...row,
+    sourceDisplayId: row.sourceDisplayId ?? row.id,
+    id: index + 1,
+    order: index,
+    _order: index
+  }));
+}
+
+function validateExportRows(rows, expectedCount = rows.length) {
+  if (!Array.isArray(rows) || !rows.length) throw new Error("내보낼 메시지가 없습니다.");
+  if (rows.length !== expectedCount) throw new Error(`내보내기 범위 수가 달라졌습니다. (${rows.length}/${expectedCount})`);
+  const uidSet = new Set();
+  let previousOrder = -Infinity;
+  rows.forEach((row, index) => {
+    if (!row || !row.uid) throw new Error(`${index + 1}번째 메시지의 내부 uid가 없습니다.`);
+    if (uidSet.has(row.uid)) throw new Error(`중복 내부 uid가 발견되었습니다: ${row.uid}`);
+    uidSet.add(row.uid);
+    const order = messageOrder(row);
+    if (!Number.isFinite(order)) throw new Error(`${index + 1}번째 메시지의 내부 order가 없습니다.`);
+    if (order < previousOrder) throw new Error("메시지 order가 원본 순서와 다릅니다.");
+    previousOrder = order;
+  });
+  return { rows: rows.length, uniqueUids: uidSet.size };
+}
+
+function validateGeneratedExport(html, expectedCount) {
+  const source = String(html || "");
+  if (source.length < 300) throw new Error("생성된 HTML이 비정상적으로 짧습니다.");
+  const marker = source.match(/data-trpg-export-count=["'](\d+)["']/);
+  if (!marker) throw new Error("생성 결과에서 메시지 수 검증 표식을 찾지 못했습니다.");
+  const actual = Number(marker[1]);
+  if (actual !== Number(expectedCount)) throw new Error(`생성 결과 메시지 수가 다릅니다. (${actual}/${expectedCount})`);
+  if (!source.includes("data-trpg-converter-settings")) throw new Error("생성 결과에 컨버터 설정이 포함되지 않았습니다.");
+  return { chars: source.length, rows: actual };
+}
+
+function exportValidationSummary(rows, extra = {}) {
+  const triggerCount = bgmTriggersForRows(rows).length;
+  const splitCount = previewSplitEntries().filter(entry => {
+    const order = resolvedSplitOrder(entry);
+    if (!Number.isFinite(order)) return false;
+    return rows.some(row => messageOrder(row) === order);
+  }).length;
+  return {
+    scope: exportUsesFilteredRows() ? "필터 결과" : "전체 로그",
+    rows: rows.length,
+    bgm: triggerCount,
+    splits: splitCount,
+    ...extra
+  };
+}
+
+function showExportValidation(result) {
+  state.lastExportValidation = result;
+  const node = el("exportValidationSummary");
+  if (!node) return;
+  node.hidden = false;
+  node.textContent = `검증 완료 · ${result.scope} ${result.rows.toLocaleString()}개 · BGM ${result.bgm.toLocaleString()}개 · 분할점 ${result.splits.toLocaleString()}개${result.parts ? ` · 파일 ${result.parts.toLocaleString()}개` : ""}`;
+}
+
+function setExportTaskProgress(message) {
+  const node = el("exportValidationSummary");
+  if (node) {
+    node.hidden = false;
+    node.textContent = message;
+  }
+  setStatus(message);
+}
+
+function setExportBusy(busy, label = "") {
+  state.exportBusy = busy;
+  ["copyBtn", "saveBtn", "stickyCopyBtn", "stickySaveBtn"].forEach(id => {
+    const button = el(id);
+    if (!button) return;
+    button.disabled = busy || !state.messages.length || !currentExportRows().length;
+    if (busy) {
+      button.setAttribute("aria-busy", "true");
+      button.textContent = label || "HTML 생성 중…";
+    } else {
+      button.removeAttribute("aria-busy");
+    }
+  });
+  if (!busy) updateFilterAndExportSummary();
+  syncStickyActions();
+}
+
+async function runExportTask(kind, worker) {
+  if (state.exportBusy) return null;
+  const sourceRows = currentExportRows();
+  if (!sourceRows.length) {
+    setStatus("내보낼 메시지가 없습니다. 필터를 조정하거나 전체 내보내기로 바꿔 주세요.");
+    updateFilterAndExportSummary();
+    return null;
+  }
+  const label = kind === "copy" ? "복사 준비 중…" : "파일 준비 중…";
+  setExportBusy(true, label);
+  try {
+    validateExportRows(sourceRows, sourceRows.length);
+    const preparedRows = await prepareRowsForExport(sourceRows, setExportTaskProgress);
+    validateExportRows(preparedRows, sourceRows.length);
+    setExportTaskProgress(`HTML 생성 중 · ${preparedRows.length.toLocaleString()}개 메시지`);
+    const extra = await worker(preparedRows);
+    const summary = exportValidationSummary(preparedRows, extra || {});
+    showExportValidation(summary);
+    scheduleWorkDraftSave();
+    return summary;
+  } catch (error) {
+    console.error(error);
+    const node = el("exportValidationSummary");
+    if (node) {
+      node.hidden = false;
+      node.textContent = `검증 실패 · ${error.message}`;
+    }
+    setStatus(`⚠ 내보내기 실패: ${error.message}`);
+    return null;
+  } finally {
+    setExportBusy(false);
+  }
+}
+
 function buildStaticExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment = false) {
+  rows = normalizeRowsForExportRuntime(rows);
   const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
   const mainRows = useSide ? rows.filter(row => normalizedTab(row.tab) !== "other") : rows;
   const otherRows = useSide ? rows.filter(row => normalizedTab(row.tab) === "other") : [];
@@ -7908,18 +8727,20 @@ function buildStaticExportMarkup(rows, titleSuffix = "", exportOptions = {}, fra
   const title = state.title + titleSuffix;
   const instanceId = createExportInstanceId();
   const scopeSelector = `#${instanceId}`;
+  const exportTheme = currentExportTheme();
+  const themePalette = exportThemePalette(exportTheme);
   const body = useSide
     ? `<div class="layout"><section class="ccfolia-wrap">${rowHtml}</section><aside class="other-wrap">${otherHtml}</aside></div>`
     : `<section class="ccfolia-wrap">${rowHtml}</section>`;
-  const app = `<div id="${instanceId}" class="trpg-log-app" data-trpg-log-app><main class="page"><h1 class="title">${escapeHtml(title)}</h1>${body}</main>${exportConverterSettingsScript(instanceId)}${exportEnhancementScript(rows, exportOptions)}</div>`;
+  const app = `<div id="${instanceId}" class="trpg-log-app" data-trpg-log-app data-theme="${exportTheme}" data-trpg-export-count="${rows.length}"><main class="page"><h1 class="title">${escapeHtml(title)}</h1>${body}</main>${exportConverterSettingsScript(instanceId)}${exportEnhancementScript(rows, exportOptions)}</div>`;
   state.lastCompactStats = {
     mode: "static",
     rows: rows.length,
     images: new Set(rows.map(row => row.imgUrl).filter(Boolean)).size
   };
-  const style = `<style>${exportCss(scopeSelector)}</style>`;
+  const style = `<style>${exportCss(scopeSelector, exportTheme)}</style>`;
   if (fragment) return `${style}${app}`;
-  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="trpg-log-storage" content="static-compat-v3.2;rows=${rows.length}"><title>${escapeHtml(title)}</title>${style}</head><body style="margin:0;background:#181818">${app}</body></html>`;
+  return `<!DOCTYPE html><html lang="ko" data-theme="${exportTheme}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="${themePalette.themeColor}"><meta name="trpg-log-storage" content="static-compat-v3.2;rows=${rows.length}"><title>${escapeHtml(title)}</title>${style}</head><body style="margin:0;background:${themePalette.background}">${app}</body></html>`;
 }
 
 function buildStaticExportHtml(rows, titleSuffix = "", exportOptions = {}) {
@@ -7957,6 +8778,7 @@ function imageOptimizationStatusText() {
 }
 
 function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment = false) {
+  rows = normalizeRowsForExportRuntime(rows);
   const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
   const payload = createCompactLogPayload(rows, useSide);
   const payloadJson = escapeScriptJson(payload);
@@ -7971,10 +8793,12 @@ function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment 
   const instanceId = createExportInstanceId();
   const scopeSelector = `#${instanceId}`;
   const dataId = `${instanceId}-data`;
-  const app = `<div id="${instanceId}" class="trpg-log-app" data-trpg-log-app><main class="page"><h1 class="title">${escapeHtml(title)}</h1><div data-trpg-log-root></div></main><script type="application/json" id="${dataId}" data-trpg-log-data>${payloadJson}<\/script>${compactRendererScript()}${exportConverterSettingsScript(instanceId)}${exportEnhancementScript(rows, exportOptions)}</div>`;
-  const style = `<style>${exportCss(scopeSelector)}</style>`;
+  const exportTheme = currentExportTheme();
+  const themePalette = exportThemePalette(exportTheme);
+  const app = `<div id="${instanceId}" class="trpg-log-app" data-trpg-log-app data-theme="${exportTheme}" data-trpg-export-count="${rows.length}"><main class="page"><h1 class="title">${escapeHtml(title)}</h1><div data-trpg-log-root></div></main><script type="application/json" id="${dataId}" data-trpg-log-data>${payloadJson}<\/script>${compactRendererScript()}${exportConverterSettingsScript(instanceId)}${exportEnhancementScript(rows, exportOptions)}</div>`;
+  const style = `<style>${exportCss(scopeSelector, exportTheme)}</style>`;
   if (fragment) return `${style}${app}`;
-  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="trpg-log-storage" content="compact-v6;rows=${rows.length};profiles=${payload.p.length};images=${payload.i.filter(Boolean).length}"><title>${escapeHtml(title)}</title>${style}</head><body style="margin:0;background:#181818">${app}</body></html>`;
+  return `<!DOCTYPE html><html lang="ko" data-theme="${exportTheme}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="${themePalette.themeColor}"><meta name="trpg-log-storage" content="compact-v6;rows=${rows.length};profiles=${payload.p.length};images=${payload.i.filter(Boolean).length}"><title>${escapeHtml(title)}</title>${style}</head><body style="margin:0;background:${themePalette.background}">${app}</body></html>`;
 }
 
 function buildExportHtml(rows, titleSuffix = "", exportOptions = {}) {
@@ -8297,11 +9121,9 @@ function buildDistributionGuideText() {
 `;
 }
 
-async function createExportLinks() {
-  const rows = await prepareRowsForExport(state.visible.length ? state.visible : state.messages);
+async function createExportLinksFromRows(rows) {
   const split = Number(el("splitSize").value);
-  const manualPoints = parseSplitPoints(el("manualSplits").value);
-  const manualOtherPoints = parseSplitPoints(el("manualOtherSplits").value);
+  const boundaryEntries = previewSplitEntries();
   const box = el("exportLinks");
   state.exportObjectUrls.forEach(url => URL.revokeObjectURL(url));
   state.exportObjectUrls.length = 0;
@@ -8309,42 +9131,35 @@ async function createExportLinks() {
 
   if (splitAsPagesEnabled()) {
     const pageRanges = splitPageRangesForRows(rows);
-    downloadText(buildFileName(""), buildSelectedExportHtml(rows, "", { pageRanges }));
+    const html = buildSelectedExportHtml(rows, "", { pageRanges });
+    validateGeneratedExport(html, rows.length);
+    downloadText(buildFileName(""), html);
     setStatus((pageRanges ? `페이지 ${pageRanges.length.toLocaleString()}개가 들어간 HTML 파일을 만들었습니다.` : "분할 기준이 없어 일반 HTML 파일을 만들었습니다.") + ` (${imageOptimizationStatusText()})`);
-    return;
+    return { parts: 1, pages: pageRanges?.length || 1 };
   }
 
   let parts = [];
-  if (manualPoints.length || manualOtherPoints.length) {
-    const boundaryPoints = [...new Set([...manualPoints, ...manualOtherPoints])].sort((a, b) => a - b);
-    if (sideOtherEnabled() && manualOtherPoints.length) {
-      const leftRows = rows.filter(row => normalizedTab(row.tab) !== "other");
-      const rightRows = rows.filter(row => normalizedTab(row.tab) === "other");
-      const alignedRanges = pageRangesFromAfterIds(rows, boundaryPoints) || [{ startId: rows[0]?.id || 0, endId: Infinity }];
-      const leftParts = splitRowsByRanges(leftRows, alignedRanges);
-      const rightParts = splitRowsByRanges(rightRows, alignedRanges);
-      const count = Math.max(leftParts.length, rightParts.length);
-      for (let i = 0; i < count; i++) {
-        parts.push([...(leftParts[i] || []), ...(rightParts[i] || [])].sort((a, b) => a.id - b.id));
-      }
-    } else {
-      parts = splitRowsByAfterIds(rows, boundaryPoints);
-    }
+  if (boundaryEntries.length) {
+    parts = splitRowsByAfterIds(rows, boundaryEntries);
   } else if (split) {
     const count = Math.ceil(rows.length / split);
-    for (let i = 0; i < count; i++) {
-      parts.push(rows.slice(i * split, i * split + split));
-    }
+    for (let i = 0; i < count; i += 1) parts.push(rows.slice(i * split, i * split + split));
   }
 
-  if (!parts.length) {
-    downloadText(buildFileName(""), buildSelectedExportHtml(rows));
+  if (!parts.length || parts.length === 1) {
+    const html = buildSelectedExportHtml(rows);
+    validateGeneratedExport(html, rows.length);
+    downloadText(buildFileName(""), html);
     setStatus(`HTML 파일을 저장했습니다. (${imageOptimizationStatusText()})`);
-    return;
+    return { parts: 1 };
   }
-  for (let i = 0; i < parts.length; i++) {
+
+  const totalRows = parts.reduce((sum, part) => sum + part.length, 0);
+  if (totalRows !== rows.length) throw new Error(`분할 결과 메시지 수가 다릅니다. (${totalRows}/${rows.length})`);
+  for (let i = 0; i < parts.length; i += 1) {
     const partRows = parts[i];
     const html = buildSelectedExportHtml(partRows, ` ${i + 1}`);
+    validateGeneratedExport(html, partRows.length);
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     state.exportObjectUrls.push(url);
@@ -8354,7 +9169,8 @@ async function createExportLinks() {
     a.textContent = `${i + 1} / ${parts.length} 저장 (${partRows.length.toLocaleString()}개)`;
     box.append(a);
   }
-  setStatus(`분할 HTML 링크를 만들었습니다. 마지막 파일 기준 ${imageOptimizationStatusText()}.`);
+  setStatus(`분할 HTML ${parts.length.toLocaleString()}개를 검증해 저장 링크로 만들었습니다. ${imageOptimizationStatusText()}.`);
+  return { parts: parts.length };
 }
 
 async function analyze() {
@@ -8377,8 +9193,6 @@ async function analyze() {
     state.page = 1;
     rebuildFilters();
     updateView();
-    el("saveBtn").disabled = false;
-    el("copyBtn").disabled = false;
     el("resetFiltersBtn").disabled = false;
     const otherNote = state.otherText ? `, other ${otherRows.length.toLocaleString()}개 별도 병합` : "";
     const portraitMatches = (state.stats.messageId || 0) + (state.stats.index || 0) + state.stats.exact + state.stats.fallback;
@@ -8401,6 +9215,8 @@ async function analyze() {
     updateFileUploadSummary("analyzed");
     if (el("fileUploadDetails")) el("fileUploadDetails").open = false;
     updateWorkflowUi(true);
+    offerWorkDraftRecovery();
+    updateFilterAndExportSummary();
   } catch (error) {
     console.error(error);
     setStatus(`오류: ${error.message}`);
@@ -8412,7 +9228,18 @@ orderFile.addEventListener("change", async () => {
   state.inlineImageCache.clear();
   state.lastCompactStats = null;
   state.lastAnalysis = null;
+  state.messages = [];
+  state.visible = [];
+  state.selectedTabs = new Set();
+  state.selectedChars = new Set();
+  state.bgmTriggerByUid = new Map();
+  bgmTriggerMap = new Map();
   state.orderText = await readFile(orderFile.files[0]);
+  state.workKey = buildWorkKey(orderFile.files[0], state.orderText);
+  state.pendingDraft = loadWorkDraft(state.workKey);
+  state.draftDecisionPending = Boolean(state.pendingDraft);
+  hideDraftRecovery();
+  if (el("exportFilteredOnly")) el("exportFilteredOnly").checked = false;
   el("analyzeBtn").disabled = !state.orderText;
   const restored = applySavedConverterSettings(extractSavedConverterSettings(state.orderText));
   const restoreNote = restored.length ? ` 저장된 ${restored.join(", ")}을 불러왔습니다.` : "";
@@ -8435,6 +9262,7 @@ otherFile.addEventListener("change", async () => {
   updateFileUploadSummary("selected");
   updateWorkflowUi(false);
   setStatus(file ? "other 탭 HTML을 읽었습니다." : "other 탭 HTML 선택을 해제했습니다.");
+  scheduleWorkDraftSave();
 });
 
 jsonFile.addEventListener("change", async () => {
@@ -8445,6 +9273,7 @@ jsonFile.addEventListener("change", async () => {
   updateFileUploadSummary("selected");
   updateWorkflowUi(false);
   setStatus("이미지 정보 파일을 읽었습니다.");
+  scheduleWorkDraftSave();
 });
 
 
@@ -8486,6 +9315,11 @@ document.addEventListener("keydown", event => {
     openAppDialog("helpDialog", "helpQuick");
   }
 });
+el("themeToggleBtn")?.addEventListener("click", toggleAppTheme);
+window.addEventListener("storage", event => {
+  if (event.key === THEME_STORAGE_KEY && event.newValue) applyAppTheme(event.newValue);
+});
+applyAppTheme(loadAppTheme());
 applyAppVersion();
 loadLastPreferences();
 applyStyleControls();
@@ -8503,9 +9337,9 @@ el("analyzeBtn").addEventListener("click", analyze);
 document.querySelectorAll("[data-copy-helper-bookmarklet]").forEach(button => button.addEventListener("click", copyHelperBookmarklet));
 document.querySelectorAll("[data-copy-youtube-playlist-bookmarklet]").forEach(button => button.addEventListener("click", copyPlaylistHelperBookmarklet));
 document.querySelectorAll("[data-copy-jukebox-playlist-bookmarklet]").forEach(button => button.addEventListener("click", copyJukeboxPlaylistHelperBookmarklet));
-el("fontSize").addEventListener("input", updateView);
-el("lineHeight").addEventListener("input", updateView);
-el("avatarSize").addEventListener("input", updateView);
+el("fontSize").addEventListener("input", updateStyleOnly);
+el("lineHeight").addEventListener("input", updateStyleOnly);
+el("avatarSize").addEventListener("input", updateStyleOnly);
 el("pageSize").addEventListener("change", () => { state.page = 1; updateView(); });
 el("groupRows").addEventListener("change", updateView);
 el("sideOther").addEventListener("change", () => { state.page = 1; updateView(); });
@@ -8518,6 +9352,7 @@ const debouncedSearchUpdate = debounce(() => {
 }, 140);
 const debouncedBgmTriggerPreview = debounce(() => {
   rebuildBgmTriggerMap();
+  scheduleWorkDraftSave();
   if (bgmScenePagesEnabled()) {
     state.page = 1;
     updateView();
@@ -8527,12 +9362,16 @@ const debouncedBgmTriggerPreview = debounce(() => {
 }, 260);
 const debouncedBgmPlaylistPreview = debounce(() => {
   renderBgmTriggerList();
+  scheduleWorkDraftSave();
   if (state.messages.length) renderPreview({ preserveScroll: true });
 }, 260);
 el("searchBox").addEventListener("input", debouncedSearchUpdate);
 el("bgmTriggers").addEventListener("input", debouncedBgmTriggerPreview);
 el("bgmUrl").addEventListener("input", debouncedBgmPlaylistPreview);
-el("bgmAutoplay").addEventListener("change", () => renderPreview({ preserveScroll: true }));
+el("bgmAutoplay").addEventListener("change", () => {
+  renderPreview({ preserveScroll: true });
+  scheduleWorkDraftSave();
+});
 el("bgmScenePages").addEventListener("change", () => { state.page = 1; updateView(); });
 el("prevBtn").addEventListener("click", () => { state.page -= 1; updateView(); });
 el("nextBtn").addEventListener("click", () => { state.page += 1; updateView(); });
@@ -8541,6 +9380,7 @@ const refreshSplitPreview = debounce(() => {
   el("clearSplitsBtn").disabled = !el("manualSplits").value.trim() && !el("manualOtherSplits").value.trim();
   syncSplitButtonStates();
   if (state.messages.length) renderPreview({ preserveScroll: true });
+  scheduleWorkDraftSave();
 }, 120);
 el("manualSplits").addEventListener("input", refreshSplitPreview);
 el("manualOtherSplits").addEventListener("input", refreshSplitPreview);
@@ -8548,58 +9388,72 @@ el("clearSplitsBtn").addEventListener("click", () => {
   el("manualSplits").value = "";
   el("manualOtherSplits").value = "";
   state.splitOrderHints.clear();
+  state.splitUidHints.clear();
   el("clearSplitsBtn").disabled = true;
   syncSplitButtonStates();
   if (state.messages.length) renderPreview({ preserveScroll: true });
   setStatus("모든 분할점을 지웠습니다.");
+  scheduleWorkDraftSave();
 });
-el("saveBtn").addEventListener("click", createExportLinks);
+el("saveBtn").addEventListener("click", () => runExportTask("save", createExportLinksFromRows));
 el("exportGuideBtn").addEventListener("click", () => {
   downloadText("TRPG_로그_사용법.txt", buildDistributionGuideText(), "text/plain;charset=utf-8");
   setStatus("배포용 사용법 TXT를 만들었습니다.");
 });
-async function copyFinalHtml() {
-  const mainButton = el("copyBtn");
-  const stickyButton = el("stickyCopyBtn");
-  const buttons = [mainButton, stickyButton].filter(Boolean);
-  const disabledStates = new Map(buttons.map(button => [button, button.disabled]));
-  buttons.forEach(button => {
-    if (!button.dataset.originalText) button.dataset.originalText = button.textContent;
-    button.disabled = true;
-    button.classList.remove("is-copy-success", "is-copy-error");
-    button.textContent = "HTML 생성 중…";
-    button.setAttribute("aria-busy", "true");
-  });
-  try {
-    const rows = await prepareRowsForExport(state.visible.length ? state.visible : state.messages);
-    const html = buildSelectedExportFragment(rows, "", { pageRanges: splitAsPagesEnabled() ? splitPageRangesForRows(rows) : null });
-    const copied = await copyTextRobust(html);
-    if (!copied) throw new Error("브라우저가 클립보드 복사를 허용하지 않았습니다.");
-    flashButtonText("copyBtn", "✓ HTML 복사 완료", "is-copy-success", 3400);
-    flashButtonText("stickyCopyBtn", "✓ 복사 완료", "is-copy-success", 3400);
-    setStatus(`✓ 완성 HTML을 클립보드에 복사했습니다. 티스토리 HTML 모드에 붙여넣으세요. (${imageOptimizationStatusText()})`);
-  } catch (error) {
-    console.error(error);
-    flashButtonText("copyBtn", "복사 실패 · 파일 저장 이용", "is-copy-error", 3600);
-    flashButtonText("stickyCopyBtn", "복사 실패", "is-copy-error", 3600);
-    setStatus(`⚠ HTML 복사 실패: ${error.message} HTML 파일 저장을 이용해 주세요.`);
-  } finally {
-    buttons.forEach(button => {
-      button.removeAttribute("aria-busy");
-      button.disabled = disabledStates.get(button) ?? false;
-    });
-  }
+async function copyFinalHtmlFromRows(rows) {
+  const pageRanges = splitAsPagesEnabled() ? splitPageRangesForRows(rows) : null;
+  const html = buildSelectedExportFragment(rows, "", { pageRanges });
+  validateGeneratedExport(html, rows.length);
+  const copied = await copyTextRobust(html);
+  if (!copied) throw new Error("브라우저가 클립보드 복사를 허용하지 않았습니다.");
+  setStatus(`✓ ${rows.length.toLocaleString()}개 메시지의 HTML을 검증하고 복사했습니다. 티스토리 HTML 모드에 붙여넣으세요. (${imageOptimizationStatusText()})`);
+  return { parts: 1, pages: pageRanges?.length || 1 };
+}
+
+function copyFinalHtml() {
+  return runExportTask("copy", copyFinalHtmlFromRows);
 }
 el("copyBtn").addEventListener("click", copyFinalHtml);
 el("stickyAnalyzeBtn")?.addEventListener("click", () => el("analyzeBtn")?.click());
 el("stickyCopyBtn")?.addEventListener("click", copyFinalHtml);
-el("stickySaveBtn")?.addEventListener("click", () => el("saveBtn")?.click());
+el("stickySaveBtn")?.addEventListener("click", () => runExportTask("save", createExportLinksFromRows));
 PREFERENCE_FIELDS.forEach(id => {
   const control = el(id);
   if (!control) return;
   const eventName = control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
-  control.addEventListener(eventName, saveLastPreferences);
+  control.addEventListener(eventName, () => {
+    saveLastPreferences();
+    scheduleWorkDraftSave();
+  });
 });
+
+el("exportFilteredOnly")?.addEventListener("change", () => {
+  updateFilterAndExportSummary();
+  syncStickyActions();
+  scheduleWorkDraftSave();
+});
+
+el("restoreDraftBtn")?.addEventListener("click", () => {
+  const restored = applyWorkDraft(state.pendingDraft);
+  state.draftDecisionPending = false;
+  state.pendingDraft = null;
+  hideDraftRecovery();
+  if (restored) {
+    saveWorkDraftNow();
+    setStatus("이전 편집 작업을 복구했습니다. BGM·분할점·필터 상태를 확인해 주세요.");
+  }
+});
+
+el("discardDraftBtn")?.addEventListener("click", () => {
+  if (state.workKey) appStorage()?.removeItem(state.workKey);
+  state.pendingDraft = null;
+  state.draftDecisionPending = false;
+  hideDraftRecovery();
+  saveWorkDraftNow();
+  setStatus("이전 임시 작업을 지우고 현재 상태로 새 작업을 시작했습니다.");
+});
+
+updateFilterAndExportSummary();
 
 el("resetFiltersBtn").addEventListener("click", () => {
   debouncedSearchUpdate.cancel();
