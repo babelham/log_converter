@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.65">
+<meta name="trpg-app-version" content="6.67">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2129,7 +2129,7 @@ html[data-theme="light"] .bgm-track-thumb.is-external { background: rgba(37,99,1
 .preview-shell.is-style-adjusting { contain: layout paint; }
 
 
-/* v6.65 — converter and exported log share the selected fixed theme. */
+/* v6.67 — converter and exported log share the selected fixed theme. */
 .theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -2791,8 +2791,16 @@ function debounce(fn, wait = 150) {
     timer = setTimeout(() => fn.apply(this, args), wait);
   }
   debounced.cancel = () => { clearTimeout(timer); timer = 0; };
+  debounced.flush = () => {
+    if (!timer) return;
+    clearTimeout(timer);
+    timer = 0;
+    fn();
+  };
   return debounced;
 }
+
+const scheduleLastPreferencesSave = debounce(saveLastPreferences, 280);
 
 
 /* MODULE: identity — display id와 내부 uid/order를 분리한다. */
@@ -2818,27 +2826,117 @@ function deterministicMessageUid(message, order) {
   return `m-${order.toString(36)}-${stableTextHash(seed)}`;
 }
 
+const messageIdentityIndex = {
+  source: null,
+  length: -1,
+  firstUid: "",
+  lastUid: "",
+  byUid: new Map(),
+  byOrder: new Map(),
+  byId: new Map(),
+  orderByMessage: new WeakMap()
+};
+
+function resetMessageIdentityIndex() {
+  messageIdentityIndex.source = null;
+  messageIdentityIndex.length = -1;
+  messageIdentityIndex.firstUid = "";
+  messageIdentityIndex.lastUid = "";
+  messageIdentityIndex.byUid.clear();
+  messageIdentityIndex.byOrder.clear();
+  messageIdentityIndex.byId.clear();
+  messageIdentityIndex.orderByMessage = new WeakMap();
+}
+
+function rebuildMessageIdentityIndex(messages = state.messages) {
+  resetMessageIdentityIndex();
+  const rows = Array.isArray(messages) ? messages : [];
+  messageIdentityIndex.source = rows;
+  messageIdentityIndex.length = rows.length;
+  messageIdentityIndex.firstUid = String(rows[0]?.uid || "");
+  messageIdentityIndex.lastUid = String(rows[rows.length - 1]?.uid || "");
+  rows.forEach((message, index) => {
+    const uid = String(message?.uid || "");
+    const explicitOrder = Number(message?.order);
+    const legacyOrder = Number(message?._order);
+    const order = Number.isFinite(explicitOrder) && explicitOrder >= 0
+      ? explicitOrder
+      : Number.isFinite(legacyOrder) && legacyOrder >= 0
+        ? legacyOrder
+        : index;
+    if (uid && !messageIdentityIndex.byUid.has(uid)) messageIdentityIndex.byUid.set(uid, message);
+    if (!messageIdentityIndex.byOrder.has(order)) messageIdentityIndex.byOrder.set(order, message);
+    const id = Number(message?.id);
+    if (Number.isFinite(id) && !messageIdentityIndex.byId.has(id)) messageIdentityIndex.byId.set(id, message);
+    if (message && typeof message === "object") messageIdentityIndex.orderByMessage.set(message, order);
+  });
+  return messageIdentityIndex;
+}
+
+function ensureMessageIdentityIndex() {
+  const rows = state.messages;
+  const firstUid = String(rows[0]?.uid || "");
+  const lastUid = String(rows[rows.length - 1]?.uid || "");
+  if (
+    messageIdentityIndex.source !== rows ||
+    messageIdentityIndex.length !== rows.length ||
+    messageIdentityIndex.firstUid !== firstUid ||
+    messageIdentityIndex.lastUid !== lastUid
+  ) rebuildMessageIdentityIndex(rows);
+  return messageIdentityIndex;
+}
+
 function messageOrder(message) {
   const explicit = Number(message?.order);
   if (Number.isFinite(explicit) && explicit >= 0) return explicit;
   const legacy = Number(message?._order);
   if (Number.isFinite(legacy) && legacy >= 0) return legacy;
-  const index = state.messages.indexOf(message);
-  return index >= 0 ? index : null;
+  if (!message || typeof message !== "object") return null;
+  return ensureMessageIdentityIndex().orderByMessage.get(message) ?? null;
 }
 
 function messageByUid(uid) {
-  return state.messages.find(message => message.uid === uid) || null;
+  const key = String(uid || "");
+  return key ? ensureMessageIdentityIndex().byUid.get(key) || null : null;
 }
 
 function messageByIdentity({ uid = "", id = 0, order = null } = {}) {
+  const index = ensureMessageIdentityIndex();
   if (uid) {
-    const matched = messageByUid(uid);
+    const matched = index.byUid.get(String(uid));
     if (matched) return matched;
   }
-  const numericOrder = Number(order);
-  if (Number.isFinite(numericOrder) && state.messages[numericOrder]) return state.messages[numericOrder];
-  return state.messages.find(message => Number(message.id) === Number(id)) || null;
+  if (order !== null && order !== undefined && order !== "") {
+    const numericOrder = Number(order);
+    if (Number.isFinite(numericOrder)) {
+      const matched = index.byOrder.get(numericOrder);
+      if (matched) return matched;
+    }
+  }
+  const numericId = Number(id);
+  return Number.isFinite(numericId) ? index.byId.get(numericId) || null : null;
+}
+
+function lowerBoundMessageOrder(rows, target) {
+  let low = 0;
+  let high = rows.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if ((messageOrder(rows[middle]) ?? Infinity) < target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function upperBoundMessageOrder(rows, target) {
+  let low = 0;
+  let high = rows.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if ((messageOrder(rows[middle]) ?? Infinity) <= target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 }
 
 /* MODULE: work draft — 원본 파일은 저장하지 않고 편집 상태만 보존한다. */
@@ -2952,14 +3050,20 @@ function applyWorkDraft(draft) {
 function setExportButtonLabel(buttonOrId, title, meta = "") {
   const button = typeof buttonOrId === "string" ? el(buttonOrId) : buttonOrId;
   if (!button) return;
-  const titleNode = document.createElement("span");
-  titleNode.className = "export-action-title";
-  titleNode.textContent = String(title || "");
-  const metaNode = document.createElement("span");
-  metaNode.className = "export-action-meta";
-  metaNode.textContent = String(meta || "");
-  metaNode.hidden = !metaNode.textContent;
-  button.replaceChildren(titleNode, metaNode);
+  let titleNode = button.querySelector(":scope > .export-action-title");
+  let metaNode = button.querySelector(":scope > .export-action-meta");
+  if (!titleNode || !metaNode) {
+    titleNode = document.createElement("span");
+    titleNode.className = "export-action-title";
+    metaNode = document.createElement("span");
+    metaNode.className = "export-action-meta";
+    button.replaceChildren(titleNode, metaNode);
+  }
+  const nextTitle = String(title || "");
+  const nextMeta = String(meta || "");
+  if (titleNode.textContent !== nextTitle) titleNode.textContent = nextTitle;
+  if (metaNode.textContent !== nextMeta) metaNode.textContent = nextMeta;
+  metaNode.hidden = !nextMeta;
 }
 
 function exportUsesFilteredRows() {
@@ -2982,8 +3086,8 @@ function updateFilterAndExportSummary() {
   if (el("toggleTabs")) el("toggleTabs").textContent = tabsSelected === state.tabs.length ? "모두 해제" : "모두 선택";
   if (el("toggleChars")) el("toggleChars").textContent = charsSelected === state.chars.length ? "모두 해제" : "모두 선택";
 
-  const rows = currentExportRows();
   const filtered = exportUsesFilteredRows();
+  const rows = filtered ? state.visible : state.messages;
   const scopeCard = el("exportScopeCard");
   scopeCard?.classList.toggle("is-filtered", filtered);
   if (el("exportScopeCount")) el("exportScopeCount").textContent = `${rows.length.toLocaleString()}개`;
@@ -3196,8 +3300,11 @@ function syncStickyActions(analyzed = Boolean(state.messages.length)) {
   const exportActions = el("stickyExportActions");
   const hasFile = Boolean(state.orderText || orderFile?.files?.length);
   const ready = analyzed;
-  const canExport = ready && currentExportRows().length > 0 && !state.exportBusy;
-  const showStickyExport = canExport && !primaryExportActionsVisible;
+  const hasExportRows = ready && currentExportRows().length > 0;
+  const canExport = hasExportRows && !state.exportBusy;
+  // 처리 중에는 버튼을 비활성화하되 고정 작업 영역 자체는 유지한다.
+  // 컨테이너를 숨겼다가 다시 표시하면 클릭 직후 버튼이 한 프레임 사라져 보인다.
+  const showStickyExport = hasExportRows && !primaryExportActionsVisible;
   if (analyzeButton) {
     analyzeButton.hidden = ready;
     analyzeButton.disabled = !hasFile;
@@ -4541,6 +4648,22 @@ function formatBgmTrigger(trigger) {
   return `${trigger.id}${trigger.uid ? `@${trigger.uid}` : ""} ${trigger.url}`;
 }
 
+const currentBgmTriggerCache = { text: null, source: null, length: -1, rows: [] };
+function currentBgmTriggers() {
+  const text = el("bgmTriggers")?.value || "";
+  if (
+    currentBgmTriggerCache.text !== text ||
+    currentBgmTriggerCache.source !== state.messages ||
+    currentBgmTriggerCache.length !== state.messages.length
+  ) {
+    currentBgmTriggerCache.text = text;
+    currentBgmTriggerCache.source = state.messages;
+    currentBgmTriggerCache.length = state.messages.length;
+    currentBgmTriggerCache.rows = parseBgmTriggerLines(text);
+  }
+  return currentBgmTriggerCache.rows;
+}
+
 let bgmTriggerMap = new Map();
 const bgmFetchedTitleByVideoId = new Map();
 const bgmTitleFetchPromises = new Map();
@@ -4619,7 +4742,7 @@ function addDirectBgmToPlaylist(videoId, url) {
 }
 
 function rebuildBgmTriggerMap() {
-  const triggers = parseBgmTriggerLines(el("bgmTriggers")?.value || "");
+  const triggers = currentBgmTriggers();
   state.bgmTriggerByUid = new Map(triggers.filter(trigger => trigger.uid).map(trigger => [trigger.uid, trigger]));
   bgmTriggerMap = new Map();
   triggers.forEach(trigger => {
@@ -4664,7 +4787,7 @@ function renderBgmTriggerList() {
   const count = el("bgmTriggerCount");
   if (!root) return;
   const previousScrollTop = root.scrollTop;
-  const triggers = parseBgmTriggerLines(el("bgmTriggers")?.value || "");
+  const triggers = currentBgmTriggers();
   const titleByTrackKey = new Map(
     bgmPlaylistItems().map(item => [bgmTrackKey(item), item.title || (item.type === "external" ? externalAudioTitleFromUrl(item.url) : "YouTube 영상")])
   );
@@ -4677,11 +4800,9 @@ function renderBgmTriggerList() {
     root.append(empty);
     return;
   }
-  const messagesById = new Map(state.messages.map(message => [Number(message.id), message]));
-  const messagesByUid = new Map(state.messages.map(message => [message.uid, message]));
   const fragment = document.createDocumentFragment();
   triggers.forEach(trigger => {
-    const message = (trigger.uid && messagesByUid.get(trigger.uid)) || messagesById.get(Number(trigger.id));
+    const message = messageByIdentity(trigger);
     const chatLabel = message ? compactBgmChatLabel(message) : "로그 분석 후 이동 가능";
     const trackTitle = bgmTitleForTrigger(trigger, titleByTrackKey);
 
@@ -5012,7 +5133,7 @@ function converterSettingsPayload() {
 function bgmTriggersForRows(rows) {
   const uids = new Set(rows.map(row => row.uid));
   const ids = new Set(rows.map(row => row.id));
-  return parseBgmTriggerLines(el("bgmTriggers").value).filter(trigger => trigger.uid ? uids.has(trigger.uid) : ids.has(trigger.id));
+  return currentBgmTriggers().filter(trigger => trigger.uid ? uids.has(trigger.uid) : ids.has(trigger.id));
 }
 
 function bgmScenePagesEnabled() {
@@ -5031,22 +5152,26 @@ function bgmSceneRangesForRows(rows) {
   if (!bgmScenePagesEnabled() || !rows.length) return null;
   const rowUids = new Set(rows.map(row => row.uid));
   const rowIds = new Set(rows.map(row => row.id));
-  const triggerOrders = parseBgmTriggerLines(el("bgmTriggers").value)
+  const triggerOrders = currentBgmTriggers()
     .filter(trigger => trigger.uid ? rowUids.has(trigger.uid) : rowIds.has(trigger.id))
     .map(trigger => messageOrder(messageByIdentity(trigger)))
     .filter(order => Number.isFinite(order));
   const firstOrder = messageOrder(rows[0]);
   const starts = [...new Set([firstOrder, ...triggerOrders])].sort((a, b) => a - b);
   if (starts.length > 1 && starts[0] < firstOrder) starts.shift();
-  const ranges = starts.map((startOrder, index) => ({
-    startOrder,
-    endOrder: starts[index + 1] ?? Infinity,
-    startId: rows.find(row => messageOrder(row) >= startOrder)?.id || rows[0].id,
-    endId: rows.find(row => messageOrder(row) >= (starts[index + 1] ?? Infinity))?.id || Infinity
-  })).filter(range => rows.some(row => {
-    const order = messageOrder(row);
-    return order >= range.startOrder && order < range.endOrder;
-  }));
+  const ranges = [];
+  starts.forEach((startOrder, index) => {
+    const startIndex = lowerBoundMessageOrder(rows, startOrder);
+    const endOrder = starts[index + 1] ?? Infinity;
+    const endIndex = Number.isFinite(endOrder) ? lowerBoundMessageOrder(rows, endOrder) : rows.length;
+    if (startIndex >= rows.length || endIndex <= startIndex) return;
+    ranges.push({
+      startOrder,
+      endOrder,
+      startId: rows[startIndex]?.id || rows[0].id,
+      endId: endIndex < rows.length ? rows[endIndex].id : Infinity
+    });
+  });
   return ranges.length ? ranges : null;
 }
 
@@ -5070,11 +5195,10 @@ function pageRangesFromAfterIds(rows, splitPoints) {
     .map(entry => ({ ...entry, order: resolvedSplitOrder(entry) }))
     .filter(entry => Number.isFinite(entry.order))
     .sort((a, b) => a.order - b.order);
-  const positions = entries.map(entry => {
-    let position = -1;
-    rows.forEach((row, index) => { if (messageOrder(row) <= entry.order) position = index; });
-    return { position, label: entry.label };
-  }).filter(entry => entry.position >= 0 && entry.position < rows.length - 1);
+  const positions = entries.map(entry => ({
+    position: upperBoundMessageOrder(rows, entry.order) - 1,
+    label: entry.label
+  })).filter(entry => entry.position >= 0 && entry.position < rows.length - 1);
   if (!positions.length) return null;
   const ranges = [];
   let start = 0;
@@ -5186,12 +5310,12 @@ async function addBgmTrigger(identity) {
   if (!message) return;
   const existingTrigger = state.bgmTriggerByUid.get(message.uid)
     || bgmTriggerMap.get(message.id)
-    || parseBgmTriggerLines(el("bgmTriggers").value).find(trigger => trigger.uid === message.uid || (!trigger.uid && trigger.id === message.id))
+    || currentBgmTriggers().find(trigger => trigger.uid === message.uid || (!trigger.uid && trigger.id === message.id))
     || null;
   const prompted = await chooseBgmUrlFromPlaylist({ currentTrigger: existingTrigger });
   if (prompted === null) return;
 
-  const triggers = parseBgmTriggerLines(el("bgmTriggers").value).filter(trigger => {
+  const triggers = currentBgmTriggers().filter(trigger => {
     if (trigger.uid) return trigger.uid !== message.uid;
     return trigger.id !== message.id;
   });
@@ -8043,6 +8167,10 @@ function inlineImageQuality() {
   return Math.min(90, Math.max(40, value)) / 100;
 }
 
+function inlineImageCacheKey(url, maxSize = inlineImageMaxSize(), quality = inlineImageQuality()) {
+  return `${url}\u001f${maxSize}\u001f${quality}`;
+}
+
 function canvasBlob(canvas, type, quality) {
   return new Promise((resolve, reject) => {
     if (!canvas.toBlob) {
@@ -8142,7 +8270,7 @@ async function compressedImageDataUrl(blob) {
 
 async function inlineImageUrl(url) {
   if (!url || url.startsWith("data:")) return url;
-  const cacheKey = `${url}\u001f${inlineImageMaxSize()}\u001f${inlineImageQuality()}`;
+  const cacheKey = inlineImageCacheKey(url);
   if (state.inlineImageCache.has(cacheKey)) return state.inlineImageCache.get(cacheKey);
   try {
     const controller = new AbortController();
@@ -8195,7 +8323,9 @@ async function prepareRowsForExport(rows, onProgress = null) {
       onProgress?.(`이미지 ${completed.toLocaleString()} / ${urls.length.toLocaleString()} 처리 중`);
     }
   }));
-  const results = urls.map(url => state.inlineImageCache.get(`${url}\u001f${inlineImageMaxSize()}\u001f${inlineImageQuality()}`) || url);
+  const maxSize = inlineImageMaxSize();
+  const quality = inlineImageQuality();
+  const results = urls.map(url => state.inlineImageCache.get(inlineImageCacheKey(url, maxSize, quality)) || url);
   const embedded = results.filter(value => String(value).startsWith("data:")).length;
   state.lastImageAssetStats = {
     requested: urls.length,
@@ -8207,11 +8337,30 @@ async function prepareRowsForExport(rows, onProgress = null) {
     return {
       ...row,
       sourceImgUrl: row.sourceImgUrl || row.imgUrl,
-      imgUrl: state.inlineImageCache.get(`${row.imgUrl}\u001f${inlineImageMaxSize()}\u001f${inlineImageQuality()}`) || row.imgUrl
+      imgUrl: state.inlineImageCache.get(inlineImageCacheKey(row.imgUrl, maxSize, quality)) || row.imgUrl
     };
   });
 }
 
+
+function buildRowIdentityLookup(rows) {
+  const byUid = new Map();
+  const byDisplayId = new Map();
+  rows.forEach((row, index) => {
+    const uid = String(row?.uid || "");
+    if (uid && !byUid.has(uid)) byUid.set(uid, index);
+    const id = Number(row?.sourceDisplayId ?? row?.id);
+    if (Number.isFinite(id) && !byDisplayId.has(id)) byDisplayId.set(id, index);
+  });
+  return { byUid, byDisplayId };
+}
+
+function rowIndexFromLookup(lookup, reference) {
+  const uid = String(reference?.uid || "");
+  if (uid && lookup.byUid.has(uid)) return lookup.byUid.get(uid);
+  const id = Number(reference?.id);
+  return Number.isFinite(id) && lookup.byDisplayId.has(id) ? lookup.byDisplayId.get(id) : -1;
+}
 
 function compactTableIndex(map, values, value) {
   const key = String(value ?? "");
@@ -8240,13 +8389,20 @@ function createCompactLogPayload(rows, useSide) {
   const textMap = new Map();
   const labelMap = new Map();
   const profileMap = new Map();
+  const safeColorByRaw = new Map();
+  const rowLookup = buildRowIdentityLookup(rows);
   const showLabels = el("showExpression").checked;
   let previousId = 0;
 
   for (const row of rows) {
     const tab = String(row.tab || "main");
     const name = String(row.name || "system");
-    const color = safeCssColor(row.color || "#dddddd");
+    const rawColor = String(row.color || "#dddddd");
+    let color = safeColorByRaw.get(rawColor);
+    if (color == null) {
+      color = safeCssColor(rawColor);
+      safeColorByRaw.set(rawColor, color);
+    }
     const image = String(row.imgUrl || "");
     const text = useSide && normalizedTab(tab) === "other"
       ? compactOtherText(row.text)
@@ -8274,7 +8430,7 @@ function createCompactLogPayload(rows, useSide) {
 
   const triggerData = [];
   for (const trigger of bgmTriggersForRows(rows)) {
-    const index = rows.findIndex(row => trigger.uid ? row.uid === trigger.uid : Number(row.sourceDisplayId ?? row.id) === Number(trigger.id));
+    const index = rowIndexFromLookup(rowLookup, trigger);
     if (index >= 0) triggerData.push(index + 1, String(trigger.url || ""));
   }
 
@@ -9533,8 +9689,14 @@ function compactExportRuntime(root) {
     }
   }
 }
+const exportRuntimeSourceCache = new Map();
+function exportRuntimeSource(name, runtime) {
+  if (!exportRuntimeSourceCache.has(name)) exportRuntimeSourceCache.set(name, runtime.toString());
+  return exportRuntimeSourceCache.get(name);
+}
+
 function compactRendererScript() {
-  return `<script>(()=>{const script=document.currentScript;const app=script?.closest?.("[data-trpg-log-app]")||document.getElementById("trpg-log-app")||document;try{(${compactExportRuntime.toString()})(app);}catch(error){console.error(error);if(app?.dataset)app.dataset.trpgBootState="failed";const fallback=app?.querySelector?.("[data-trpg-static-fallback]");const mount=app?.querySelector?.("[data-trpg-log-root]");if(fallback){app?.querySelectorAll?.("[data-trpg-search]").forEach(node=>(node.closest?.(".trpg-search-shell")||node).remove());const generatedMain=app?.querySelector?.("[data-trpg-main-list]");const generatedLayout=generatedMain?.closest?.(".layout");const target=generatedLayout?.querySelector?.("[data-trpg-other-list]")?generatedLayout:generatedMain;target?.remove?.();fallback.hidden=false;}if(mount&&fallback)mount.hidden=true;}})();<\/script>`;
+  return `<script>(()=>{const script=document.currentScript;const app=script?.closest?.("[data-trpg-log-app]")||document.getElementById("trpg-log-app")||document;try{(${exportRuntimeSource("compact", compactExportRuntime)})(app);}catch(error){console.error(error);if(app?.dataset)app.dataset.trpgBootState="failed";const fallback=app?.querySelector?.("[data-trpg-static-fallback]");const mount=app?.querySelector?.("[data-trpg-log-root]");if(fallback){app?.querySelectorAll?.("[data-trpg-search]").forEach(node=>(node.closest?.(".trpg-search-shell")||node).remove());const generatedMain=app?.querySelector?.("[data-trpg-main-list]");const generatedLayout=generatedMain?.closest?.(".layout");const target=generatedLayout?.querySelector?.("[data-trpg-other-list]")?generatedLayout:generatedMain;target?.remove?.();fallback.hidden=false;}if(mount&&fallback)mount.hidden=true;}})();<\/script>`;
 }
 
 function hostCompatibilityRuntime(root) {
@@ -9776,7 +9938,7 @@ function hostCompatibilityRuntime(root) {
 }
 
 function hostCompatibilityScript() {
-  return `<script>(()=>{const script=document.currentScript;const app=script?.closest?.("[data-trpg-log-app]")||document.getElementById("trpg-log-app")||document;(${hostCompatibilityRuntime.toString()})(app);})();<\/script>`;
+  return `<script>(()=>{const script=document.currentScript;const app=script?.closest?.("[data-trpg-log-app]")||document.getElementById("trpg-log-app")||document;(${exportRuntimeSource("host", hostCompatibilityRuntime)})(app);})();<\/script>`;
 }
 
 function currentExportTheme() {
@@ -10033,8 +10195,29 @@ function scopeExportCss(css, scope = "#trpg-log-app") {
   return walk(css);
 }
 
+const EXPORT_SCOPE_TOKEN = "#__TRPG_EXPORT_SCOPE__";
+const scopedExportCssTemplateCache = new Map();
+function exportCssCacheKey(theme) {
+  return [
+    normalizeAppTheme(theme),
+    el("fontSize")?.value || "",
+    el("lineHeight")?.value || "",
+    el("avatarSize")?.value || ""
+  ].join("|");
+}
+
 function exportCss(scope = "[data-trpg-log-app]", theme = currentExportTheme()) {
-  return scopeExportCss(exportCssRaw(theme), scope);
+  const key = exportCssCacheKey(theme);
+  let template = scopedExportCssTemplateCache.get(key);
+  if (!template) {
+    template = scopeExportCss(exportCssRaw(theme), EXPORT_SCOPE_TOKEN);
+    scopedExportCssTemplateCache.set(key, template);
+    if (scopedExportCssTemplateCache.size > 8) {
+      const oldest = scopedExportCssTemplateCache.keys().next().value;
+      scopedExportCssTemplateCache.delete(oldest);
+    }
+  }
+  return template.split(EXPORT_SCOPE_TOKEN).join(scope);
 }
 
 let exportInstanceSequence = 0;
@@ -10045,8 +10228,9 @@ function createExportInstanceId() {
 
 function exportEnhancementScript(rows, exportOptions = {}) {
   const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
+  const rowLookup = buildRowIdentityLookup(rows);
   const triggers = bgmTriggersForRows(rows).map(trigger => {
-    const index = rows.findIndex(row => trigger.uid ? row.uid === trigger.uid : Number(row.sourceDisplayId ?? row.id) === Number(trigger.id));
+    const index = rowIndexFromLookup(rowLookup, trigger);
     if (index < 0) return trigger;
     const row = rows[index];
     return {
@@ -10067,7 +10251,7 @@ function exportEnhancementScript(rows, exportOptions = {}) {
     pageOtherRows: pageRanges ? (!state.otherText && splitOtherAsPagesEnabled()) : false,
     manualOther: !!state.otherText
   };
-  return `<script>(()=>{const script=document.currentScript;const app=script?.closest?.("[data-trpg-log-app]")||document.getElementById("trpg-log-app")||document;const dataNode=app.querySelector?.("[data-trpg-log-data],#trpg-log-data");const run=()=>(${enhancementRuntime.toString()})(app,${escapeScriptJson(options)});if(dataNode&&!app.classList?.contains("trpg-log-ready")){app.addEventListener("trpg-log-ready",run,{once:true});}else{run();}})();<\/script>`;
+  return `<script>(()=>{const script=document.currentScript;const app=script?.closest?.("[data-trpg-log-app]")||document.getElementById("trpg-log-app")||document;const dataNode=app.querySelector?.("[data-trpg-log-data],#trpg-log-data");const run=()=>(${exportRuntimeSource("enhancement", enhancementRuntime)})(app,${escapeScriptJson(options)});if(dataNode&&!app.classList?.contains("trpg-log-ready")){app.addEventListener("trpg-log-ready",run,{once:true});}else{run();}})();<\/script>`;
 }
 
 function exportConverterSettingsScript(instanceId = "") {
@@ -10138,7 +10322,6 @@ function escapeTistorySrcdocAttribute(value) {
 
 function buildTistoryIframeFragment(rows, titleSuffix = "", exportOptions = {}) {
   const innerHtml = buildSelectedExportHtml(rows, titleSuffix, exportOptions);
-  validateGeneratedExport(innerHtml, rows.length);
   const frameId = createExportInstanceId().replace(/^trpg-log-/, "trpg-tistory-frame-");
   const title = state.title + titleSuffix;
   const palette = exportThemePalette(currentExportTheme());
@@ -10163,10 +10346,10 @@ function validateTistoryIframeFragment(html, expectedCount) {
 
 function exportValidationSummary(rows, extra = {}) {
   const triggerCount = bgmTriggersForRows(rows).length;
+  const rowOrders = new Set(rows.map(row => messageOrder(row)));
   const splitCount = previewSplitEntries().filter(entry => {
     const order = resolvedSplitOrder(entry);
-    if (!Number.isFinite(order)) return false;
-    return rows.some(row => messageOrder(row) === order);
+    return Number.isFinite(order) && rowOrders.has(order);
   }).length;
   return {
     scope: exportUsesFilteredRows() ? "필터 결과" : "전체 로그",
@@ -10325,8 +10508,12 @@ async function runExportTask(kind, worker) {
 }
 
 function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
-  const mainRows = useSide ? rows.filter(row => normalizedTab(row.tab) !== "other") : rows;
-  const otherRows = useSide ? rows.filter(row => normalizedTab(row.tab) === "other") : [];
+  let mainRows = rows;
+  const otherRows = [];
+  if (useSide) {
+    mainRows = [];
+    rows.forEach(row => (normalizedTab(row.tab) === "other" ? otherRows : mainRows).push(row));
+  }
   let previous = null;
   let groupTone = -1;
   const rowHtml = mainRows.map((row, index) => {
@@ -10405,6 +10592,12 @@ function imageOptimizationStatusText() {
   return `압축 데이터 ${size}, 메시지 ${stats.rows.toLocaleString()}개, 고유 이미지 ${stats.images.toLocaleString()}개${fallbackNote}${inlineNote}`;
 }
 
+const exportTextEncoder = typeof TextEncoder === "function" ? new TextEncoder() : null;
+function utf8ByteLength(value) {
+  const text = String(value || "");
+  return exportTextEncoder ? exportTextEncoder.encode(text).byteLength : new Blob([text]).size;
+}
+
 function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment = false) {
   rows = normalizeRowsForExportRuntime(rows);
   const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
@@ -10412,14 +10605,15 @@ function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment 
   const payloadJson = escapeScriptJson(payload);
   const includeFallback = tistoryFallbackExportEnabled();
   const fallbackMarkup = includeFallback ? buildStaticRowsBody(rows, useSide, { fallback: true }) : "";
-  const payloadBytes = new Blob([payloadJson]).size;
-  const fallbackBytes = includeFallback ? new Blob([fallbackMarkup]).size : 0;
+  const payloadBytes = utf8ByteLength(payloadJson);
+  const fallbackBytes = includeFallback ? utf8ByteLength(fallbackMarkup) : 0;
+  const imageCount = payload.i.reduce((count, value) => count + (value ? 1 : 0), 0);
   state.lastCompactStats = {
     mode: includeFallback ? "compact-fallback" : "compact",
     bytes: payloadBytes,
     fallbackBytes,
     rows: rows.length,
-    images: payload.i.filter(Boolean).length,
+    images: imageCount,
     profiles: payload.p.length,
     texts: payload.x.length
   };
@@ -10435,7 +10629,7 @@ function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment 
   const style = `<style>${exportCss(scopeSelector, exportTheme)}</style>`;
   if (fragment) return `${style}${app}`;
   const storageMode = includeFallback ? "compact-v6+static-fallback-v1" : "compact-v6";
-  return `<!DOCTYPE html><html lang="ko" data-theme="${exportTheme}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="${themePalette.themeColor}"><meta name="trpg-log-storage" content="${storageMode};rows=${rows.length};profiles=${payload.p.length};images=${payload.i.filter(Boolean).length}"><title>${escapeHtml(title)}</title>${style}</head><body style="margin:0;background:${themePalette.background}">${app}</body></html>`;
+  return `<!DOCTYPE html><html lang="ko" data-theme="${exportTheme}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="${themePalette.themeColor}"><meta name="trpg-log-storage" content="${storageMode};rows=${rows.length};profiles=${payload.p.length};images=${imageCount}"><title>${escapeHtml(title)}</title>${style}</head><body style="margin:0;background:${themePalette.background}">${app}</body></html>`;
 }
 
 function buildExportHtml(rows, titleSuffix = "", exportOptions = {}) {
@@ -10715,6 +10909,13 @@ function buildFileName(part) {
   return part ? `${base}_${part}.html` : `${base}.html`;
 }
 
+function yieldToBrowser() {
+  return new Promise(resolve => {
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
+    else setTimeout(resolve, 0);
+  });
+}
+
 function buildDistributionGuideText() {
   return `TRPG 로그 감상·배포 안내
 
@@ -10798,6 +10999,7 @@ async function createExportLinksFromRows(rows) {
   if (totalRows !== rows.length) throw new Error(`분할 결과 메시지 수가 다릅니다. (${totalRows}/${rows.length})`);
   for (let i = 0; i < parts.length; i += 1) {
     const partRows = parts[i];
+    setExportActionPhase("save", `파일 ${i + 1} / ${parts.length} 만드는 중…`, `${partRows.length.toLocaleString()}개 메시지`);
     const html = buildSelectedExportHtml(partRows, ` ${i + 1}`);
     validateGeneratedExport(html, partRows.length);
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
@@ -10808,6 +11010,7 @@ async function createExportLinksFromRows(rows) {
     a.download = buildFileName(`part-${String(i + 1).padStart(2, "0")}`);
     a.textContent = `${i + 1} / ${parts.length} 저장 (${partRows.length.toLocaleString()}개)`;
     box.append(a);
+    if (i + 1 < parts.length) await yieldToBrowser();
   }
   setStatus(`분할 HTML ${parts.length.toLocaleString()}개를 검증해 저장 링크로 만들었습니다. ${imageOptimizationStatusText()}.`);
   return { parts: parts.length };
@@ -10830,6 +11033,7 @@ async function analyze() {
     state.title = orderResult.title;
     const jsonRows = state.jsonText ? parseImageJson(state.jsonText) : 0;
     state.messages = applyMatches(combinedRows);
+    rebuildMessageIdentityIndex(state.messages);
     const importedBgmRestore = reconcileImportedBgmAfterAnalysis(state.importedConverterSettings);
     state.page = 1;
     rebuildFilters();
@@ -10873,6 +11077,7 @@ orderFile.addEventListener("change", async () => {
   state.lastCompactStats = null;
   state.lastAnalysis = null;
   state.messages = [];
+  resetMessageIdentityIndex();
   state.visible = [];
   state.selectedTabs = new Set();
   state.selectedChars = new Set();
@@ -11071,7 +11276,7 @@ PREFERENCE_FIELDS.forEach(id => {
   if (!control) return;
   const eventName = control.type === "checkbox" || control.tagName === "SELECT" ? "change" : "input";
   control.addEventListener(eventName, () => {
-    saveLastPreferences();
+    scheduleLastPreferencesSave();
     scheduleWorkDraftSave();
   });
 });
@@ -11101,6 +11306,13 @@ el("discardDraftBtn")?.addEventListener("click", () => {
   saveWorkDraftNow();
   setStatus("이전 임시 작업을 지우고 현재 상태로 새 작업을 시작했습니다.");
 });
+
+window.addEventListener("pagehide", () => {
+  scheduleLastPreferencesSave.flush?.();
+  scheduleWorkDraftSave.flush?.();
+  state.exportObjectUrls.forEach(url => URL.revokeObjectURL(url));
+  state.exportObjectUrls.length = 0;
+}, { once: true });
 
 updateFilterAndExportSummary();
 
