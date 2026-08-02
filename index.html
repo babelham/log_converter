@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.67">
+<meta name="trpg-app-version" content="6.68">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2129,7 +2129,7 @@ html[data-theme="light"] .bgm-track-thumb.is-external { background: rgba(37,99,1
 .preview-shell.is-style-adjusting { contain: layout paint; }
 
 
-/* v6.67 — converter and exported log share the selected fixed theme. */
+/* v6.68 — converter and exported log share the selected fixed theme. */
 .theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -5882,6 +5882,7 @@ function enhancementRuntime(root, options = {}) {
   // 자동 동기화를 시도하지 않는다. other는 사용자가 직접 스크롤한 위치를 유지한다.
   const manualOtherOnly = options.manualOther === true;
   const singlePassOtherSync = options.singlePassOtherSync === true;
+  const snapOtherSync = options.snapOtherSync === true;
   if (sideLayout) sideLayout.classList.toggle("is-other-manual", manualOtherOnly);
   const logPage = main.closest(".page") || sideLayout || main;
   const logBounds = sideLayout || main;
@@ -7260,7 +7261,10 @@ function enhancementRuntime(root, options = {}) {
         }
       } else if (singlePassOtherSync) {
         this.pendingTarget = 0;
-        if (moved || targetChanged) this.move(target, "follow");
+        // 변환기 미리보기는 현재 main 위치에 해당하는 other 행이 바뀔 때만 갱신한다.
+        // 같은 other 구간 안에서 main이 움직일 때마다 보간 애니메이션을 다시 시작하면
+        // other가 상단에서부터 따라 내려오는 것처럼 보이고 불필요한 RAF/레이아웃 측정이 누적된다.
+        if (targetChanged) this.move(target, snapOtherSync ? "auto" : "follow");
       } else {
         if (moved || targetChanged) this.pendingTarget = target;
         if (this.pendingTarget) {
@@ -7985,7 +7989,8 @@ function renderPreview(options = {}) {
     allowLocalBgmPanel: true,
     manualOther: !!state.otherText,
     singlePassOtherSync: true,
-    instantInitialOtherSync: !state.otherText && bgmScenePagesEnabled(),
+    snapOtherSync: true,
+    instantInitialOtherSync: !state.otherText,
     bgmInitiallyUnlocked: state.previewBgmUnlocked,
     onBgmUnlock: () => {
       state.previewBgmUnlocked = true;
