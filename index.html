@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.68">
+<meta name="trpg-app-version" content="6.70">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -1518,6 +1518,49 @@ label { color: var(--muted); font-size: 13px; }
   .preview-layout.is-other-split .other-row { padding: 6px 7px; }
   .preview-layout.is-other-split .other-name,
   .preview-layout.is-other-split .other-text { font-size: 10px; }
+}
+
+
+/* v6.70 — clean full-document exports: do not repeat the unique app ID before every CSS selector.
+   Scoped CSS is retained only for legacy/direct fragments that share a host document. */
+/* v6.69 — converter preview virtualization for very large logs */
+.preview-shell.is-virtualized .ccfolia-wrap,
+.preview-shell.is-virtualized .other-wrap {
+  overflow-anchor: none;
+}
+.preview-shell .trpg-virtual-body {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 1px;
+  margin: 0 !important;
+  padding: 0 !important;
+  contain: layout style;
+  overflow-anchor: none;
+}
+.preview-shell .trpg-virtual-window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  will-change: transform;
+  contain: layout style;
+  overflow-anchor: none;
+}
+.preview-shell .trpg-virtual-window .log-row:last-child {
+  border-bottom: 1px solid rgba(255,255,255,.065);
+}
+.preview-shell .trpg-virtual-window .log-row.is-list-last {
+  border-bottom: 0;
+}
+.preview-shell .trpg-virtual-window .split-boundary {
+  box-sizing: border-box;
 }
 
 /* v5 public distribution UI */
@@ -4914,6 +4957,8 @@ function jumpToBgmChat(identity) {
     state.page = pageNumberForBgmJump(rows, { uid: message.uid, id: message.id, order: messageOrder(message) });
   }
   updateView();
+  const previewVirtual = el("preview")?.__trpgVirtual;
+  if (previewVirtual) previewVirtual.jumpToMessage?.(message, isOtherPanelTarget ? "other" : "main");
 
   const alignJumpTarget = ({ highlight = false } = {}) => {
     const preview = el("preview");
@@ -4944,8 +4989,11 @@ function jumpToBgmChat(identity) {
     const activeTrigger = state.bgmTriggerByUid.get(message.uid) || bgmTriggerMap.get(Number(message.id));
     if (activeTrigger && el("bgmAutoplay")?.checked) getPersistentPreviewBgmController().syncTrigger(activeTrigger);
     if (highlight) {
-      target.classList.add("is-bgm-jump-target");
-      window.setTimeout(() => target.classList.remove("is-bgm-jump-target"), 1800);
+      const virtualHighlighted = preview?.__trpgVirtual?.highlightMessage?.(message, isOtherPanelTarget ? "other" : "main", 1800);
+      if (!virtualHighlighted) {
+        target.classList.add("is-bgm-jump-target");
+        window.setTimeout(() => target.classList.remove("is-bgm-jump-target"), 1800);
+      }
     }
     return true;
   };
@@ -7947,35 +7995,1046 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
   </${rowTag}>`;
 }
 
+
+const PREVIEW_VIRTUAL_SOURCE_THRESHOLD = 3000;
+const PREVIEW_VIRTUAL_DOM_THRESHOLD = 1400;
+
+function previewVirtualKeyForMessage(message, kind = "main") {
+  const uid = String(message?.uid || "");
+  const order = messageOrder(message);
+  return `${kind}:message:${uid || `order-${Number.isFinite(order) ? order : Number(message?.id) || 0}`}`;
+}
+
+function addPreviewVirtualIndex(html, index, isLast = false, extraClasses = []) {
+  let output = String(html || "").replace(/^<([a-z][\w-]*)\b/i, `<$1 data-virtual-index="${index}"`);
+  const additions = [...(isLast ? ["is-list-last"] : []), ...extraClasses].filter(Boolean);
+  if (additions.length) output = output.replace(/class="([^"]*)"/, (match, classesValue) => `class="${classesValue} ${additions.join(" ")}"`);
+  return output;
+}
+
+function buildPreviewMainVirtualRecords(pageRows, allMainRows) {
+  const boundaryMap = splitBoundaryMapForWindow(pageRows, allMainRows, "main");
+  const records = [];
+  let previous = null;
+  let groupTone = -1;
+  for (let index = 0; index <= pageRows.length; index += 1) {
+    const boundaries = boundaryMap.get(index) || [];
+    if (boundaries.length) {
+      boundaries.forEach((entry, boundaryIndex) => {
+        const order = resolvedSplitOrder(entry);
+        records.push({
+          recordType: "boundary",
+          kind: "main",
+          id: Number(entry.id) || 0,
+          order: Number.isFinite(order) ? order + .5 : Number(entry.id) || 0,
+          virtualKey: `main:boundary:${entry.uid || entry.id}:${boundaryIndex}`,
+          boundaryKey: `main:${entry.uid ? `uid:${entry.uid}` : `id:${entry.id}`}`,
+          entry,
+          text: entry.label || "",
+          name: ""
+        });
+      });
+      previous = null;
+    }
+    if (index >= pageRows.length) break;
+    const message = pageRows[index];
+    const grouped = canGroupConsecutiveRows(previous, message);
+    if (!grouped) groupTone += 1;
+    const next = boundaryMap.has(index + 1) ? null : (pageRows[index + 1] || null);
+    const tab = normalizedTab(message.tab || "main");
+    records.push({
+      recordType: "message",
+      kind: "main",
+      id: Number(message.id) || 0,
+      uid: String(message.uid || ""),
+      order: Number(messageOrder(message) ?? message.id ?? index),
+      virtualKey: previewVirtualKeyForMessage(message, "main"),
+      message,
+      previous,
+      next,
+      groupTone,
+      text: String(message.text || ""),
+      name: String(message.name || ""),
+      isSystemLine: String(message.name || "").toLowerCase() === "system",
+      grouped,
+      hasContinuation: canGroupConsecutiveRows(message, next),
+      lowerTab: tab
+    });
+    previous = message;
+  }
+  return records;
+}
+
+function buildPreviewOtherVirtualRecords(rows) {
+  const boundaryMap = splitBoundaryMapForWindow(rows, rows, "other");
+  const records = [];
+  for (let index = 0; index <= rows.length; index += 1) {
+    (boundaryMap.get(index) || []).forEach((entry, boundaryIndex) => {
+      const order = resolvedSplitOrder(entry);
+      records.push({
+        recordType: "boundary",
+        kind: "other",
+        id: Number(entry.id) || 0,
+        order: Number.isFinite(order) ? order + .5 : Number(entry.id) || 0,
+        virtualKey: `other:boundary:${entry.uid || entry.id}:${boundaryIndex}`,
+        boundaryKey: `other:${entry.uid ? `uid:${entry.uid}` : `id:${entry.id}`}`,
+        entry,
+        text: entry.label || "",
+        name: ""
+      });
+    });
+    if (index >= rows.length) break;
+    const message = rows[index];
+    records.push({
+      recordType: "message",
+      kind: "other",
+      id: Number(message.id) || 0,
+      uid: String(message.uid || ""),
+      order: Number(messageOrder(message) ?? message.id ?? index),
+      virtualKey: previewVirtualKeyForMessage(message, "other"),
+      message,
+      text: String(message.text || ""),
+      name: String(message.name || ""),
+      isSystemLine: false,
+      grouped: false,
+      hasContinuation: false
+    });
+  }
+  return records;
+}
+
+function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, snapshot = null) {
+  const doc = root.ownerDocument || document;
+  const scope = root;
+  const win = doc.defaultView || window;
+  root.classList.add("is-virtualized");
+  root.innerHTML = sideOtherEnabled()
+    ? `<div class="preview-layout"><div class="ccfolia-wrap" data-preview-main-list></div><aside class="other-wrap" data-preview-other-list></aside></div>`
+    : `<div class="ccfolia-wrap" data-preview-main-list></div>`;
+  const mainHost = root.querySelector("[data-preview-main-list]");
+  const otherHost = root.querySelector("[data-preview-other-list]");
+  const mainRecords = buildPreviewMainVirtualRecords(pageRows, allMainRows);
+  const otherRecords = otherHost ? buildPreviewOtherVirtualRecords(sideRows) : [];
+  let activeJumpVirtualKey = "";
+  let jumpHighlightTimer = 0;
+  if (!pageRows.length) mainHost.insertAdjacentHTML("afterbegin", '<div class="empty-state"><h2>표시할 메시지가 없습니다</h2><p>필터를 조정해보세요.</p></div>');
+  if (otherHost && !sideRows.length) otherHost.insertAdjacentHTML("afterbegin", '<div class="empty-state"><p>표시할 other 메시지가 없습니다.</p></div>');
+
+  const renderMainRecord = (record, logicalIndex, isLast, highlighted) => {
+    const classes = [highlighted ? "is-search-target" : "", record.virtualKey === activeJumpVirtualKey ? "is-bgm-jump-target" : ""];
+    if (record.recordType === "boundary") return addPreviewVirtualIndex(splitBoundaryHtml(record.entry), logicalIndex, isLast, classes);
+    return addPreviewVirtualIndex(renderRow(record.message, record.previous, record.next, true, null, record.groupTone), logicalIndex, isLast, classes);
+  };
+  const renderOtherRecord = (record, logicalIndex, isLast, highlighted, synced) => {
+    const classes = [highlighted ? "is-search-target" : "", synced ? "is-sync-target" : "", record.virtualKey === activeJumpVirtualKey ? "is-bgm-jump-target" : ""];
+    if (record.recordType === "boundary") return addPreviewVirtualIndex(splitBoundaryHtml(record.entry), logicalIndex, isLast, classes);
+    return addPreviewVirtualIndex(renderOtherRow(record.message, true), logicalIndex, isLast, classes);
+  };
+
+  class HeightTree {
+    constructor(values) {
+      this.values = Float64Array.from(values);
+      this.tree = new Float64Array(this.values.length + 1);
+      for (let i = 0; i < this.values.length; i += 1) this.add(i, this.values[i]);
+    }
+    add(index, delta) {
+      for (let i = index + 1; i < this.tree.length; i += i & -i) this.tree[i] += delta;
+    }
+    set(index, value) {
+      const next = Math.max(1, Number(value) || 1);
+      const delta = next - this.values[index];
+      if (Math.abs(delta) < 0.2) return 0;
+      this.values[index] = next;
+      this.add(index, delta);
+      return delta;
+    }
+    prefix(count) {
+      let total = 0;
+      for (let i = Math.min(count, this.values.length); i > 0; i -= i & -i) total += this.tree[i];
+      return total;
+    }
+    total() { return this.prefix(this.values.length); }
+    indexAt(offset) {
+      if (!this.values.length) return -1;
+      const target = Math.max(0, Number(offset) || 0);
+      let index = 0;
+      let sum = 0;
+      let bit = 1;
+      while ((bit << 1) < this.tree.length) bit <<= 1;
+      for (; bit; bit >>= 1) {
+        const next = index + bit;
+        if (next < this.tree.length && sum + this.tree[next] <= target) {
+          index = next;
+          sum += this.tree[next];
+        }
+      }
+      return Math.min(index, this.values.length - 1);
+    }
+  }
+
+  const runtimeStats = { renders: 0, measures: 0, recalibrations: 0, resizeSignals: 0 };
+  const frameScheduler = (() => {
+    const lists = new Set();
+    const renderQueue = new Set();
+    const measureQueue = new Set();
+    const subscribers = new Set();
+    const reportedErrors = new Set();
+    let raf = 0;
+    let destroyed = false;
+    const reportError = (phase, error) => {
+      const key = `${phase}:${String(error?.message || error)}`;
+      if (reportedErrors.has(key)) return;
+      reportedErrors.add(key);
+      win.console?.error?.(`[TRPG 로그] ${phase} 처리 중 오류`, error);
+    };
+    const safely = (phase, callback) => {
+      try { callback(); } catch (error) { reportError(phase, error); }
+    };
+    const requestFrame = () => {
+      if (destroyed || raf) return;
+      raf = win.requestAnimationFrame(flush);
+    };
+    const flush = now => {
+      raf = 0;
+      const renders = [...renderQueue];
+      renderQueue.clear();
+      for (const list of renders) safely("가상 목록 렌더링", () => list.render());
+      const measures = [...measureQueue];
+      measureQueue.clear();
+      for (const list of measures) safely("가상 목록 높이 측정", () => list.measure());
+      for (const subscriber of [...subscribers]) safely("프레임 구독자", () => subscriber(now));
+      if (renderQueue.size || measureQueue.size) requestFrame();
+    };
+    return {
+      addList(list) { lists.add(list); },
+      removeList(list) { lists.delete(list); renderQueue.delete(list); measureQueue.delete(list); },
+      requestList(list, force = false) {
+        if (force) list.renderedStart = -1;
+        renderQueue.add(list);
+        requestFrame();
+      },
+      requestMeasure(list) { measureQueue.add(list); requestFrame(); },
+      requestAll() { for (const list of lists) renderQueue.add(list); requestFrame(); },
+      requestFrame,
+      subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); },
+      destroy() {
+        destroyed = true;
+        if (raf) win.cancelAnimationFrame(raf);
+        raf = 0;
+        lists.clear(); renderQueue.clear(); measureQueue.clear(); subscribers.clear();
+      }
+    };
+  })();
+
+  class VirtualList {
+    constructor(host, records, kind, renderRecord) {
+      this.host = host;
+      this.kind = kind;
+      if (this.kind === "other" && this.host) {
+        this.host.querySelectorAll?.(".other-title").forEach(node => node.remove());
+        this.host.style.setProperty("margin", "0", "important");
+        this.host.style.setProperty("padding", "0", "important");
+        this.host.style.setProperty("scroll-padding", "0", "important");
+      }
+      this.allRecords = records;
+      this.records = records;
+      this.renderRecord = renderRecord;
+      this.mobileMedia = win.matchMedia?.("(max-width: 700px)") || { matches: false };
+      this.layout = scope.querySelector?.(".preview-layout") || null;
+      this.mobileCompact = !!(this.mobileMedia.matches && this.layout?.classList.contains("is-other-split"));
+      this.heightCache = new Map();
+      this.visualMetricCache = new Map();
+      this.estimateCache = new Map();
+      this.tree = new HeightTree(records.map(record => this.estimate(record)));
+      this.renderedStart = -1;
+      this.renderedEnd = -1;
+      this.ownScrollCache = { scrollHeight: -1, clientHeight: -1, value: false };
+      this.highlightId = 0;
+      this.syncId = 0;
+      this.externalScrollControl = false;
+      this.syncAnchorViewportY = 0;
+      this.lastViewportWidth = Math.round(this.host?.clientWidth || 0);
+      this.lastBodyHeight = -1;
+      this.lastContentRect = { width: -1, height: -1 };
+      this.body = doc.createElement("div");
+      this.body.className = "trpg-virtual-body";
+      this.window = doc.createElement("div");
+      this.window.className = "trpg-virtual-window";
+      this.body.append(this.window);
+      this.host.append(this.body);
+      this.contentResizeObserver = typeof ResizeObserver === "function"
+        ? new ResizeObserver(entries => {
+            const rect = entries?.[0]?.contentRect;
+            const width = Number(rect?.width) || 0;
+            const height = Number(rect?.height) || 0;
+            if (Math.abs(width - this.lastContentRect.width) < 0.5
+                && Math.abs(height - this.lastContentRect.height) < 0.5) return;
+            this.lastContentRect = { width, height };
+            this.scheduleMeasure();
+          })
+        : null;
+      this.contentResizeObserver?.observe(this.window);
+      this.boundSchedule = () => this.schedule();
+      this.boundHostLayoutChange = () => {
+        this.refreshScrollRoot(true);
+        this.schedule(true);
+      };
+      this.scrollRoot = null;
+      this.scrollRootCheckedAt = 0;
+      this.scrollRootMarker = "";
+      scope.addEventListener?.("trpg-host-layout-change", this.boundHostLayoutChange);
+      frameScheduler.addList(this);
+      this.refreshScrollRoot(true);
+      this.schedule(true);
+    }
+    estimate(record) {
+      const cacheKey = record.virtualKey;
+      const cached = this.heightCache.get(cacheKey);
+      if (cached) return cached;
+      const width = Math.max(120, Math.round(this.host?.clientWidth || (this.kind === "other" ? 220 : 760)));
+      const compact = !!(this.mobileMedia?.matches && this.mobileCompact);
+      if (record.recordType === "boundary") return this.kind === "other" ? 67 : 78;
+      const text = String(record.text || "");
+      const explicitLines = Math.max(1, text.split("\n").length);
+      const roughUnits = Math.max(text.length, explicitLines);
+      let capacity;
+      let lines;
+      if (this.kind === "other") {
+        capacity = Math.max(7, Math.floor((width - (compact ? 14 : 20)) / (compact ? 9.2 : 7.3)));
+        lines = Math.max(explicitLines, Math.ceil(roughUnits / capacity));
+        return 28 + Math.min(36, lines) * (compact ? 15.5 : 18.6);
+      }
+      if (record.isSystemLine) {
+        capacity = Math.max(10, Math.floor((width * (compact ? 1 : .76) - 28) / (compact ? 8.5 : 7.8)));
+        lines = Math.max(explicitLines, Math.ceil(roughUnits / capacity));
+        return 19 + Math.min(34, lines) * (compact ? 15.5 : 20.1);
+      }
+      capacity = Math.max(8, Math.floor((width - (compact ? 46 : 90)) / (compact ? 8.6 : 7.9)));
+      lines = Math.max(explicitLines, Math.ceil(roughUnits / capacity));
+      if (record.grouped) return Math.max(22, Math.min(36, lines) * (compact ? 15.4 : 24.7)) + (record.hasContinuation ? 0 : 13);
+      return (record.hasContinuation ? 14 : 27) + Math.max(compact ? 26 : 42, 22 + Math.min(36, lines) * (compact ? 15.4 : 24.7));
+    }
+    ownScroll() {
+      const scrollHeight = this.host.scrollHeight;
+      const clientHeight = this.host.clientHeight;
+      const cached = this.ownScrollCache;
+      if (cached && cached.scrollHeight === scrollHeight && cached.clientHeight === clientHeight) return cached.value;
+      const style = win.getComputedStyle ? win.getComputedStyle(this.host) : null;
+      const overflowY = String(style?.overflowY || style?.overflow || "").toLowerCase();
+      const value = scrollHeight > clientHeight + 2 && /\b(auto|scroll|overlay|hidden|clip)\b/.test(overflowY);
+      this.ownScrollCache = { scrollHeight, clientHeight, value };
+      return value;
+    }
+    findScrollRoot() {
+      if (this.ownScroll()) return this.host;
+      let node = this.host.parentElement;
+      let depth = 0;
+      while (node && node !== doc.body && node !== doc.documentElement && depth < 18) {
+        const style = win.getComputedStyle?.(node);
+        const overflowY = String(style?.overflowY || style?.overflow || "").toLowerCase();
+        const allowsScroll = /\b(auto|scroll|overlay)\b/.test(overflowY);
+        const hasViewport = node.clientHeight > 8;
+        const hasOverflow = node.scrollHeight > node.clientHeight + 2;
+        const fixedHeight = style && style.height !== "auto" && Number.isFinite(parseFloat(style.height));
+        const cappedHeight = style && style.maxHeight !== "none" && Number.isFinite(parseFloat(style.maxHeight));
+        if (allowsScroll && hasViewport && (hasOverflow || fixedHeight || cappedHeight)) return node;
+        node = node.parentElement;
+        depth += 1;
+      }
+      return win;
+    }
+    refreshScrollRoot(force = false) {
+      const nowValue = win.performance?.now?.() || Date.now();
+      const checkInterval = this.scrollRoot && this.scrollRoot !== win ? 1200 : 260;
+      if (!force && this.scrollRoot && nowValue - this.scrollRootCheckedAt < checkInterval) return this.scrollRoot;
+      this.scrollRootCheckedAt = nowValue;
+      const nextRoot = this.findScrollRoot();
+      if (nextRoot === this.scrollRoot) return nextRoot;
+      if (this.scrollRoot && this.scrollRoot !== win) {
+        this.scrollRoot.removeEventListener?.("scroll", this.boundSchedule);
+        if (this.scrollRootMarker) this.scrollRoot.removeAttribute?.(this.scrollRootMarker);
+      }
+      this.scrollRoot = nextRoot;
+      this.scrollRootMarker = `data-trpg-scroll-root-${this.kind}`;
+      const rootKind = nextRoot === win ? "window" : (nextRoot === this.host ? "self" : "ancestor");
+      scope.dataset[this.kind === "main" ? "trpgMainScrollRoot" : "trpgOtherScrollRoot"] = rootKind;
+      if (nextRoot !== win) {
+        nextRoot.addEventListener?.("scroll", this.boundSchedule, { passive: true });
+        nextRoot.setAttribute?.(this.scrollRootMarker, "true");
+      }
+      return nextRoot;
+    }
+    viewport() {
+      const bodyTop = this.body.offsetTop || 0;
+      const root = this.refreshScrollRoot(false);
+      if (root === this.host && this.ownScroll()) {
+        const start = Math.max(0, this.host.scrollTop - bodyTop);
+        const visibleTop = this.host.getBoundingClientRect().top;
+        return {
+          start,
+          end: start + Math.max(1, this.host.clientHeight),
+          own: true,
+          root,
+          visibleTop,
+          visibleBottom: visibleTop + Math.max(1, this.host.clientHeight)
+        };
+      }
+      const rect = this.body.getBoundingClientRect();
+      const viewportHeight = win.innerHeight || doc.documentElement.clientHeight || 1;
+      if (root && root !== win) {
+        const rootRect = root.getBoundingClientRect();
+        const visibleTop = Math.max(0, rootRect.top + (root.clientTop || 0));
+        const visibleBottom = Math.min(viewportHeight, rootRect.bottom);
+        const start = Math.max(0, visibleTop - rect.top);
+        const end = Math.max(start + 1, Math.min(this.tree.total(), visibleBottom - rect.top));
+        return { start, end, own: false, root, visibleTop, visibleBottom };
+      }
+      const start = Math.max(0, -rect.top);
+      return {
+        start,
+        end: Math.max(start + 1, Math.min(this.tree.total(), viewportHeight - rect.top)),
+        own: false,
+        root: win,
+        visibleTop: 0,
+        visibleBottom: viewportHeight
+      };
+    }
+    atEnd(tolerance = 6) {
+      const viewport = this.viewport();
+      return viewport.end >= Math.max(0, this.tree.total() - tolerance);
+    }
+    schedule(force = false) { frameScheduler.requestList(this, force); }
+    setBodyHeight(value) {
+      const next = Math.max(1, Number(value) || 1);
+      if (Math.abs(next - this.lastBodyHeight) < 0.25) return;
+      this.lastBodyHeight = next;
+      this.body.style.height = `${next}px`;
+    }
+    render() {
+      runtimeStats.renders += 1;
+      const firstRender = this.renderedStart < 0;
+      const count = this.records.length;
+      const total = this.tree.total();
+      this.setBodyHeight(total);
+      if (firstRender) {
+        this.ownScrollCache = { scrollHeight: -1, clientHeight: -1, value: false };
+        this.refreshScrollRoot(true);
+      }
+      if (!count) {
+        this.window.replaceChildren();
+        this.window.style.transform = "translateY(0)";
+        this.renderedStart = 0;
+        this.renderedEnd = 0;
+        return;
+      }
+      const viewport = this.viewport();
+      const visibleStart = Math.max(0, this.tree.indexAt(viewport.start));
+      const visibleEnd = Math.max(visibleStart, this.tree.indexAt(viewport.end));
+      const mobile = !!this.mobileMedia?.matches;
+      const overscanBefore = mobile ? (this.kind === "other" ? 20 : 24) : (this.kind === "other" ? 45 : 55);
+      const overscanAfter = mobile ? (this.kind === "other" ? 42 : 50) : (this.kind === "other" ? 75 : 95);
+      const start = Math.max(0, visibleStart - overscanBefore);
+      const end = Math.min(count, visibleEnd + overscanAfter + 1);
+      const safeBefore = mobile ? (this.kind === "other" ? 6 : 8) : (this.kind === "other" ? 14 : 18);
+      const safeAfter = mobile ? (this.kind === "other" ? 10 : 12) : (this.kind === "other" ? 20 : 24);
+      const insideRenderedWindow = this.renderedStart >= 0
+        && visibleStart >= this.renderedStart + safeBefore
+        && visibleEnd < this.renderedEnd - safeAfter;
+      if (insideRenderedWindow || (start === this.renderedStart && end === this.renderedEnd)) return;
+      this.renderedStart = start;
+      this.renderedEnd = end;
+      const parts = [];
+      for (let i = start; i < end; i += 1) {
+        const record = this.records[i];
+        parts.push(this.renderRecord(record, i, i === count - 1, record.id === this.highlightId, record.id === this.syncId));
+      }
+      this.window.style.transform = `translateY(${this.tree.prefix(start)}px)`;
+      this.window.innerHTML = parts.join("");
+      this.materializeImages();
+      this.scheduleMeasure();
+    }
+    materializeImages() {
+      this.window.querySelectorAll("img").forEach(image => {
+        if (image.dataset.previewVirtualMeasureBound === "1") return;
+        image.dataset.previewVirtualMeasureBound = "1";
+        const remeasure = () => this.scheduleMeasure();
+        image.addEventListener("load", remeasure, { once: true });
+        image.addEventListener("error", remeasure, { once: true });
+      });
+    }
+    scheduleMeasure() { frameScheduler.requestMeasure(this); }
+    measure() {
+      runtimeStats.measures += 1;
+      if (!this.records.length) return;
+      const viewport = this.viewport();
+      const anchorIndex = Math.max(0, this.tree.indexAt(viewport.start));
+      const oldAnchorTop = this.tree.prefix(anchorIndex);
+      let changed = false;
+      const mobile = !!this.mobileMedia?.matches;
+      const visibleTop = Number.isFinite(viewport.visibleTop) ? viewport.visibleTop : 0;
+      const visibleBottom = Number.isFinite(viewport.visibleBottom)
+        ? viewport.visibleBottom
+        : (win.innerHeight || doc.documentElement.clientHeight || 1);
+      const visibleHeight = Math.max(1, visibleBottom - visibleTop);
+      const measureMargin = mobile ? Math.max(220, visibleHeight * 0.8) : Infinity;
+      this.window.querySelectorAll("[data-virtual-index]").forEach(element => {
+        const index = Number(element.dataset.virtualIndex);
+        if (!Number.isFinite(index) || index < 0 || index >= this.records.length) return;
+        const rect = element.getBoundingClientRect();
+        if (mobile && (rect.bottom < visibleTop - measureMargin || rect.top > visibleBottom + measureMargin)) return;
+        const height = rect.height;
+        if (height > 0 && Math.abs(height - this.tree.values[index]) > 0.45) {
+          this.heightCache.set(this.records[index].virtualKey, height);
+          this.tree.set(index, height);
+          changed = true;
+        }
+      });
+      if (!changed) return;
+      const delta = this.tree.prefix(anchorIndex) - oldAnchorTop;
+      this.setBodyHeight(this.tree.total());
+      this.window.style.transform = `translateY(${this.tree.prefix(this.renderedStart)}px)`;
+      if (Math.abs(delta) > 0.4 && !(this.kind === "other" && this.externalScrollControl)) {
+        if (viewport.own) this.host.scrollTop += delta;
+        else if (viewport.root && viewport.root !== win) viewport.root.scrollTop += delta;
+        else win.scrollBy?.(0, delta);
+      }
+      this.schedule();
+    }
+    applyDynamicClasses() {
+      this.window.querySelectorAll("[data-index]").forEach(row => {
+        const id = Number(row.dataset.index) || 0;
+        row.classList.toggle("is-search-target", id === this.highlightId);
+        if (this.kind === "other") row.classList.toggle("is-sync-target", id === this.syncId);
+      });
+    }
+    setRecords(records) {
+      this.records = records;
+      this.tree = new HeightTree(records.map(record => this.heightCache.get(record.virtualKey) || this.estimate(record)));
+      this.renderedStart = -1;
+      this.renderedEnd = -1;
+      this.host.scrollTop = 0;
+      this.schedule(true);
+    }
+    indexForKey(keyValue) {
+      const key = String(keyValue || "");
+      if (!key) return -1;
+      for (let index = 0; index < this.records.length; index += 1) {
+        if (this.records[index].virtualKey === key) return index;
+      }
+      return -1;
+    }
+    indexForId(idValue) {
+      const id = Number(idValue) || 0;
+      let low = 0;
+      let high = this.records.length - 1;
+      let found = -1;
+      while (low <= high) {
+        const mid = (low + high) >> 1;
+        if (this.records[mid].id < id) low = mid + 1;
+        else {
+          found = mid;
+          high = mid - 1;
+        }
+      }
+      if (found < 0) return this.records.length - 1;
+      if (this.records[found]?.id === id) return found;
+      return Math.max(0, found - 1);
+    }
+    renderedRecordAt(position) {
+      if (this.renderedStart < 0 || this.renderedEnd <= this.renderedStart) return null;
+      const children = this.window.children;
+      if (!children.length) return null;
+      const local = Number(position) - this.tree.prefix(this.renderedStart);
+      let low = 0;
+      let high = children.length - 1;
+      let found = 0;
+      while (low <= high) {
+        const mid = (low + high) >> 1;
+        const top = children[mid].offsetTop || 0;
+        if (top <= local) {
+          found = mid;
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+      const logicalIndex = Number(children[found]?.dataset.virtualIndex);
+      return Number.isFinite(logicalIndex) ? this.records[logicalIndex] || null : null;
+    }
+    metricsForIndex(index) {
+      const relative = index - this.renderedStart;
+      const element = relative >= 0 && relative < this.window.children.length
+        ? this.window.children[relative]
+        : null;
+      if (element && Number(element.dataset.virtualIndex) === index) {
+        const top = this.tree.prefix(this.renderedStart) + (element.offsetTop || 0);
+        const height = Math.max(1, element.offsetHeight || this.tree.values[index] || 1);
+        return { top, bottom: top + height, height, exact: true };
+      }
+      const top = this.tree.prefix(index);
+      const height = Math.max(1, this.tree.values[index] || 1);
+      return { top, bottom: top + height, height, exact: false };
+    }
+    syncMarker(viewHeightValue) {
+      const height = Math.max(1, Number(viewHeightValue) || this.host?.clientHeight || 1);
+      const normalMarker = Math.min(height * 0.35, 220);
+      if (this.kind !== "other" || !win.matchMedia?.("(max-width: 700px)").matches) return normalMarker;
+      const rect = this.host.getBoundingClientRect();
+      const rectTop = Number.isFinite(rect.top) ? rect.top : 0;
+      if (!this.syncAnchorViewportY) this.syncAnchorViewportY = Math.round(rectTop + normalMarker);
+      return Math.max(8, Math.min(height - 8, this.syncAnchorViewportY - rectTop));
+    }
+    targetOffsetForIndex(index, align, viewHeight) {
+      const metrics = this.metricsForIndex(index);
+      if (align === "bottom") return Math.max(0, metrics.bottom - viewHeight + 12);
+      if (align === "sync") return Math.max(0, metrics.top - this.syncMarker(viewHeight));
+      if (align === "center") return Math.max(0, metrics.top - Math.max(0, (viewHeight - metrics.height) * 0.35));
+      return Math.max(0, metrics.top);
+    }
+    nearestMessageRecord(index, direction = 1) {
+      if (!this.records.length) return null;
+      let cursor = Math.max(0, Math.min(this.records.length - 1, index));
+      for (let count = 0; count < this.records.length; count += 1) {
+        const record = this.records[cursor];
+        if (record?.recordType === "message") return record;
+        cursor += direction;
+        if (cursor < 0 || cursor >= this.records.length) break;
+      }
+      cursor = Math.max(0, Math.min(this.records.length - 1, index));
+      for (let count = 0; count < this.records.length; count += 1) {
+        const record = this.records[cursor];
+        if (record?.recordType === "message") return record;
+        cursor -= direction;
+        if (cursor < 0 || cursor >= this.records.length) break;
+      }
+      return null;
+    }
+    currentIndices() {
+      if (!this.records.length) return { index: 0, bottomIndex: 0, order: 0, bottomOrder: 0 };
+      const viewport = this.viewport();
+      const height = Math.max(1, viewport.end - viewport.start);
+      const topPosition = viewport.start + Math.min(height * 0.35, 220);
+      const bottomPosition = Math.max(viewport.start + 1, viewport.end - 12);
+      const topIndex = Math.max(0, this.tree.indexAt(topPosition));
+      const bottomIndex = Math.max(0, this.tree.indexAt(bottomPosition));
+      const topRecord = this.renderedRecordAt(topPosition) || this.records[topIndex] || null;
+      const bottomRecord = this.renderedRecordAt(bottomPosition) || this.records[bottomIndex] || null;
+      const resolvedTop = topRecord?.recordType === "message" ? topRecord : this.nearestMessageRecord(topIndex, 1);
+      const resolvedBottom = bottomRecord?.recordType === "message" ? bottomRecord : this.nearestMessageRecord(bottomIndex, -1);
+      return {
+        index: resolvedTop?.id || 0,
+        bottomIndex: resolvedBottom?.id || 0,
+        order: Number(resolvedTop?.order ?? resolvedTop?.id ?? 0),
+        bottomOrder: Number(resolvedBottom?.order ?? resolvedBottom?.id ?? 0)
+      };
+    }
+    captureAnchor() {
+      if (!this.records.length) return null;
+      const viewport = this.viewport();
+      const index = Math.max(0, this.tree.indexAt(viewport.start));
+      return { key: this.records[index].virtualKey, id: this.records[index].id, offset: viewport.start - this.tree.prefix(index), own: viewport.own };
+    }
+    restoreAnchor(anchor) {
+      if (!anchor) return;
+      const keyedIndex = this.indexForKey(anchor.key);
+      const index = keyedIndex >= 0 ? keyedIndex : this.indexForId(anchor.id);
+      if (index < 0) return;
+      this.setScrollOffset(this.tree.prefix(index) + (Number(anchor.offset) || 0));
+    }
+    setScrollOffset(offset, forceRender = false) {
+      const value = Math.max(0, offset);
+      const viewport = this.viewport();
+      if (viewport.root === this.host && this.ownScroll()) {
+        this.host.scrollTop = (this.body.offsetTop || 0) + value;
+      } else if (viewport.root && viewport.root !== win) {
+        const root = viewport.root;
+        const bodyRect = this.body.getBoundingClientRect();
+        const rootRect = root.getBoundingClientRect();
+        const contentTop = rootRect.top + (root.clientTop || 0);
+        const bodyTopInRoot = root.scrollTop + bodyRect.top - contentTop;
+        const top = Math.max(0, bodyTopInRoot + value);
+        if (root.scrollTo) root.scrollTo({ top, behavior: "auto" });
+        else root.scrollTop = top;
+      } else {
+        const top = this.body.getBoundingClientRect().top + (win.scrollY || doc.documentElement.scrollTop || 0);
+        win.scrollTo?.({ top: Math.max(0, top + value), behavior: "auto" });
+      }
+      this.schedule(forceRender);
+    }
+    scrollTop() { this.setScrollOffset(0); }
+    scrollToId(idValue, align = "center", attempts = 3) {
+      const index = this.indexForId(idValue);
+      if (index < 0 || !this.records[index]) return false;
+      const viewport = this.viewport();
+      const viewHeight = Math.max(1, viewport.end - viewport.start);
+      this.setScrollOffset(this.targetOffsetForIndex(index, align, viewHeight));
+      if (attempts > 0) {
+        win.requestAnimationFrame(() => win.requestAnimationFrame(() => this.scrollToId(idValue, align, attempts - 1)));
+      }
+      return true;
+    }
+    cancelNativeSmooth() {
+      const viewport = this.viewport();
+      if (viewport.root && viewport.root !== win) {
+        const top = viewport.root.scrollTop || 0;
+        if (viewport.root.scrollTo) viewport.root.scrollTo({ top, behavior: "auto" });
+        else viewport.root.scrollTop = top;
+      } else {
+        const top = win.scrollY || doc.documentElement.scrollTop || 0;
+        if (win.scrollTo) win.scrollTo({ top, behavior: "auto" });
+      }
+    }
+    prepareId(idValue) {
+      const index = this.indexForId(idValue);
+      if (index < 0 || !this.records[index]) return 0;
+      this.renderAroundIndex(index);
+      return this.records[index].id;
+    }
+    currentOffset() { return this.viewport().start; }
+    targetOffsetForId(idValue, align = "sync", prepare = false) {
+      const index = this.indexForId(idValue);
+      if (index < 0 || !this.records[index]) return NaN;
+      if (prepare) this.renderAroundIndex(index);
+      const viewport = this.viewport();
+      const height = Math.max(1, viewport.end - viewport.start);
+      const maxOffset = Math.max(0, this.tree.total() - height);
+      return Math.max(0, Math.min(maxOffset, this.targetOffsetForIndex(index, align, height)));
+    }
+    nearId(idValue) {
+      const index = this.indexForId(idValue);
+      if (index < 0 || !this.records[index]) return false;
+      const viewport = this.viewport();
+      const height = Math.max(1, viewport.end - viewport.start);
+      const metrics = this.metricsForIndex(index);
+      const marker = viewport.start + this.syncMarker(height);
+      return Math.abs(metrics.top - marker) <= Math.max(28, metrics.height * 1.25)
+        || (metrics.bottom > viewport.start && metrics.top < viewport.end);
+    }
+    setExternalControl(value) { this.externalScrollControl = !!value; }
+    setHighlight(idValue) {
+      this.highlightId = Number(idValue) || 0;
+      this.applyDynamicClasses();
+    }
+    setSync(idValue) {
+      this.syncId = Number(idValue) || 0;
+      this.applyDynamicClasses();
+    }
+    renderAroundIndex(index) {
+      if (index < 0 || index >= this.records.length) return;
+      const count = this.records.length;
+      const before = this.kind === "other" ? 55 : 65;
+      const after = this.kind === "other" ? 85 : 105;
+      const start = Math.max(0, index - before);
+      const end = Math.min(count, index + after + 1);
+      const parts = [];
+      for (let i = start; i < end; i += 1) {
+        const record = this.records[i];
+        parts.push(this.renderRecord(record, i, i === count - 1, record.id === this.highlightId, record.id === this.syncId));
+      }
+      this.renderedStart = start;
+      this.renderedEnd = end;
+      this.window.style.transform = `translateY(${this.tree.prefix(start)}px)`;
+      this.window.innerHTML = parts.join("");
+      this.materializeImages();
+      this.window.querySelectorAll("[data-virtual-index]").forEach(element => {
+        const rowIndex = Number(element.dataset.virtualIndex);
+        if (!Number.isFinite(rowIndex) || rowIndex < 0 || rowIndex >= this.records.length) return;
+        const height = element.getBoundingClientRect().height;
+        if (height > 0) {
+          this.heightCache.set(this.records[rowIndex].virtualKey, height);
+          this.tree.set(rowIndex, height);
+        }
+      });
+      this.setBodyHeight(this.tree.total());
+      this.window.style.transform = `translateY(${this.tree.prefix(start)}px)`;
+    }
+    jumpToId(idValue, align = "center") {
+      const index = this.indexForId(idValue);
+      if (index < 0 || !this.records[index]) return false;
+      this.cancelNativeSmooth();
+      this.renderAroundIndex(index);
+      const viewport = this.viewport();
+      const viewHeight = Math.max(1, viewport.end - viewport.start);
+      this.setScrollOffset(this.targetOffsetForIndex(index, align, viewHeight));
+      win.requestAnimationFrame(() => {
+        this.renderAroundIndex(index);
+        const nextViewport = this.viewport();
+        const nextHeight = Math.max(1, nextViewport.end - nextViewport.start);
+        this.setScrollOffset(this.targetOffsetForIndex(index, align, nextHeight));
+        this.schedule(true);
+      });
+      return true;
+    }
+    resize(forceRecalibrate = false) {
+      const width = Math.round(this.host.clientWidth || 0);
+      const nextCompact = !!(this.mobileMedia?.matches && this.layout?.classList.contains("is-other-split"));
+      const compactChanged = nextCompact !== this.mobileCompact;
+      this.mobileCompact = nextCompact;
+      const widthChanged = compactChanged || (!!width && !!this.lastViewportWidth && width !== this.lastViewportWidth);
+      const shouldRebuild = widthChanged || forceRecalibrate === true;
+      if (width) this.lastViewportWidth = width;
+      if (!shouldRebuild) {
+        this.scheduleMeasure();
+        return false;
+      }
+      runtimeStats.recalibrations += 1;
+      const anchor = this.captureAnchor();
+      this.syncAnchorViewportY = 0;
+      this.heightCache.clear();
+      this.estimateCache?.clear();
+      this.ownScrollCache = { scrollHeight: -1, clientHeight: -1, value: false };
+      this.tree = new HeightTree(this.records.map(record => this.estimate(record)));
+      this.renderedStart = -1;
+      this.renderedEnd = -1;
+      this.lastBodyHeight = -1;
+      this.schedule(true);
+      if (anchor) {
+        win.requestAnimationFrame(() => {
+          this.restoreAnchor(anchor);
+          this.schedule();
+        });
+      }
+      return true;
+    }
+    destroy() {
+      if (this.scrollRoot && this.scrollRoot !== win) {
+        this.scrollRoot.removeEventListener?.("scroll", this.boundSchedule);
+        if (this.scrollRootMarker) this.scrollRoot.removeAttribute?.(this.scrollRootMarker);
+      }
+      scope.removeEventListener?.("trpg-host-layout-change", this.boundHostLayoutChange);
+      this.contentResizeObserver?.disconnect();
+      frameScheduler.removeList(this);
+      this.heightCache.clear();
+      this.visualMetricCache.clear();
+      this.estimateCache.clear();
+    }
+  }
+
+
+  const mainList = new VirtualList(mainHost, mainRecords, "main", renderMainRecord);
+  const otherList = otherHost ? new VirtualList(otherHost, otherRecords, "other", renderOtherRecord) : null;
+  const requestGlobalFrame = () => {
+    mainList.refreshScrollRoot(false);
+    otherList?.refreshScrollRoot(false);
+    mainList.schedule();
+    otherList?.schedule();
+    frameScheduler.requestFrame();
+  };
+  win.addEventListener("scroll", requestGlobalFrame, { passive: true });
+  win.addEventListener("resize", requestGlobalFrame, { passive: true });
+  scope.addEventListener("scroll", requestGlobalFrame, { passive: true });
+
+  const clickHandler = event => {
+    const splitButtonElement = event.target.closest?.(".split-button[data-split-id]");
+    if (splitButtonElement && scope.contains(splitButtonElement)) {
+      toggleManualSplit(Number(splitButtonElement.dataset.splitId), splitButtonElement.dataset.splitTarget || "main", splitButtonElement);
+      return;
+    }
+    const bgmButtonElement = event.target.closest?.(".bgm-button[data-bgm-id]");
+    if (bgmButtonElement && scope.contains(bgmButtonElement)) {
+      addBgmTrigger({
+        id: Number(bgmButtonElement.dataset.bgmId),
+        uid: bgmButtonElement.dataset.bgmUid || "",
+        order: Number(bgmButtonElement.dataset.bgmOrder)
+      });
+    }
+  };
+  scope.addEventListener("click", clickHandler);
+
+  const findRecordIndex = (list, identity = {}) => {
+    const uid = String(identity.uid || "");
+    const order = Number(identity.order);
+    const id = Number(identity.id);
+    if (uid) {
+      const index = list.records.findIndex(record => record.recordType === "message" && record.uid === uid);
+      if (index >= 0) return index;
+    }
+    if (Number.isFinite(order)) {
+      const index = list.records.findIndex(record => record.recordType === "message" && Number(record.order) === order);
+      if (index >= 0) return index;
+    }
+    if (Number.isFinite(id)) return list.records.findIndex(record => record.recordType === "message" && Number(record.id) === id);
+    return -1;
+  };
+  const jumpListToIndex = (list, index, align = "center") => {
+    if (!list || index < 0 || index >= list.records.length) return false;
+    list.refreshScrollRoot(true);
+    list.cancelNativeSmooth();
+    list.renderAroundIndex(index);
+    const viewport = list.viewport();
+    const viewHeight = Math.max(1, viewport.end - viewport.start);
+    list.setScrollOffset(list.targetOffsetForIndex(index, align, viewHeight));
+    win.requestAnimationFrame(() => {
+      list.renderAroundIndex(index);
+      const nextViewport = list.viewport();
+      list.setScrollOffset(list.targetOffsetForIndex(index, align, Math.max(1, nextViewport.end - nextViewport.start)));
+      list.schedule(true);
+    });
+    return true;
+  };
+  const messageRecords = records => records.filter(record => record.recordType === "message");
+  const api = {
+    stats: runtimeStats,
+    mainRecords,
+    otherRecords,
+    mainIds: messageRecords(mainRecords).map(record => record.id),
+    mainOrders: messageRecords(mainRecords).map(record => record.order),
+    otherIds: messageRecords(otherRecords).map(record => record.id),
+    ensureIdVisible: null,
+    mainHasOwnScroll: () => mainList.ownScroll(),
+    mainAtEnd: () => mainList.atEnd(),
+    currentMainIndices: () => mainList.currentIndices(),
+    captureMainAnchor: () => mainList.captureAnchor(),
+    restoreMainAnchor: anchor => mainList.restoreAnchor(anchor),
+    scrollMainTop: () => mainList.scrollTop(),
+    scrollOtherTop: () => otherList?.scrollTop(),
+    resize: () => { mainList.resize(); otherList?.resize(); },
+    setRange(startId, endId, paginateOther = false) {
+      const inRange = record => record.recordType === "boundary"
+        ? record.id >= startId && record.id < endId
+        : record.id >= startId && record.id < endId;
+      mainList.setRecords(mainRecords.filter(inRange));
+      if (otherList) otherList.setRecords(paginateOther ? otherRecords.filter(inRange) : otherRecords);
+    },
+    subscribeFrame(callback) { return frameScheduler.subscribe(callback); },
+    requestFrame() { frameScheduler.requestFrame(); },
+    otherMotion: otherList ? {
+      resolveId(indexValue) {
+        const index = otherList.indexForId(indexValue);
+        return otherList.nearestMessageRecord(index, 1)?.id || 0;
+      },
+      currentOffset: () => otherList.currentOffset(),
+      targetOffset: (id, prepare = false) => otherList.targetOffsetForId(id, "sync", prepare),
+      setOffset: value => otherList.setScrollOffset(value),
+      prepare: id => otherList.prepareId(id),
+      near: id => otherList.nearId(id),
+      setSync: id => otherList.setSync(id),
+      clearSync: () => otherList.setSync(0),
+      setControlled: value => otherList.setExternalControl(value),
+      cancelNative: () => otherList.cancelNativeSmooth(),
+      viewportHeight: () => Math.max(1, otherList.viewport().end - otherList.viewport().start)
+    } : null,
+    pauseOtherSync() {
+      otherList?.cancelNativeSmooth();
+      otherList?.setExternalControl(false);
+    },
+    jumpToMessage(message, kind = "main") {
+      const list = kind === "other" ? otherList : mainList;
+      if (!list) return false;
+      return jumpListToIndex(list, findRecordIndex(list, {
+        uid: message?.uid,
+        id: message?.id,
+        order: messageOrder(message)
+      }), "center");
+    },
+    highlightMessage(message, kind = "main", duration = 1800) {
+      const list = kind === "other" ? otherList : mainList;
+      if (!list) return false;
+      const index = findRecordIndex(list, { uid: message?.uid, id: message?.id, order: messageOrder(message) });
+      const record = list.records[index];
+      if (!record) return false;
+      activeJumpVirtualKey = record.virtualKey;
+      win.clearTimeout(jumpHighlightTimer);
+      list.renderAroundIndex(index);
+      jumpHighlightTimer = win.setTimeout(() => {
+        activeJumpVirtualKey = "";
+        mainList.schedule(true);
+        otherList?.schedule(true);
+      }, Math.max(200, Number(duration) || 1800));
+      return true;
+    },
+    jumpToBoundary(boundaryKey) {
+      const lists = [mainList, otherList].filter(Boolean);
+      for (const list of lists) {
+        const index = list.records.findIndex(record => record.recordType === "boundary" && record.boundaryKey === boundaryKey);
+        if (index >= 0) return jumpListToIndex(list, index, "center");
+      }
+      return false;
+    },
+    captureSnapshot() {
+      return {
+        root: root.scrollTop,
+        main: mainHost.scrollTop,
+        other: otherHost?.scrollTop || 0,
+        mainAnchor: mainList.captureAnchor(),
+        otherAnchor: otherList?.captureAnchor() || null
+      };
+    },
+    restoreSnapshot(value) {
+      if (!value) return;
+      root.scrollTop = Number(value.root) || 0;
+      mainHost.scrollTop = Number(value.main) || 0;
+      if (otherHost) otherHost.scrollTop = Number(value.other) || 0;
+      if (value.mainAnchor) mainList.restoreAnchor(value.mainAnchor);
+      if (value.otherAnchor) otherList?.restoreAnchor(value.otherAnchor);
+      mainList.schedule(true);
+      otherList?.schedule(true);
+    },
+    destroy() {
+      win.removeEventListener("scroll", requestGlobalFrame);
+      win.removeEventListener("resize", requestGlobalFrame);
+      scope.removeEventListener("scroll", requestGlobalFrame);
+      scope.removeEventListener("click", clickHandler);
+      win.clearTimeout(jumpHighlightTimer);
+      mainList.destroy();
+      otherList?.destroy();
+      frameScheduler.destroy();
+      root.classList.remove("is-virtualized");
+    }
+  };
+  scope.__trpgVirtual = api;
+  // Materialize the first window immediately. This also establishes the real scroll hosts
+  // before a preserved anchor or a BGM/split jump is applied.
+  mainList.render();
+  otherList?.render();
+  if (snapshot) api.restoreSnapshot(snapshot);
+  return api;
+}
+
 function renderPreview(options = {}) {
   const root = el("preview");
   if (!state.messages.length) return;
+  const oldVirtual = root.__trpgVirtual || null;
+  const virtualSnapshot = options.preserveScroll ? oldVirtual?.captureSnapshot?.() : null;
   const scrollSnapshot = options.preserveScroll ? previewScrollSnapshot(root) : null;
+  root.__trpgEnhancementCleanup?.();
+  oldVirtual?.destroy?.();
+  root.__trpgVirtual = null;
+  root.classList.remove("is-virtualized");
+
   const mainRows = mainVisibleRows();
   const paging = pagingInfoForRows(mainRows);
   const pageRows = rowsForPaging(mainRows, paging);
   const sideRows = otherVisibleRows();
-  const html = renderMainRowsWithSplitBoundaries(pageRows, mainRows);
-  if (sideOtherEnabled()) {
-    const otherHtml = renderOtherRowsWithSplitBoundaries(sideRows);
-    root.innerHTML = `<div class="preview-layout">
-      <div class="ccfolia-wrap">${html || '<div class="empty-state"><h2>표시할 main 메시지가 없습니다</h2><p>필터를 조정해보세요.</p></div>'}</div>
-      <aside class="other-wrap">${otherHtml}</aside>
-    </div>`;
+  const shouldVirtualize = state.visible.length >= PREVIEW_VIRTUAL_SOURCE_THRESHOLD
+    || pageRows.length + sideRows.length >= PREVIEW_VIRTUAL_DOM_THRESHOLD;
+
+  if (shouldVirtualize) {
+    createPreviewVirtualController(root, pageRows, mainRows, sideRows, virtualSnapshot || scrollSnapshot);
   } else {
-    root.innerHTML = `<div class="ccfolia-wrap">${html || '<div class="empty-state"><h2>표시할 메시지가 없습니다</h2><p>필터를 조정해보세요.</p></div>'}</div>`;
+    const html = renderMainRowsWithSplitBoundaries(pageRows, mainRows);
+    if (sideOtherEnabled()) {
+      const otherHtml = renderOtherRowsWithSplitBoundaries(sideRows);
+      root.innerHTML = `<div class="preview-layout">
+        <div class="ccfolia-wrap">${html || '<div class="empty-state"><h2>표시할 main 메시지가 없습니다</h2><p>필터를 조정해보세요.</p></div>'}</div>
+        <aside class="other-wrap">${otherHtml}</aside>
+      </div>`;
+    } else {
+      root.innerHTML = `<div class="ccfolia-wrap">${html || '<div class="empty-state"><h2>표시할 메시지가 없습니다</h2><p>필터를 조정해보세요.</p></div>'}</div>`;
+    }
+    restorePreviewScroll(root, scrollSnapshot);
+    root.querySelectorAll(".split-button[data-split-id]").forEach(button => {
+      button.addEventListener("click", () => toggleManualSplit(Number(button.dataset.splitId), button.dataset.splitTarget, button));
+    });
+    root.querySelectorAll(".bgm-button[data-bgm-id]").forEach(button => {
+      button.addEventListener("click", () => addBgmTrigger({
+        id: Number(button.dataset.bgmId),
+        uid: button.dataset.bgmUid || "",
+        order: Number(button.dataset.bgmOrder)
+      }));
+    });
   }
-  restorePreviewScroll(root, scrollSnapshot);
-  root.querySelectorAll(".split-button[data-split-id]").forEach(button => {
-    button.addEventListener("click", () => toggleManualSplit(Number(button.dataset.splitId), button.dataset.splitTarget, button));
-  });
-  root.querySelectorAll(".bgm-button[data-bgm-id]").forEach(button => {
-    button.addEventListener("click", () => addBgmTrigger({
-      id: Number(button.dataset.bgmId),
-      uid: button.dataset.bgmUid || "",
-      order: Number(button.dataset.bgmOrder)
-    }));
-  });
+
   const previewBgmTriggers = bgmTriggersForRows(state.visible);
   const previewBgmController = getPersistentPreviewBgmController();
   previewBgmController.configure({
@@ -8097,6 +9156,10 @@ function showSplitActionToast(button, message, removed = false) {
 function revealSplitBoundary(id, target = "main", uid = "") {
   const splitKey = `${target}:${uid ? `uid:${uid}` : `id:${Number(id)}`}`;
   let boundaries = [...document.querySelectorAll(`[data-split-key="${CSS.escape(splitKey)}"]`)];
+  if (!boundaries.length) {
+    el("preview")?.__trpgVirtual?.jumpToBoundary?.(splitKey);
+    boundaries = [...document.querySelectorAll(`[data-split-key="${CSS.escape(splitKey)}"]`)];
+  }
   if (!boundaries.length) boundaries = [...document.querySelectorAll(`[data-split-boundary="${Number(id)}"]`)];
   if (!boundaries.length) return;
   boundaries.forEach(boundary => boundary.classList.add("is-new"));
@@ -10202,6 +11265,7 @@ function scopeExportCss(css, scope = "#trpg-log-app") {
 
 const EXPORT_SCOPE_TOKEN = "#__TRPG_EXPORT_SCOPE__";
 const scopedExportCssTemplateCache = new Map();
+const documentExportCssCache = new Map();
 function exportCssCacheKey(theme) {
   return [
     normalizeAppTheme(theme),
@@ -10211,11 +11275,25 @@ function exportCssCacheKey(theme) {
   ].join("|");
 }
 
+function exportDocumentCss(theme = currentExportTheme()) {
+  const key = exportCssCacheKey(theme);
+  let css = documentExportCssCache.get(key);
+  if (!css) {
+    css = exportCssRaw(theme);
+    documentExportCssCache.set(key, css);
+    if (documentExportCssCache.size > 8) {
+      const oldest = documentExportCssCache.keys().next().value;
+      documentExportCssCache.delete(oldest);
+    }
+  }
+  return css;
+}
+
 function exportCss(scope = "[data-trpg-log-app]", theme = currentExportTheme()) {
   const key = exportCssCacheKey(theme);
   let template = scopedExportCssTemplateCache.get(key);
   if (!template) {
-    template = scopeExportCss(exportCssRaw(theme), EXPORT_SCOPE_TOKEN);
+    template = scopeExportCss(exportDocumentCss(theme), EXPORT_SCOPE_TOKEN);
     scopedExportCssTemplateCache.set(key, template);
     if (scopedExportCssTemplateCache.size > 8) {
       const oldest = scopedExportCssTemplateCache.keys().next().value;
@@ -10551,7 +11629,8 @@ function buildStaticExportMarkup(rows, titleSuffix = "", exportOptions = {}, fra
     rows: rows.length,
     images: new Set(rows.map(row => row.imgUrl).filter(Boolean)).size
   };
-  const style = `<style>${exportCss(scopeSelector, exportTheme)}</style>`;
+  const styleCss = fragment ? exportCss(scopeSelector, exportTheme) : exportDocumentCss(exportTheme);
+  const style = `<style>${styleCss}</style>`;
   if (fragment) return `${style}${app}`;
   return `<!DOCTYPE html><html lang="ko" data-theme="${exportTheme}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="${themePalette.themeColor}"><meta name="trpg-log-storage" content="static-compat-v3.2;rows=${rows.length}"><title>${escapeHtml(title)}</title>${style}</head><body style="margin:0;background:${themePalette.background}">${app}</body></html>`;
 }
@@ -10631,7 +11710,8 @@ function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment 
   const bootMode = includeFallback ? "fallback" : "compact";
   const fallbackInsidePage = includeFallback ? fallbackMarkup : "";
   const app = `<div id="${instanceId}" class="trpg-log-app" data-trpg-log-app data-theme="${exportTheme}" data-trpg-export-count="${rows.length}" data-trpg-boot-state="pending" data-trpg-boot-mode="${bootMode}"><div class="page" role="main"><h1 class="title">${escapeHtml(title)}</h1>${fallbackInsidePage}<div data-trpg-log-root data-trpg-boot-state="pending"${includeFallback ? " hidden" : ""}></div></div>${hostCompatibilityScript()}<script type="application/json" id="${dataId}" data-trpg-log-data>${payloadJson}<\/script>${compactRendererScript()}${exportConverterSettingsScript(instanceId)}${exportEnhancementScript(rows, exportOptions)}</div>`;
-  const style = `<style>${exportCss(scopeSelector, exportTheme)}</style>`;
+  const styleCss = fragment ? exportCss(scopeSelector, exportTheme) : exportDocumentCss(exportTheme);
+  const style = `<style>${styleCss}</style>`;
   if (fragment) return `${style}${app}`;
   const storageMode = includeFallback ? "compact-v6+static-fallback-v1" : "compact-v6";
   return `<!DOCTYPE html><html lang="ko" data-theme="${exportTheme}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="${themePalette.themeColor}"><meta name="trpg-log-storage" content="${storageMode};rows=${rows.length};profiles=${payload.p.length};images=${imageCount}"><title>${escapeHtml(title)}</title>${style}</head><body style="margin:0;background:${themePalette.background}">${app}</body></html>`;
