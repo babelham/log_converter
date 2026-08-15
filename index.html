@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.83">
+<meta name="trpg-app-version" content="6.84">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2775,21 +2775,22 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
   </div>
 </dialog>
 
-/* v6.83 — conservative duplicate-time matching + robust mixed date/relative timeline:
-   - repeated exact-text matches no longer attach timestamps across different days
-   - ambiguous repeated messages keep only a shared day label, not an unsafe minute
-   - symbolic day-only labels (e.g. 先週 月曜日) participate in the timeline conservatively
-   - retains v6.82 mixed calendar/relative anchoring and manual day boundaries.
-   v6.82 — robust mixed date/relative timeline + manual day boundaries:
-   - capture Cocofolia timestamps even when appended to the speaker/name node
-   - old YYYY/MM/DD-only logs auto-split only when adjacent known dates are at least 2 days apart
-   - ambiguous consecutive sessions can be split manually with a per-message day-boundary button
-   - remove the previous 200-message heuristic; precise timestamps still use the 60-minute rule
-   - keep compact exports sparse by storing date labels and manual boundary starts only at change points
+<!-- v6.84 — hide internal changelog from rendered converter UI.
+     v6.83 — conservative duplicate-time matching + robust mixed date/relative timeline:
+     - repeated exact-text matches no longer attach timestamps across different days
+     - ambiguous repeated messages keep only a shared day label, not an unsafe minute
+     - symbolic day-only labels (e.g. 先週 月曜日) participate in the timeline conservatively
+     - retains v6.82 mixed calendar/relative anchoring and manual day boundaries.
+     v6.82 — robust mixed date/relative timeline + manual day boundaries:
+     - capture Cocofolia timestamps even when appended to the speaker/name node
+     - old YYYY/MM/DD-only logs auto-split only when adjacent known dates are at least 2 days apart
+     - ambiguous consecutive sessions can be split manually with a per-message day-boundary button
+     - remove the previous 200-message heuristic; precise timestamps still use the 60-minute rule
+     - keep compact exports sparse by storing date labels and manual boundary starts only at change points
 
-   v6.79 — mobile/session-navigation controls:
-   session navigator is touch-friendly on mobile and uses UID/order jumps; exported logs may disable it.
-   When disabled, compact exports omit the sparse session timeline and create no navigator DOM/listeners. */
+     v6.79 — mobile/session-navigation controls:
+     session navigator is touch-friendly on mobile and uses UID/order jumps; exported logs may disable it.
+     When disabled, compact exports omit the sparse session timeline and create no navigator DOM/listeners. -->
 
 <script>
 const state = {
