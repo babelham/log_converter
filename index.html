@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.84">
+<meta name="trpg-app-version" content="6.85">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2775,7 +2775,11 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
   </div>
 </dialog>
 
-<!-- v6.84 — hide internal changelog from rendered converter UI.
+<!-- v6.85 — context-aware duplicate portrait matching:
+     - match priority: messageId/index → unique exact → context sequence → representative portrait
+     - align collector rows to HTML per tab with patience-style unique anchors and orientation detection
+     - repeated short messages no longer cycle portrait arrays when ambiguous; unresolved cases use representative portrait.
+     v6.84 — hide internal changelog from rendered converter UI.
      v6.83 — conservative duplicate-time matching + robust mixed date/relative timeline:
      - repeated exact-text matches no longer attach timestamps across different days
      - ambiguous repeated messages keep only a shared day label, not an unsafe minute
@@ -2843,7 +2847,8 @@ const state = {
   lastAnalysis: null,
   importedConverterSettings: null,
   lastImportedBgmRestore: null,
-  stats: { exact: 0, fallback: 0, system: 0 }
+  collectedSequenceRows: [],
+  stats: { messageId: 0, index: 0, exact: 0, context: 0, fallback: 0, system: 0 }
 };
 
 const el = id => document.getElementById(id);
@@ -4213,6 +4218,7 @@ function parseImageJson(source) {
   state.defaultByName = new Map();
   state.tabDefaultByName = new Map();
   state.expressionsByName = new Map();
+  state.collectedSequenceRows = [];
   const cleanedSource = String(source || "").replace(/^\uFEFF/, "").trim();
   const payload = JSON.parse(cleanedSource);
   const data = Array.isArray(payload) ? payload : payload?.data;
@@ -4229,9 +4235,25 @@ function parseImageJson(source) {
     const rawIndex = row.idx ?? row.index ?? row.messageIndex ?? row.message_index;
     const index = rawIndex === "" || rawIndex == null ? null : Number(rawIndex);
     if (!name || !url) return;
+    const displayName = stripCollectedNameMetadata(name);
+    const sequenceTab = normalizeText(tab || "").trim() || "main";
+    const safeIndex = Number.isFinite(index) ? index : null;
+    state.collectedSequenceRows.push({
+      tab: normalizedTab(sequenceTab),
+      rawTab: sequenceTab,
+      name: displayName,
+      text,
+      key: messageKey(displayName, text),
+      scopedKey: tabMessageKey(sequenceTab, displayName, text),
+      url,
+      time,
+      messageId,
+      index: safeIndex,
+      sourceOrder: state.collectedSequenceRows.length
+    });
     registerUrl(tab, name, text, url, {
       messageId,
-      index: Number.isFinite(index) ? index : null,
+      index: safeIndex,
       time
     });
     validRows += 1;
@@ -4281,12 +4303,227 @@ function takeMatchedMedia(urlMap, timeMap, offsets, key) {
   };
 }
 
+function sequenceLisPairs(pairs) {
+  if (!Array.isArray(pairs) || !pairs.length) return [];
+  const tails = [];
+  const tailPairIndices = [];
+  const previous = new Int32Array(pairs.length);
+  previous.fill(-1);
+  for (let index = 0; index < pairs.length; index += 1) {
+    const value = Number(pairs[index][1]);
+    let low = 0;
+    let high = tails.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (tails[middle] < value) low = middle + 1;
+      else high = middle;
+    }
+    if (low > 0) previous[index] = tailPairIndices[low - 1];
+    tails[low] = value;
+    tailPairIndices[low] = index;
+  }
+  const output = [];
+  let cursor = tailPairIndices[tails.length - 1];
+  while (cursor >= 0) {
+    output.push(pairs[cursor]);
+    cursor = previous[cursor];
+  }
+  output.reverse();
+  return output;
+}
+
+function sequenceUniquePairs(originalRows, collectedRows, originalStart = 0, originalEnd = originalRows.length, collectedStart = 0, collectedEnd = collectedRows.length) {
+  const originalCount = new Map();
+  const collectedCount = new Map();
+  const originalPosition = new Map();
+  const collectedPosition = new Map();
+  for (let index = originalStart; index < originalEnd; index += 1) {
+    const key = originalRows[index]?.key || "";
+    if (!key) continue;
+    originalCount.set(key, (originalCount.get(key) || 0) + 1);
+    originalPosition.set(key, index);
+  }
+  for (let index = collectedStart; index < collectedEnd; index += 1) {
+    const key = collectedRows[index]?.key || "";
+    if (!key) continue;
+    collectedCount.set(key, (collectedCount.get(key) || 0) + 1);
+    collectedPosition.set(key, index);
+  }
+  const candidates = [];
+  for (const [key, count] of originalCount.entries()) {
+    if (count !== 1 || collectedCount.get(key) !== 1) continue;
+    candidates.push([originalPosition.get(key), collectedPosition.get(key)]);
+  }
+  candidates.sort((left, right) => left[0] - right[0] || left[1] - right[1]);
+  return sequenceLisPairs(candidates);
+}
+
+function orientCollectedSequence(originalRows, collectedRows) {
+  if (!Array.isArray(collectedRows) || collectedRows.length < 2 || !originalRows.length) return collectedRows || [];
+  const forwardPairs = sequenceUniquePairs(originalRows, collectedRows);
+  const reversed = collectedRows.slice().reverse();
+  const reversePairs = sequenceUniquePairs(originalRows, reversed);
+  // 북마크릿 수집은 위로 스크롤하면 최신→과거 순서가 되기 쉽다. 고유 대사의 단조 정렬이
+  // 더 많이 살아남는 방향을 택하되, 근소한 차이면 원본 순서를 유지한다.
+  return reversePairs.length > forwardPairs.length + Math.max(2, Math.floor(forwardPairs.length * 0.05))
+    ? reversed
+    : collectedRows;
+}
+
+function buildPatienceSequenceAnchors(originalRows, collectedRows) {
+  if (!originalRows.length || !collectedRows.length) return [];
+  const anchors = [];
+  const stack = [{ os: 0, oe: originalRows.length, cs: 0, ce: collectedRows.length, depth: 0 }];
+  const MAX_DEPTH = 14;
+  while (stack.length) {
+    const segment = stack.pop();
+    if (!segment || segment.os >= segment.oe || segment.cs >= segment.ce || segment.depth > MAX_DEPTH) continue;
+    const selected = sequenceUniquePairs(originalRows, collectedRows, segment.os, segment.oe, segment.cs, segment.ce);
+    if (!selected.length) continue;
+    anchors.push(...selected);
+    let previousO = segment.os - 1;
+    let previousC = segment.cs - 1;
+    for (const pair of selected) {
+      const [oi, ci] = pair;
+      if (oi > previousO + 1 && ci > previousC + 1) {
+        stack.push({ os: previousO + 1, oe: oi, cs: previousC + 1, ce: ci, depth: segment.depth + 1 });
+      }
+      previousO = oi;
+      previousC = ci;
+    }
+    if (segment.oe > previousO + 1 && segment.ce > previousC + 1) {
+      stack.push({ os: previousO + 1, oe: segment.oe, cs: previousC + 1, ce: segment.ce, depth: segment.depth + 1 });
+    }
+  }
+  const unique = new Map();
+  anchors.forEach(pair => unique.set(`${pair[0]}:${pair[1]}`, pair));
+  return [...unique.values()].sort((left, right) => left[0] - right[0] || left[1] - right[1]);
+}
+
+function safeSharedCollectedMedia(collectedRows, indices) {
+  const source = (indices || []).map(index => collectedRows[index]).filter(Boolean);
+  if (!source.length) return null;
+  const urls = [...new Set(source.map(row => String(row.url || "").trim()).filter(Boolean))];
+  if (urls.length !== 1) return null;
+  const safeTimes = conservativeExactTimeValues(source.map(row => row.time || ""));
+  const time = safeTimes.find(Boolean) || "";
+  return { url: urls[0], time };
+}
+
+function buildContextSequenceMatchMap(messages) {
+  const result = new Map();
+  const collectedSource = Array.isArray(state.collectedSequenceRows) ? state.collectedSequenceRows : [];
+  if (!Array.isArray(messages) || !messages.length || !collectedSource.length) return result;
+  const originalByTab = new Map();
+  messages.forEach((message, globalIndex) => {
+    const tab = normalizedTab(message?.tab || "main");
+    if (!originalByTab.has(tab)) originalByTab.set(tab, []);
+    originalByTab.get(tab).push({
+      globalIndex,
+      key: messageKey(message?.name || "system", message?.text || ""),
+      scopedKey: tabMessageKey(message?.tab || "main", message?.name || "system", message?.text || "")
+    });
+  });
+  const collectedByTab = new Map();
+  collectedSource.forEach(row => {
+    const tab = normalizedTab(row?.tab || row?.rawTab || "main");
+    if (!collectedByTab.has(tab)) collectedByTab.set(tab, []);
+    collectedByTab.get(tab).push(row);
+  });
+
+  for (const [tab, originalRows] of originalByTab.entries()) {
+    const rawCollected = collectedByTab.get(tab) || [];
+    if (!rawCollected.length) continue;
+    const collectedRows = orientCollectedSequence(originalRows, rawCollected);
+    const anchors = buildPatienceSequenceAnchors(originalRows, collectedRows);
+    const mappedOriginal = new Set();
+    const mappedCollected = new Set();
+    const assign = (originalIndex, collectedIndex, confidence = "context") => {
+      if (mappedOriginal.has(originalIndex) || mappedCollected.has(collectedIndex)) return;
+      const original = originalRows[originalIndex];
+      const collected = collectedRows[collectedIndex];
+      if (!original || !collected || original.key !== collected.key || !collected.url) return;
+      result.set(original.globalIndex, { url: collected.url, time: collected.time || "", confidence });
+      mappedOriginal.add(originalIndex);
+      mappedCollected.add(collectedIndex);
+    };
+    anchors.forEach(([oi, ci]) => assign(oi, ci, "context-anchor"));
+
+    const boundaries = [[-1, -1], ...anchors, [originalRows.length, collectedRows.length]];
+    for (let boundaryIndex = 0; boundaryIndex + 1 < boundaries.length; boundaryIndex += 1) {
+      const [leftO, leftC] = boundaries[boundaryIndex];
+      const [rightO, rightC] = boundaries[boundaryIndex + 1];
+      if (rightO <= leftO + 1 || rightC <= leftC + 1) continue;
+      const originalPositions = new Map();
+      const collectedPositions = new Map();
+      for (let oi = leftO + 1; oi < rightO; oi += 1) {
+        if (mappedOriginal.has(oi)) continue;
+        const key = originalRows[oi]?.key || "";
+        if (!key) continue;
+        if (!originalPositions.has(key)) originalPositions.set(key, []);
+        originalPositions.get(key).push(oi);
+      }
+      for (let ci = leftC + 1; ci < rightC; ci += 1) {
+        if (mappedCollected.has(ci)) continue;
+        const key = collectedRows[ci]?.key || "";
+        if (!key) continue;
+        if (!collectedPositions.has(key)) collectedPositions.set(key, []);
+        collectedPositions.get(key).push(ci);
+      }
+      for (const [key, originalIndices] of originalPositions.entries()) {
+        const collectedIndices = collectedPositions.get(key) || [];
+        if (!collectedIndices.length) continue;
+        // 앵커 사이에서 발생 횟수까지 같으면 순서를 보존해 1:1 대응한다. 문맥 경계가 이미
+        // 좁혀져 있으므로 전역 순번식 매칭과 달리 중간 중복 수집이 뒤쪽 전체를 밀지 않는다.
+        if (originalIndices.length === collectedIndices.length && originalIndices.length <= 24) {
+          for (let cursor = 0; cursor < originalIndices.length; cursor += 1) {
+            assign(originalIndices[cursor], collectedIndices[cursor], "context-segment");
+          }
+          continue;
+        }
+        // 개수는 달라도 후보들의 표정이 모두 같다면 이미지 자체는 모호하지 않다.
+        const shared = safeSharedCollectedMedia(collectedRows, collectedIndices);
+        if (shared) {
+          originalIndices.forEach(oi => {
+            if (mappedOriginal.has(oi)) return;
+            const original = originalRows[oi];
+            if (!original) return;
+            result.set(original.globalIndex, { ...shared, confidence: "context-shared" });
+            mappedOriginal.add(oi);
+          });
+        }
+      }
+    }
+  }
+  return result;
+}
+
+function takeUniqueExactMedia(urlMap, timeMap, key) {
+  if (!key) return { url: "", time: "" };
+  const urls = urlMap.get(key) || [];
+  if (urls.length !== 1) return { url: "", time: "" };
+  const times = timeMap.get(key) || [];
+  return {
+    url: urls[0] || "",
+    time: normalizeText(times[0] || "").replace(/\s+/g, " ").trim()
+  };
+}
+
+function safeExactTimeForKey(timeMap, key) {
+  if (!key) return "";
+  const values = (timeMap.get(key) || []).map(value => normalizeText(value || "").replace(/\s+/g, " ").trim()).filter(Boolean);
+  if (!values.length) return "";
+  const unique = [...new Set(values)];
+  return unique.length === 1 ? unique[0] : "";
+}
+
 function applyMatches(messages) {
   state.exactOffsets = new Map();
   state.tabExactOffsets = new Map();
   state.tabMessageIdOffsets = new Map();
   state.tabIndexOffsets = new Map();
-  const stats = { messageId: 0, index: 0, exact: 0, fallback: 0, system: 0 };
+  const contextMatches = buildContextSequenceMatchMap(messages);
+  const stats = { messageId: 0, index: 0, exact: 0, context: 0, fallback: 0, system: 0 };
   const matched = messages.map((message, index) => {
     const tab = message.tab || "main";
     const key = messageKey(message.name, message.text);
@@ -4310,11 +4547,27 @@ function applyMatches(messages) {
       if (imgUrl) { stats.index += 1; match = "index"; }
     }
     if (!imgUrl) {
-      let media = takeMatchedMedia(state.tabExactMap, state.tabExactTimeMap, state.tabExactOffsets, scopedKey);
-      if (!media.url) media = takeMatchedMedia(state.exactMap, state.exactTimeMap, state.exactOffsets, key);
+      let media = takeUniqueExactMedia(state.tabExactMap, state.tabExactTimeMap, scopedKey);
+      if (!media.url) media = takeUniqueExactMedia(state.exactMap, state.exactTimeMap, key);
       imgUrl = media.url;
       if (!time && media.time) time = media.time;
       if (imgUrl) { stats.exact += 1; match = "exact"; }
+    }
+    if (!imgUrl) {
+      const media = contextMatches.get(index);
+      if (media?.url) {
+        imgUrl = media.url;
+        if (!time && media.time) time = media.time;
+        stats.context += 1;
+        match = "context";
+      }
+    }
+    // 표정 매칭이 모호해 대표표정으로 내려가더라도, v6.83에서 보수적으로 정리한 공통 날짜
+    // 라벨은 일차 목차 계산에 계속 활용한다.
+    if (!time) {
+      time = safeExactTimeForKey(state.tabExactTimeMap, scopedKey)
+        || safeExactTimeForKey(state.exactTimeMap, key)
+        || "";
     }
 
     const existingId = Number(message.id);
@@ -4342,12 +4595,10 @@ function applyMatches(messages) {
       time,
       match,
       _order: order,
-      searchText: normalizeText(`${message.name || ""}
-${tab}
-${message.text || ""}`).toLowerCase()
+      searchText: normalizeText(`${message.name || ""}\n${tab}\n${message.text || ""}`).toLowerCase()
     };
   });
-  stats.highConfidence = stats.messageId + stats.index + stats.exact;
+  stats.highConfidence = stats.messageId + stats.index + stats.exact + stats.context;
   state.stats = stats;
   return matched;
 }
@@ -13877,7 +14128,7 @@ async function analyze() {
     updateView();
     el("resetFiltersBtn").disabled = false;
     const otherNote = state.otherText ? `, other ${otherRows.length.toLocaleString()}개 별도 병합` : "";
-    const portraitMatches = (state.stats.messageId || 0) + (state.stats.index || 0) + state.stats.exact + state.stats.fallback;
+    const portraitMatches = (state.stats.messageId || 0) + (state.stats.index || 0) + state.stats.exact + (state.stats.context || 0) + state.stats.fallback;
     renderBgmTriggerList();
     state.lastAnalysis = {
       total: combinedRows.length,
@@ -13890,7 +14141,7 @@ async function analyze() {
       setStatus(`${combinedRows.length.toLocaleString()}개 메시지와 ${jsonRows.toLocaleString()}개 이미지 행을 읽었지만 포트레이트가 매칭되지 않았습니다. 탭·캐릭터명·대사 형식을 확인해 주세요.`);
     } else {
       const detail = jsonRows
-        ? ` ID ${(state.stats.messageId || 0).toLocaleString()} · 인덱스 ${(state.stats.index || 0).toLocaleString()} · 대사 ${state.stats.exact.toLocaleString()} · 대표표정 ${state.stats.fallback.toLocaleString()}`
+        ? ` ID ${(state.stats.messageId || 0).toLocaleString()} · 인덱스 ${(state.stats.index || 0).toLocaleString()} · 고유대사 ${state.stats.exact.toLocaleString()} · 문맥 ${(state.stats.context || 0).toLocaleString()} · 대표표정 ${state.stats.fallback.toLocaleString()}`
         : "";
       const bgmNote = importedBgmRestore.restored
         ? ` 기존 HTML의 BGM ${importedBgmRestore.restored.toLocaleString()}개를 복구했습니다.${importedBgmRestore.unresolved ? ` 위치를 찾지 못한 항목 ${importedBgmRestore.unresolved.toLocaleString()}개.` : ""}`
@@ -13915,6 +14166,7 @@ orderFile.addEventListener("change", async () => {
   state.lastAnalysis = null;
   state.messages = [];
   state.sessionPageRanges = [];
+  state.collectedSequenceRows = [];
   resetMessageIdentityIndex();
   state.visible = [];
   state.visibleNonOther = [];
@@ -13962,6 +14214,7 @@ otherFile.addEventListener("change", async () => {
 
 jsonFile.addEventListener("change", async () => {
   state.jsonText = await readFile(jsonFile.files[0]);
+  state.collectedSequenceRows = [];
   state.lastAnalysis = null;
   el("analyzeBtn").disabled = !state.orderText;
   updateUploadCard(jsonFile, "jsonFileName");
