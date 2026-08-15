@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.70">
+<meta name="trpg-app-version" content="6.79">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2414,13 +2414,14 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
           <label>인장 크기
             <input id="avatarSize" type="number" min="28" max="72" value="42">
           </label>
-          <label>페이지당 표시
+          <label>페이지 구분
             <select id="pageSize">
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="200">200</option>
-              <option value="500">500</option>
-              <option value="1000" selected>1000</option>
+              <option value="auto" selected>자동 · 일차 우선</option>
+              <option value="50">50개씩</option>
+              <option value="100">100개씩</option>
+              <option value="200">200개씩</option>
+              <option value="500">500개씩</option>
+              <option value="1000">1000개씩</option>
               <option value="0">전체 표시</option>
             </select>
           </label>
@@ -2498,6 +2499,8 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
             <div class="check-row"><input id="splitOtherAsPages" type="checkbox"><label for="splitOtherAsPages">페이지 나누기에서 other도 함께 나누기</label></div>
             <div class="status">꺼두면 여러 HTML 파일로, 켜면 하나의 HTML 안에서 이전·다음 버튼으로 나눕니다.</div>
             <div class="check-row"><input id="inlineImages" type="checkbox"><label for="inlineImages">이미지를 HTML에 내장</label></div>
+            <div class="check-row"><input id="sessionNavigator" type="checkbox" checked><label for="sessionNavigator">빠른 스크롤 일차 목차 포함 <small>(기본 ON)</small></label></div>
+            <div class="status">끄면 최종 압축 HTML에 일차 목차용 시간축 데이터를 넣지 않고 목차 UI도 생성하지 않습니다. 변환기 안의 자동 일차 페이지는 그대로 유지됩니다. 노션 호환 정적 HTML에는 이 목차가 포함되지 않습니다.</div>
             <div class="check-row"><input id="tistoryFallback" type="checkbox"><label for="tistoryFallback">티스토리 보호글 호환 본문 포함 <small>(보호글용 · 용량 증가)</small></label></div>
             <div class="status">제목만 보이고 로그 본문이 생성되지 않는 보호글·동적 스킨에서 사용합니다. 정상 실행되면 압축 로그로 자동 전환됩니다.</div>
             <div class="check-row"><input id="notionStatic" type="checkbox"><label for="notionStatic">노션 호환 정적 HTML로 내보내기 <small>(용량 크게 증가)</small></label></div>
@@ -2659,6 +2662,10 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
   </div>
 </dialog>
 
+/* v6.79 — mobile/session-navigation controls:
+   session navigator is touch-friendly on mobile and uses UID/order jumps; exported logs may disable it.
+   When disabled, compact exports omit the sparse session timeline and create no navigator DOM/listeners. */
+
 <script>
 const state = {
   orderText: "",
@@ -2667,6 +2674,9 @@ const state = {
   title: "TRPG Log",
   messages: [],
   visible: [],
+  visibleNonOther: [],
+  visibleOther: [],
+  hasOtherMessages: false,
   exactMap: new Map(),
   exactOffsets: new Map(),
   tabExactMap: new Map(),
@@ -2675,6 +2685,10 @@ const state = {
   tabMessageIdOffsets: new Map(),
   tabIndexMap: new Map(),
   tabIndexOffsets: new Map(),
+  exactTimeMap: new Map(),
+  tabExactTimeMap: new Map(),
+  tabMessageIdTimeMap: new Map(),
+  tabIndexTimeMap: new Map(),
   defaultByName: new Map(),
   tabDefaultByName: new Map(),
   expressionsByName: new Map(),
@@ -2685,6 +2699,7 @@ const state = {
   tabs: [],
   chars: [],
   page: 1,
+  sessionPageRanges: [],
   previewBgmUnlocked: false,
   splitOrderHints: new Map(),
   splitUidHints: new Map(),
@@ -2711,15 +2726,15 @@ const jsonFile = el("jsonFile");
 const APP_VERSION = document.querySelector('meta[name="trpg-app-version"]')?.content?.trim() || "dev";
 const PREFERENCE_STORAGE_KEY = "trpg-log-converter:last-preferences";
 const THEME_STORAGE_KEY = "trpg-log-converter:theme";
-const PREFERENCE_SCHEMA_VERSION = 3;
-const DEFAULT_PAGE_SIZE = "1000";
+const PREFERENCE_SCHEMA_VERSION = 4;
+const DEFAULT_PAGE_SIZE = "auto";
 const WORK_DRAFT_SCHEMA_VERSION = 1;
 const WORK_DRAFT_PREFIX = "trpg-log-converter:work-draft:";
 const PREFERENCE_FIELDS = [
   "fontSize", "lineHeight", "avatarSize", "pageSize",
   "groupRows", "sideOther", "showExpression", "hideEmpty", "hideSystem",
   "bgmAutoplay", "bgmScenePages", "splitSize", "splitAsPages", "splitOtherAsPages",
-  "inlineImages", "notionStatic", "tistoryFallback", "inlineImageSize", "inlineImageQuality"
+  "inlineImages", "sessionNavigator", "notionStatic", "tistoryFallback", "inlineImageSize", "inlineImageQuality"
 ];
 // 보호글 폴백은 출력 용량을 크게 늘릴 수 있어 전역 직전 설정으로는 복원하지 않는다.
 // 작업 임시 저장과 출력 HTML 재입력에서는 계속 보존된다.
@@ -2795,9 +2810,11 @@ function loadLastPreferences() {
     const saved = JSON.parse(appStorage()?.getItem(PREFERENCE_STORAGE_KEY) || "null");
     if (!saved || typeof saved !== "object") return;
 
-    const needsPageSizeMigration = Number(saved.__schemaVersion || 0) < PREFERENCE_SCHEMA_VERSION;
-    if (needsPageSizeMigration && String(saved.pageSize || "") === "100") {
-      // v6.48 이전에 저장된 100개 기본값이 새 기본값(1000개)을 덮어쓰지 않게 한 번만 보정한다.
+    const savedSchemaVersion = Number(saved.__schemaVersion || 0);
+    const needsPageSizeMigration = savedSchemaVersion < PREFERENCE_SCHEMA_VERSION;
+    if (needsPageSizeMigration && ["100", "1000"].includes(String(saved.pageSize || ""))) {
+      // 과거 버전의 기본 페이지 값(100 → 1000)을 그대로 쓰던 사용자는
+      // 새 기본값인 '일차 우선, 불가하면 1000개'로 한 번만 이관한다.
       saved.pageSize = DEFAULT_PAGE_SIZE;
     }
 
@@ -2877,6 +2894,7 @@ const messageIdentityIndex = {
   byUid: new Map(),
   byOrder: new Map(),
   byId: new Map(),
+  byTargetId: new Map(),
   orderByMessage: new WeakMap()
 };
 
@@ -2888,6 +2906,7 @@ function resetMessageIdentityIndex() {
   messageIdentityIndex.byUid.clear();
   messageIdentityIndex.byOrder.clear();
   messageIdentityIndex.byId.clear();
+  messageIdentityIndex.byTargetId.clear();
   messageIdentityIndex.orderByMessage = new WeakMap();
 }
 
@@ -2910,7 +2929,12 @@ function rebuildMessageIdentityIndex(messages = state.messages) {
     if (uid && !messageIdentityIndex.byUid.has(uid)) messageIdentityIndex.byUid.set(uid, message);
     if (!messageIdentityIndex.byOrder.has(order)) messageIdentityIndex.byOrder.set(order, message);
     const id = Number(message?.id);
-    if (Number.isFinite(id) && !messageIdentityIndex.byId.has(id)) messageIdentityIndex.byId.set(id, message);
+    if (Number.isFinite(id)) {
+      if (!messageIdentityIndex.byId.has(id)) messageIdentityIndex.byId.set(id, message);
+      const target = normalizedTab(message?.tab || "main") === "other" ? "other" : "main";
+      const targetKey = `${target}:${id}`;
+      if (!messageIdentityIndex.byTargetId.has(targetKey)) messageIdentityIndex.byTargetId.set(targetKey, message);
+    }
     if (message && typeof message === "object") messageIdentityIndex.orderByMessage.set(message, order);
   });
   return messageIdentityIndex;
@@ -3271,8 +3295,8 @@ function stripCollectedNameMetadata(value) {
   const suffix = name.slice(separator + 3).trim();
   const clock = String.raw`(?:(?:오전|오후|午前|午後|AM|PM)\s*)?\d{1,2}:\d{2}(?::\d{2})?`;
   const isDate = new RegExp(`^(?:\\d{4}[.\\/-]\\d{1,2}[.\\/-]\\d{1,2}|\\d{1,2}[.\\/-]\\d{1,2})(?:\\s+${clock})?$`, "i").test(suffix);
-  const isRelative = new RegExp(`^(?:今日|昨日|一昨日|오늘|어제|그제|today|yesterday)(?:\\s+${clock})?$`, "i").test(suffix);
-  const isWeekday = new RegExp(`^(?:(?:先々週|先週|今週|지난주|저번주|이번주|last\\s+week|previous\\s+week|this\\s+week)\\s*(?:の)?\\s*)?(?:月曜(?:日)?|火曜(?:日)?|水曜(?:日)?|木曜(?:日)?|金曜(?:日)?|土曜(?:日)?|日曜(?:日)?|월요일|화요일|수요일|목요일|금요일|토요일|일요일|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\s+${clock}$`, "i").test(suffix);
+  const isRelative = new RegExp(`^(?:今日|昨日|一昨日|오늘|어제|그제|today|yesterday|day\\s+before\\s+yesterday)(?:\\s+${clock})?$`, "i").test(suffix);
+  const isWeekday = new RegExp(`^(?:(?:先々週|先週|今週|지지난주|저저번주|지난주|저번주|이번주|two\\s+weeks\\s+ago|last\\s+week|previous\\s+week|this\\s+week)\\s*(?:の)?\\s*)?(?:月曜(?:日)?|火曜(?:日)?|水曜(?:日)?|木曜(?:日)?|金曜(?:日)?|土曜(?:日)?|日曜(?:日)?|월요일|화요일|수요일|목요일|금요일|토요일|일요일|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\s+${clock}$`, "i").test(suffix);
   const isTime = new RegExp(`^${clock}$`, "i").test(suffix);
   return isDate || isRelative || isWeekday || isTime ? name.slice(0, separator).trim() : name;
 }
@@ -3564,6 +3588,9 @@ function parseCompactExportRows(doc) {
       const tabs = Array.isArray(data.t) ? data.t : [];
       const texts = Array.isArray(data.x) ? data.x : [];
       const uids = Array.isArray(data.q) ? data.q : [];
+      const times = Array.isArray(data.m) ? data.m : [];
+      const timelinePoints = decodeSparseTimeline(Array.isArray(data.k) ? data.k : []);
+      const timelineByOrder = new Map(timelinePoints.map(point => [point.order, point.minute]));
       const localRows = [];
       let localId = 0;
 
@@ -3578,6 +3605,8 @@ function parseCompactExportRows(doc) {
           id: nextBaseId + localId,
           uid: String(uids[rowIndex] || ""),
           order: rows.length + rowIndex,
+          time: String(times[rowIndex] || ""),
+          timelineMinute: timelineByOrder.has(rowIndex) ? timelineByOrder.get(rowIndex) : undefined,
           tab: String(tabs[tabIndex] ?? "main"),
           name: String(names[Number(profile[0]) || 0] ?? "system"),
           text: String(texts[textIndex] ?? ""),
@@ -3642,6 +3671,7 @@ function parseExportedRows(doc) {
       order: Number.isFinite(parsedOrder) ? parsedOrder : undefined,
       sourceIndex: Number.isFinite(parsedSourceIndex) ? parsedSourceIndex : undefined,
       messageId: article.dataset.messageId || article.dataset.chatId || "",
+      time: article.dataset.time || article.getAttribute("datetime") || "",
       embeddedBgmUrl,
       tab: isOther ? "other" : tagText || "main",
       name: isSystem ? "system" : cleanSpan(nameNode || document.createElement("span")) || "system",
@@ -3655,6 +3685,26 @@ function parseExportedRows(doc) {
     const orderB = Number.isFinite(Number(b.order)) ? Number(b.order) : Number(b.id);
     return orderA - orderB;
   });
+}
+
+function extractOrderMessageTime(node, spans = []) {
+  const candidates = [
+    node?.dataset?.time,
+    node?.getAttribute?.("datetime"),
+    node?.getAttribute?.("data-timestamp"),
+    node?.getAttribute?.("title"),
+    node?.querySelector?.("time[datetime]")?.getAttribute?.("datetime"),
+    node?.querySelector?.("time")?.textContent,
+    ...spans.slice(3).map(span => cleanSpan(span))
+  ];
+  const clock = /(?:오전|오후|午前|午後|AM|PM)?\s*\d{1,2}:\d{2}(?::\d{2})?/i;
+  const date = /(?:\d{4}[.\/-]\d{1,2}[.\/-]\d{1,2}|\d{4}년\s*\d{1,2}월\s*\d{1,2}일|오늘|어제|그제|今日|昨日|一昨日|today|yesterday|day\s+before\s+yesterday|(?:(?:지지난주|저저번주|지난주|저번주|이번주|先々週|先週|今週|two\s+weeks\s+ago|last\s+week|previous\s+week|this\s+week)\s*(?:의|の)?\s*)?(?:월요일|화요일|수요일|목요일|금요일|토요일|일요일|月曜(?:日)?|火曜(?:日)?|水曜(?:日)?|木曜(?:日)?|金曜(?:日)?|土曜(?:日)?|日曜(?:日)?|monday|tuesday|wednesday|thursday|friday|saturday|sunday))/i;
+  for (const candidate of candidates) {
+    const value = normalizeText(candidate || "").replace(/\s+/g, " ").trim();
+    if (!value || value.length > 120 || !clock.test(value)) continue;
+    if (date.test(value) || /^\s*(?:오전|오후|午前|午後|AM|PM)?\s*\d{1,2}:\d{2}(?::\d{2})?\s*$/i.test(value)) return value;
+  }
+  return "";
 }
 
 function parseOrderHtml(source, filename, forcedTab = "") {
@@ -3674,6 +3724,7 @@ function parseOrderHtml(source, filename, forcedTab = "") {
       tab,
       name: cleanSpan(spans[1]),
       text: cleanSpan(spans[2]),
+      time: extractOrderMessageTime(p, spans),
       color: safeCssColor(colorMatch ? colorMatch[1] : "#dddddd"),
       sourceIndex
     });
@@ -3825,6 +3876,7 @@ function applySavedConverterSettings(settings) {
     state.avatarHiddenTabs = new Set(settings.avatarHiddenTabs.map(normalizedTab));
     if (settings.avatarHiddenTabs.length) restored.push("인장 제외 탭");
   }
+  if (typeof settings.sessionNavigator === "boolean" && el("sessionNavigator")) el("sessionNavigator").checked = settings.sessionNavigator;
   if (typeof settings.notionStatic === "boolean" && el("notionStatic")) el("notionStatic").checked = settings.notionStatic;
   if (typeof settings.tistoryFallback === "boolean" && el("tistoryFallback")) el("tistoryFallback").checked = settings.tistoryFallback;
   el("clearSplitsBtn").disabled = !el("manualSplits").value.trim() && !el("manualOtherSplits").value.trim();
@@ -3832,6 +3884,9 @@ function applySavedConverterSettings(settings) {
   saveLastPreferences();
   return [...new Set(restored)];
 }
+
+const OTHER_TAB_PATTERN_SOURCE = "^(?:other|잡담|기타|雑談|その他)\\d*$";
+const OTHER_TAB_PATTERN = new RegExp(OTHER_TAB_PATTERN_SOURCE);
 
 function normalizedTab(value) {
   const tab = normalizeText(value || "")
@@ -3842,7 +3897,7 @@ function normalizedTab(value) {
   const compact = tab.replace(/\s+/g, "");
   if (!compact || /^(?:main|메인|メイン)\d*$/.test(compact)) return "main";
   if (/^(?:info|정보|情報)\d*$/.test(compact)) return "info";
-  if (/^(?:other|잡담|기타|雑談|その他)\d*$/.test(compact)) return "other";
+  if (OTHER_TAB_PATTERN.test(compact)) return "other";
   return tab;
 }
 
@@ -3877,6 +3932,12 @@ function pushMatchUrl(map, key, url) {
   map.get(key).push(url);
 }
 
+function pushMatchTime(map, key, value) {
+  if (!key) return;
+  if (!map.has(key)) map.set(key, []);
+  map.get(key).push(normalizeText(value || "").replace(/\s+/g, " ").trim());
+}
+
 function registerUrl(tab, name, text, url, metadata = {}) {
   const displayName = stripCollectedNameMetadata(name);
   const nameKey = normalizedCharacterName(displayName);
@@ -3885,12 +3946,20 @@ function registerUrl(tab, name, text, url, metadata = {}) {
 
   // 탭 정보가 잘못 붙어도 같은 캐릭터·대사는 마지막 보조 경로에서 찾을 수 있게 전역 exact에도 등록한다.
   const key = messageKey(displayName, text);
+  const time = metadata.time || "";
   pushMatchUrl(state.exactMap, key, url);
+  pushMatchTime(state.exactTimeMap, key, time);
 
   if (rawTab) {
-    pushMatchUrl(state.tabExactMap, tabMessageKey(rawTab, displayName, text), url);
-    pushMatchUrl(state.tabMessageIdMap, tabMessageIdKey(rawTab, metadata.messageId), url);
-    pushMatchUrl(state.tabIndexMap, tabIndexKey(rawTab, metadata.index), url);
+    const exactKey = tabMessageKey(rawTab, displayName, text);
+    const messageIdKey = tabMessageIdKey(rawTab, metadata.messageId);
+    const indexKey = tabIndexKey(rawTab, metadata.index);
+    pushMatchUrl(state.tabExactMap, exactKey, url);
+    pushMatchTime(state.tabExactTimeMap, exactKey, time);
+    pushMatchUrl(state.tabMessageIdMap, messageIdKey, url);
+    pushMatchTime(state.tabMessageIdTimeMap, messageIdKey, time);
+    pushMatchUrl(state.tabIndexMap, indexKey, url);
+    pushMatchTime(state.tabIndexTimeMap, indexKey, time);
 
     const scopedName = tabNameKey(rawTab, displayName);
     if (!state.tabDefaultByName.has(scopedName)) state.tabDefaultByName.set(scopedName, new Map());
@@ -3916,6 +3985,10 @@ function parseImageJson(source) {
   state.tabMessageIdOffsets = new Map();
   state.tabIndexMap = new Map();
   state.tabIndexOffsets = new Map();
+  state.exactTimeMap = new Map();
+  state.tabExactTimeMap = new Map();
+  state.tabMessageIdTimeMap = new Map();
+  state.tabIndexTimeMap = new Map();
   state.defaultByName = new Map();
   state.tabDefaultByName = new Map();
   state.expressionsByName = new Map();
@@ -3931,12 +4004,14 @@ function parseImageJson(source) {
     const text = normalizeText(row.text ?? row.message ?? row.content ?? "");
     const url = String(row.imgUrl ?? row.imageUrl ?? row.avatarUrl ?? row.image ?? row.url ?? "").trim();
     const messageId = normalizeText(row.messageId ?? row.message_id ?? row.chatId ?? row.stableId ?? "").trim();
+    const time = normalizeText(row.time ?? row.timestamp ?? row.datetime ?? row.dateTime ?? row.createdAt ?? "").replace(/\s+/g, " ").trim();
     const rawIndex = row.idx ?? row.index ?? row.messageIndex ?? row.message_index;
     const index = rawIndex === "" || rawIndex == null ? null : Number(rawIndex);
     if (!name || !url) return;
     registerUrl(tab, name, text, url, {
       messageId,
-      index: Number.isFinite(index) ? index : null
+      index: Number.isFinite(index) ? index : null,
+      time
     });
     validRows += 1;
   });
@@ -3968,6 +4043,19 @@ function takeMatchedUrl(map, offsets, key) {
   return url || "";
 }
 
+function takeMatchedMedia(urlMap, timeMap, offsets, key) {
+  const urls = urlMap.get(key) || [];
+  if (!key || !urls.length) return { url: "", time: "" };
+  const offset = offsets.get(key) || 0;
+  const slot = offset % urls.length;
+  const times = timeMap.get(key) || [];
+  offsets.set(key, offset + 1);
+  return {
+    url: urls[slot] || "",
+    time: normalizeText(times[slot] || "").replace(/\s+/g, " ").trim()
+  };
+}
+
 function applyMatches(messages) {
   state.exactOffsets = new Map();
   state.tabExactOffsets = new Map();
@@ -3981,19 +4069,26 @@ function applyMatches(messages) {
     const idKey = tabMessageIdKey(tab, message.messageId);
     const indexKey = tabIndexKey(tab, message.sourceIndex);
     let imgUrl = "";
+    let time = normalizeText(message.time || "").replace(/\s+/g, " ").trim();
     let match = "system";
 
     if (idKey) {
-      imgUrl = takeMatchedUrl(state.tabMessageIdMap, state.tabMessageIdOffsets, idKey);
+      const media = takeMatchedMedia(state.tabMessageIdMap, state.tabMessageIdTimeMap, state.tabMessageIdOffsets, idKey);
+      imgUrl = media.url;
+      if (!time && media.time) time = media.time;
       if (imgUrl) { stats.messageId += 1; match = "messageId"; }
     }
     if (!imgUrl && indexKey) {
-      imgUrl = takeMatchedUrl(state.tabIndexMap, state.tabIndexOffsets, indexKey);
+      const media = takeMatchedMedia(state.tabIndexMap, state.tabIndexTimeMap, state.tabIndexOffsets, indexKey);
+      imgUrl = media.url;
+      if (!time && media.time) time = media.time;
       if (imgUrl) { stats.index += 1; match = "index"; }
     }
     if (!imgUrl) {
-      imgUrl = takeMatchedUrl(state.tabExactMap, state.tabExactOffsets, scopedKey)
-        || takeMatchedUrl(state.exactMap, state.exactOffsets, key);
+      let media = takeMatchedMedia(state.tabExactMap, state.tabExactTimeMap, state.tabExactOffsets, scopedKey);
+      if (!media.url) media = takeMatchedMedia(state.exactMap, state.exactTimeMap, state.exactOffsets, key);
+      imgUrl = media.url;
+      if (!time && media.time) time = media.time;
       if (imgUrl) { stats.exact += 1; match = "exact"; }
     }
 
@@ -4019,6 +4114,7 @@ function applyMatches(messages) {
       uid,
       order,
       imgUrl,
+      time,
       match,
       _order: order,
       searchText: normalizeText(`${message.name || ""}
@@ -4910,8 +5006,17 @@ function pageNumberForBgmJump(rows, identity) {
     const index = sceneRanges.findIndex(range => order >= range.startOrder && order < range.endOrder);
     return index >= 0 ? index + 1 : 1;
   }
+  if (autoDayPagingEnabled()) {
+    const dayRanges = sessionPagingRangesForRows(rows);
+    if (dayRanges?.length) {
+      const order = messageOrder(message);
+      const dayIndex = dayRanges.findIndex(range => order >= range.startOrder && order < range.endOrder);
+      if (dayIndex >= 0) return dayIndex + 1;
+    }
+  }
   const index = rows.findIndex(row => row.uid === message.uid);
-  const selectedPageSize = Number(el("pageSize").value);
+  const selected = el("pageSize").value;
+  const selectedPageSize = selected === "auto" ? 1000 : Number(selected);
   const pageSize = selectedPageSize > 0 ? selectedPageSize : Math.max(1, rows.length);
   return index >= 0 ? Math.floor(index / pageSize) + 1 : 1;
 }
@@ -5172,6 +5277,7 @@ function converterSettingsPayload() {
     splitOtherAsPages: el("splitOtherAsPages").checked,
     sideOther: el("sideOther").checked,
     avatarHiddenTabs: [...state.avatarHiddenTabs],
+    sessionNavigator: el("sessionNavigator")?.checked !== false,
     notionStatic: !!el("notionStatic")?.checked,
     tistoryFallback: !!el("tistoryFallback")?.checked,
     exportTheme: currentExportTheme()
@@ -5282,6 +5388,22 @@ function splitPageRangesForRows(rows) {
   return pageRangesFromCount(rows, Number(el("splitSize").value));
 }
 
+function autoDayPagingEnabled() {
+  return String(el("pageSize")?.value || DEFAULT_PAGE_SIZE) === "auto";
+}
+
+function sessionPagingRangesForRows(rows) {
+  if (!rows.length || !Array.isArray(state.sessionPageRanges) || state.sessionPageRanges.length < 2) return null;
+  const ranges = [];
+  for (const session of state.sessionPageRanges) {
+    const startIndex = lowerBoundMessageOrder(rows, session.startOrder);
+    const endIndex = Number.isFinite(session.endOrder) ? lowerBoundMessageOrder(rows, session.endOrder) : rows.length;
+    if (endIndex <= startIndex) continue;
+    ranges.push({ ...session, startIndex, endIndex });
+  }
+  return ranges.length ? ranges : null;
+}
+
 function pagingInfoForRows(rows) {
   const sceneRanges = bgmSceneRangesForRows(rows);
   if (sceneRanges) {
@@ -5294,13 +5416,29 @@ function pagingInfoForRows(rows) {
       range: sceneRanges[page - 1]
     };
   }
-  const selectedPageSize = Number(el("pageSize").value);
+
+  if (autoDayPagingEnabled()) {
+    const dayRanges = sessionPagingRangesForRows(rows);
+    if (dayRanges?.length) {
+      const pageCount = Math.max(1, dayRanges.length);
+      const page = Math.min(Math.max(1, state.page), pageCount);
+      return {
+        mode: "day",
+        page,
+        pageCount,
+        range: dayRanges[page - 1]
+      };
+    }
+  }
+
+  const selected = String(el("pageSize")?.value || DEFAULT_PAGE_SIZE);
+  const selectedPageSize = selected === "auto" ? 1000 : Number(selected);
   const pageSize = selectedPageSize > 0 ? selectedPageSize : Math.max(1, rows.length);
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
   const page = Math.min(Math.max(1, state.page), pageCount);
   const start = (page - 1) * pageSize;
   return {
-    mode: "count",
+    mode: selected === "auto" ? "count-fallback" : "count",
     page,
     pageCount,
     start,
@@ -5315,13 +5453,16 @@ function rowsForPaging(rows, paging) {
       return order >= paging.range.startOrder && order < paging.range.endOrder;
     });
   }
+  if (paging.mode === "day") return rows.slice(paging.range.startIndex, paging.range.endIndex);
   return rows.slice(paging.start, paging.end);
 }
 
 function previousRowForPaging(rows, paging) {
-  const firstOrder = paging.mode === "bgm" ? paging.range.startOrder : messageOrder(rows[paging.start]);
+  const firstOrder = paging.mode === "bgm" || paging.mode === "day"
+    ? paging.range.startOrder
+    : messageOrder(rows[paging.start]);
   if (!Number.isFinite(firstOrder)) return null;
-  const index = rows.findIndex(row => messageOrder(row) >= firstOrder);
+  const index = lowerBoundMessageOrder(rows, firstOrder);
   return index > 0 ? rows[index - 1] : null;
 }
 
@@ -7682,16 +7823,28 @@ function filteredMessages() {
   });
 }
 
+function rebuildVisiblePartitions(rows = state.visible) {
+  const nonOther = [];
+  const other = [];
+  for (const message of rows) {
+    if (normalizedTab(message?.tab || "main") === "other") other.push(message);
+    else nonOther.push(message);
+  }
+  state.visibleNonOther = nonOther;
+  state.visibleOther = other;
+  return { nonOther, other };
+}
+
 function sideOtherEnabled() {
-  return el("sideOther").checked && state.messages.some(m => normalizedTab(m.tab) === "other");
+  return el("sideOther").checked && state.hasOtherMessages;
 }
 
 function mainVisibleRows() {
-  return sideOtherEnabled() ? state.visible.filter(m => normalizedTab(m.tab) !== "other") : state.visible;
+  return sideOtherEnabled() ? state.visibleNonOther : state.visible;
 }
 
 function otherVisibleRows() {
-  return sideOtherEnabled() ? state.visible.filter(m => normalizedTab(m.tab) === "other") : [];
+  return sideOtherEnabled() ? state.visibleOther : [];
 }
 
 function applyStyleControls() {
@@ -7715,11 +7868,20 @@ function updateStyleOnly() {
 function updateView() {
   applyStyleControls();
   state.visible = filteredMessages();
+  rebuildVisiblePartitions(state.visible);
   const pagedRows = mainVisibleRows();
   const paging = pagingInfoForRows(pagedRows);
   state.page = paging.page;
   el("pageInput").value = state.page;
-  el("pageLabel").textContent = `/ ${paging.pageCount.toLocaleString()}${paging.mode === "bgm" ? " BGM구간" : ""}`;
+  el("pageInput").max = paging.pageCount;
+  const pagingSuffix = paging.mode === "bgm"
+    ? " BGM구간"
+    : paging.mode === "day"
+      ? ` · ${paging.range.dayNumber}일차`
+      : paging.mode === "count-fallback"
+        ? " · 1000개 기준"
+        : "";
+  el("pageLabel").textContent = `/ ${paging.pageCount.toLocaleString()}${pagingSuffix}`;
   el("prevBtn").disabled = state.page <= 1;
   el("nextBtn").disabled = state.page >= paging.pageCount;
   updateFilterAndExportSummary();
@@ -7782,29 +7944,27 @@ function messageRenderOrder(row) {
 }
 
 function resolvedSplitOrder(entry) {
-  const key = `${entry.target || "main"}:${Number(entry.id)}`;
+  const target = entry.target === "other" ? "other" : "main";
+  const key = `${target}:${Number(entry.id)}`;
+  const identity = ensureMessageIdentityIndex();
   if (entry.uid) {
-    const directRow = messageByUid(entry.uid);
-    if (directRow && splitTargetMatchesRow(directRow, entry.target)) return messageOrder(directRow);
+    const directRow = identity.byUid.get(String(entry.uid));
+    if (directRow && splitTargetMatchesRow(directRow, target)) return messageOrder(directRow);
   }
   const hintedUid = state.splitUidHints?.get(key);
   if (hintedUid) {
-    const uidRow = messageByUid(hintedUid);
-    if (uidRow && splitTargetMatchesRow(uidRow, entry.target)) return messageOrder(uidRow);
+    const uidRow = identity.byUid.get(String(hintedUid));
+    if (uidRow && splitTargetMatchesRow(uidRow, target)) return messageOrder(uidRow);
   }
   const hinted = Number(state.splitOrderHints?.get(key));
   if (Number.isFinite(hinted) && hinted >= 0) {
-    const row = state.messages[hinted];
-    if (row && Number(row.id) === Number(entry.id) && splitTargetMatchesRow(row, entry.target)) return hinted;
+    const row = identity.byOrder.get(hinted);
+    if (row && Number(row.id) === Number(entry.id) && splitTargetMatchesRow(row, target)) return messageOrder(row);
   }
-  for (let index = 0; index < state.messages.length; index += 1) {
-    const row = state.messages[index];
-    if (Number(row.id) === Number(entry.id) && splitTargetMatchesRow(row, entry.target)) return index;
-  }
-  for (let index = 0; index < state.messages.length; index += 1) {
-    if (Number(state.messages[index].id) === Number(entry.id)) return index;
-  }
-  return null;
+  const targetRow = identity.byTargetId.get(key);
+  if (targetRow) return messageOrder(targetRow);
+  const fallbackRow = identity.byId.get(Number(entry.id));
+  return fallbackRow ? messageOrder(fallbackRow) : null;
 }
 
 function splitBoundaryHtml(entry) {
@@ -7829,31 +7989,25 @@ function splitBoundaryHtml(entry) {
 function splitBoundaryMapForWindow(windowRows, allColumnRows, columnTarget, entries = previewSplitEntries()) {
   const map = new Map();
   if (!windowRows.length || !allColumnRows.length || !entries.length) return map;
-  const startIndex = allColumnRows.indexOf(windowRows[0]);
-  if (startIndex < 0) return map;
-  const endIndex = startIndex + windowRows.length;
+  const firstOrder = messageRenderOrder(windowRows[0]);
+  const startIndex = Number.isFinite(firstOrder) ? lowerBoundMessageOrder(allColumnRows, firstOrder) : allColumnRows.indexOf(windowRows[0]);
+  if (startIndex < 0 || startIndex >= allColumnRows.length) return map;
+  const endIndex = Math.min(allColumnRows.length, startIndex + windowRows.length);
 
   entries.forEach(entry => {
     const splitOrder = resolvedSplitOrder(entry);
     if (splitOrder == null) return;
 
     let insertionIndex = -1;
-    // In the column where the split was clicked, anchor directly after that exact message.
-    // This also handles duplicated message IDs in imported/merged logs.
+    // 클릭한 열에서는 정확한 source order 직후, 반대 열에서는 source order보다 큰 첫 메시지 앞에 둔다.
+    // 두 경우 모두 정렬된 order를 이진 탐색하므로 분할점마다 전체 열을 다시 훑지 않는다.
     if ((entry.target || "main") === columnTarget) {
-      const exactIndex = allColumnRows.findIndex(row => messageRenderOrder(row) === splitOrder);
-      if (exactIndex >= 0) insertionIndex = exactIndex + 1;
+      const exactIndex = lowerBoundMessageOrder(allColumnRows, splitOrder);
+      if (exactIndex < allColumnRows.length && messageRenderOrder(allColumnRows[exactIndex]) === splitOrder) {
+        insertionIndex = exactIndex + 1;
+      }
     }
-
-    // In the opposite column, place the same boundary at the first message after the
-    // source-order position so main and other show the same exported HTML boundary.
-    if (insertionIndex < 0) {
-      insertionIndex = allColumnRows.findIndex(row => {
-        const rowOrder = messageRenderOrder(row);
-        return rowOrder != null && rowOrder > splitOrder;
-      });
-      if (insertionIndex < 0) insertionIndex = allColumnRows.length;
-    }
+    if (insertionIndex < 0) insertionIndex = upperBoundMessageOrder(allColumnRows, splitOrder);
 
     if (insertionIndex < startIndex || insertionIndex > endIndex) return;
     const localIndex = insertionIndex - startIndex;
@@ -9225,6 +9379,10 @@ function inlineImagesEnabled() {
   return Boolean(el("inlineImages")?.checked);
 }
 
+function sessionNavigatorExportEnabled() {
+  return el("sessionNavigator")?.checked !== false;
+}
+
 function inlineImageMaxSize() {
   const value = Number(el("inlineImageSize")?.value) || 96;
   return Math.min(256, Math.max(48, value));
@@ -9439,7 +9597,335 @@ function compactTableIndex(map, values, value) {
   return index;
 }
 
-function createCompactLogPayload(rows, useSide) {
+
+function timelineClock(value) {
+  const raw = normalizeText(value || "").replace(/\s+/g, " ").trim();
+  if (!raw) return null;
+  const match = raw.match(/(?:(오전|오후|午前|午後|AM|PM)\s*)?(\d{1,2}):(\d{2})(?::(\d{2}))?/i);
+  if (!match) return null;
+  let hour = Number(match[2]);
+  const minute = Number(match[3]);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23 || minute > 59) return null;
+  const marker = String(match[1] || "").toLowerCase();
+  if (/오후|午後|pm/i.test(marker) && hour < 12) hour += 12;
+  if (/오전|午前|am/i.test(marker) && hour === 12) hour = 0;
+  const clock = hour * 60 + minute;
+  return { raw, clock, label: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}` };
+}
+
+function timelineDaySerial(year, month, day) {
+  const value = Date.UTC(Number(year), Number(month) - 1, Number(day)) / 86400000;
+  return Number.isFinite(value) ? Math.floor(value) : null;
+}
+
+function timelineWeekdayIndex(value) {
+  const raw = String(value || "").toLowerCase();
+  const patterns = [
+    /월요일|月曜(?:日)?|monday/i,
+    /화요일|火曜(?:日)?|tuesday/i,
+    /수요일|水曜(?:日)?|wednesday/i,
+    /목요일|木曜(?:日)?|thursday/i,
+    /금요일|金曜(?:日)?|friday/i,
+    /토요일|土曜(?:日)?|saturday/i,
+    /일요일|日曜(?:日)?|sunday/i
+  ];
+  for (let index = 0; index < patterns.length; index += 1) {
+    if (patterns[index].test(raw)) return index;
+  }
+  return null;
+}
+
+function timelineDateDescriptor(value) {
+  const clock = timelineClock(value);
+  if (!clock) return null;
+  const raw = clock.raw;
+  let match = raw.match(/(\d{4})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{1,2})/);
+  if (!match) match = raw.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
+  if (match) {
+    const day = timelineDaySerial(match[1], match[2], match[3]);
+    if (day != null) return { ...clock, kind: "calendar", day };
+  }
+
+  if (/(?:그제|一昨日|day\s+before\s+yesterday)/i.test(raw)) return { ...clock, kind: "relative", offset: -2 };
+  if (/(?:어제|昨日|yesterday)/i.test(raw)) return { ...clock, kind: "relative", offset: -1 };
+  if (/(?:오늘|今日|today)/i.test(raw)) return { ...clock, kind: "relative", offset: 0 };
+
+  const weekday = timelineWeekdayIndex(raw);
+  if (weekday != null) {
+    if (/(?:지지난주|저저번주|先々週|two\s+weeks\s+ago)/i.test(raw)) return { ...clock, kind: "week", weekOffset: -2, weekday };
+    if (/(?:지난주|저번주|先週|last\s+week|previous\s+week)/i.test(raw)) return { ...clock, kind: "week", weekOffset: -1, weekday };
+    if (/(?:이번주|今週|this\s+week)/i.test(raw)) return { ...clock, kind: "week", weekOffset: 0, weekday };
+    return { ...clock, kind: "weekday", weekday };
+  }
+  return { ...clock, kind: "clock" };
+}
+
+function timelineIsSymbolic(descriptor) {
+  return !!descriptor && ["relative", "week", "weekday"].includes(descriptor.kind);
+}
+
+function timelineSymbolicDay(descriptor, todayWeekday) {
+  if (!descriptor) return null;
+  if (descriptor.kind === "relative") return Number(descriptor.offset);
+  if (descriptor.kind === "week") return Number(descriptor.weekOffset) * 7 + Number(descriptor.weekday) - todayWeekday;
+  if (descriptor.kind === "weekday") {
+    let day = Number(descriptor.weekday) - todayWeekday;
+    // 코코포리아의 요일 단독 표기는 현재 시점에서 가장 최근의 해당 요일로 본다.
+    if (day > 0) day -= 7;
+    return day;
+  }
+  return null;
+}
+
+function timelineMinimalClockGap(previous, current) {
+  if (!previous || !current) return 0;
+  let gap = Number(current.clock) - Number(previous.clock);
+  while (gap < 0) gap += 1440;
+  return Number.isFinite(gap) ? gap : 0;
+}
+
+function timelineCandidateWeekdays(entries) {
+  let candidates = [0, 1, 2, 3, 4, 5, 6];
+  const symbolic = entries.filter(entry => timelineIsSymbolic(entry.descriptor));
+  if (symbolic.length < 2) return candidates;
+  candidates = candidates.filter(todayWeekday => {
+    let previous = null;
+    for (const entry of symbolic) {
+      if (previous) {
+        const previousDay = timelineSymbolicDay(previous.descriptor, todayWeekday);
+        const currentDay = timelineSymbolicDay(entry.descriptor, todayWeekday);
+        const gap = (currentDay - previousDay) * 1440 + entry.descriptor.clock - previous.descriptor.clock;
+        if (!Number.isFinite(gap) || gap < 0) return false;
+      }
+      previous = entry;
+    }
+    return true;
+  });
+  // 표기가 모순되거나 일부 추출이 불완전하면 특정 요일을 억지로 고정하지 않는다.
+  return candidates.length ? candidates : [0, 1, 2, 3, 4, 5, 6];
+}
+
+function timelineConservativeGap(previous, current, todayWeekdays) {
+  if (!previous || !current) return 0;
+  if (previous.kind === "logical" && current.kind === "logical") {
+    return Math.max(0, Number(current.logicalMinute) - Number(previous.logicalMinute));
+  }
+  if (previous.kind === "calendar" && current.kind === "calendar") {
+    const exact = (current.day - previous.day) * 1440 + current.clock - previous.clock;
+    return Number.isFinite(exact) && exact >= 0 ? exact : timelineMinimalClockGap(previous, current);
+  }
+  if (timelineIsSymbolic(previous) && timelineIsSymbolic(current)) {
+    const gaps = [];
+    for (const todayWeekday of todayWeekdays || [0, 1, 2, 3, 4, 5, 6]) {
+      const previousDay = timelineSymbolicDay(previous, todayWeekday);
+      const currentDay = timelineSymbolicDay(current, todayWeekday);
+      const gap = (currentDay - previousDay) * 1440 + current.clock - previous.clock;
+      if (Number.isFinite(gap) && gap >= 0) gaps.push(gap);
+    }
+    // 가능한 모든 일관된 해석의 최솟값을 쓴다. 이 값이 60분 이상일 때만
+    // 어떤 기준 요일을 택해도 세션이 끊겼다고 확정할 수 있다.
+    if (gaps.length) return Math.min(...gaps);
+  }
+  // 달력 날짜와 상대 날짜가 섞였거나 시각만 남은 경우에는 절대 날짜를 추측하지 않는다.
+  // 로그 순서를 만족하는 가장 짧은 시각 차이만 사용해 false-positive 일차 분리를 막는다.
+  return timelineMinimalClockGap(previous, current);
+}
+
+function buildSparseTimeline(rows) {
+  const entries = [];
+  for (let order = 0; order < rows.length; order += 1) {
+    const row = rows[order] || {};
+    const logicalMinute = Number(row.timelineMinute);
+    let descriptor = null;
+    if (Number.isFinite(logicalMinute)) {
+      const clock = ((logicalMinute % 1440) + 1440) % 1440;
+      descriptor = {
+        kind: "logical",
+        logicalMinute,
+        clock,
+        label: `${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`
+      };
+    } else {
+      descriptor = timelineDateDescriptor(row.time);
+    }
+    if (descriptor) entries.push({ order, descriptor });
+  }
+
+  const todayWeekdays = timelineCandidateWeekdays(entries);
+  const points = [];
+  let previousDescriptor = null;
+  let previousMinute = null;
+  let lastStoredMinute = null;
+  for (const entry of entries) {
+    const descriptor = entry.descriptor;
+    let minute;
+    if (descriptor.kind === "logical") {
+      minute = descriptor.logicalMinute;
+      if (previousMinute != null && minute < previousMinute) minute = previousMinute;
+    } else if (previousMinute == null) {
+      minute = descriptor.clock;
+    } else {
+      const gap = timelineConservativeGap(previousDescriptor, descriptor, todayWeekdays);
+      minute = previousMinute + (Number.isFinite(gap) && gap >= 0 ? gap : 0);
+    }
+
+    if (lastStoredMinute == null || minute !== lastStoredMinute) {
+      points.push({ order: entry.order, minute, label: descriptor.label || "" });
+      lastStoredMinute = minute;
+    }
+    previousDescriptor = descriptor;
+    previousMinute = minute;
+  }
+  return points;
+}
+
+const SESSION_MIN_DAY_NON_OTHER_MESSAGES = 200;
+
+function mergeShortSessionRanges(ranges, rows, minNonOtherMessages = SESSION_MIN_DAY_NON_OTHER_MESSAGES) {
+  const sessions = (ranges || []).map(range => ({ ...range }));
+  if (sessions.length < 2) return sessions;
+  const sourceRows = Array.isArray(rows) ? rows : [];
+  const totalMessages = sourceRows.length;
+  const limit = Math.max(2, Number(minNonOtherMessages) || SESSION_MIN_DAY_NON_OTHER_MESSAGES);
+  const nonOtherPrefix = new Uint32Array(totalMessages + 1);
+  for (let index = 0; index < totalMessages; index += 1) {
+    nonOtherPrefix[index + 1] = nonOtherPrefix[index] + (normalizedTab(sourceRows[index]?.tab || "main") !== "other" ? 1 : 0);
+  }
+  const nonOtherCount = session => {
+    const start = Math.max(0, Math.min(totalMessages, Number(session.startOrder) || 0));
+    const end = Math.max(start, Math.min(totalMessages, Number(session.endOrder) || 0));
+    return nonOtherPrefix[end] - nonOtherPrefix[start];
+  };
+  let guard = 0;
+
+  while (sessions.length > 1 && guard++ < 1000) {
+    const shortIndex = sessions.findIndex(session => nonOtherCount(session) < limit);
+    if (shortIndex < 0) break;
+
+    if (shortIndex === 0) {
+      const left = sessions[0];
+      const right = sessions[1];
+      right.startOrder = left.startOrder;
+      right.startMinute = left.startMinute;
+      right.startLabel = left.startLabel || right.startLabel;
+      sessions.splice(0, 1);
+      continue;
+    }
+
+    if (shortIndex === sessions.length - 1) {
+      const previous = sessions[shortIndex - 1];
+      const current = sessions[shortIndex];
+      previous.endOrder = current.endOrder;
+      previous.endMinute = current.endMinute;
+      sessions.splice(shortIndex, 1);
+      continue;
+    }
+
+    const previous = sessions[shortIndex - 1];
+    const current = sessions[shortIndex];
+    const next = sessions[shortIndex + 1];
+    const gapBefore = Number(current.startMinute) - Number(previous.endMinute);
+    const gapAfter = Number(next.startMinute) - Number(current.endMinute);
+    const before = Number.isFinite(gapBefore) && gapBefore >= 0 ? gapBefore : Infinity;
+    const after = Number.isFinite(gapAfter) && gapAfter >= 0 ? gapAfter : Infinity;
+
+    if (after < before) {
+      next.startOrder = current.startOrder;
+      next.startMinute = current.startMinute;
+      next.startLabel = current.startLabel || next.startLabel;
+      sessions.splice(shortIndex, 1);
+    } else {
+      previous.endOrder = current.endOrder;
+      previous.endMinute = current.endMinute;
+      sessions.splice(shortIndex, 1);
+    }
+  }
+
+  sessions.forEach((session, index) => {
+    session.dayNumber = index + 1;
+    session.endOrder = index + 1 < sessions.length ? sessions[index + 1].startOrder : totalMessages;
+  });
+  return sessions;
+}
+
+function buildSessionPageRanges(rows) {
+  const points = buildSparseTimeline(rows);
+  if (points.length < 2) return [];
+
+  const sessions = [];
+  let current = {
+    dayNumber: 1,
+    startOrder: 0,
+    endOrder: rows.length,
+    startMinute: points[0].minute,
+    endMinute: points[0].minute,
+    startLabel: points[0].label || ""
+  };
+  sessions.push(current);
+  let previous = points[0];
+
+  for (let index = 1; index < points.length; index += 1) {
+    const point = points[index];
+    const gap = Number(point.minute) - Number(previous.minute);
+    if (Number.isFinite(gap) && gap >= 60) {
+      current.endOrder = point.order;
+      current = {
+        dayNumber: sessions.length + 1,
+        startOrder: point.order,
+        endOrder: rows.length,
+        startMinute: point.minute,
+        endMinute: point.minute,
+        startLabel: point.label || ""
+      };
+      sessions.push(current);
+    } else {
+      current.endMinute = point.minute;
+    }
+    previous = point;
+  }
+
+  // 독립 일차 후보에 OTHER를 제외한 탭의 메시지가 200개 미만이면, 세션 전에 미리 남긴 대화나
+  // 종료 뒤 남은 짧은 조각으로 보고 별도 일차로 만들지 않는다. 가운데 조각은 더 가까운 본 세션에 붙인다.
+  const merged = mergeShortSessionRanges(sessions, rows);
+
+  // 짧은 조각을 합친 결과 실제 플레이 구간이 하나뿐이면 '일차 구분 불가'로 보고
+  // 자동 페이지 모드가 기존 1000개 단위 폴백을 사용하게 한다.
+  return merged.length >= 2 ? merged : [];
+}
+
+function rebuildSessionPageRanges() {
+  state.sessionPageRanges = buildSessionPageRanges(state.messages);
+  return state.sessionPageRanges;
+}
+
+function encodeSparseTimeline(rows) {
+  const points = buildSparseTimeline(rows);
+  const encoded = [];
+  let previousOrder = 0;
+  let previousMinute = 0;
+  points.forEach((point, index) => {
+    encoded.push(index ? point.order - previousOrder : point.order);
+    encoded.push(index ? point.minute - previousMinute : point.minute);
+    previousOrder = point.order;
+    previousMinute = point.minute;
+  });
+  return encoded;
+}
+
+function decodeSparseTimeline(values) {
+  const source = Array.isArray(values) ? values : [];
+  const points = [];
+  let order = 0;
+  let minute = 0;
+  for (let index = 0; index + 1 < source.length; index += 2) {
+    order += Number(source[index]) || 0;
+    minute += Number(source[index + 1]) || 0;
+    points.push({ order, minute });
+  }
+  return points;
+}
+
+function createCompactLogPayload(rows, useSide, includeSessionNavigator = sessionNavigatorExportEnabled()) {
   const names = [];
   const colors = [];
   const lightColors = [];
@@ -9502,9 +9988,12 @@ function createCompactLogPayload(rows, useSide) {
     if (index >= 0) triggerData.push(index + 1, String(trigger.url || ""));
   }
 
-  return {
-    v: 6,
+  const sparseTimeline = includeSessionNavigator ? encodeSparseTimeline(rows) : null;
+
+  const payload = {
+    v: 8,
     s: useSide ? 1 : 0,
+    o: OTHER_TAB_PATTERN_SOURCE,
     a: [...state.avatarHiddenTabs],
     g: el("groupRows").checked ? 1 : 0,
     n: names,
@@ -9517,8 +10006,11 @@ function createCompactLogPayload(rows, useSide) {
     p: profiles,
     r: rowData,
     q: rowUids,
+    j: includeSessionNavigator ? 1 : 0,
     u: triggerData
   };
+  if (includeSessionNavigator) payload.k = sparseTimeline;
+  return payload;
 }
 
 function compactExportRuntime(root) {
@@ -9574,13 +10066,20 @@ function compactExportRuntime(root) {
     const profiles = Array.isArray(data.p) ? data.p : [];
     const encodedRows = Array.isArray(data.r) ? data.r : [];
     const uids = Array.isArray(data.q) ? data.q : [];
+    const times = Array.isArray(data.m) ? data.m : []; // v7 이하 호환용
+    const enableSessionNavigator = data.j !== 0; // v8/v6.78 이전 출력은 필드가 없어 기본 ON
+    const encodedTimeline = enableSessionNavigator && Array.isArray(data.k) ? data.k : [];
     const triggerValues = Array.isArray(data.u) ? data.u : [];
+    let otherTabPattern;
+    try { otherTabPattern = new RegExp(String(data.o || "^(?:other|잡담|기타|雑談|その他)\\d*$")); }
+    catch (error) { otherTabPattern = /^(?:other|잡담|기타|雑談|その他)\d*$/; }
     const normalizeTabKey = value => {
       const raw = String(value || "").trim();
-      const lower = raw.toLowerCase();
-      if (["main", "메인", "메인 탭", "메인탭"].includes(lower)) return "main";
-      if (["other", "잡담", "잡담 탭", "잡담탭", "서브", "서브 탭", "서브탭"].includes(lower)) return "other";
-      if (["info", "정보", "정보 탭", "정보탭"].includes(lower)) return "info";
+      const lower = raw.toLowerCase().replace(/\s*(?:탭|tab)\s*$/i, "").trim();
+      const compact = lower.replace(/\s+/g, "");
+      if (!compact || /^(?:main|메인|メイン)\d*$/.test(compact)) return "main";
+      if (/^(?:info|정보|情報)\d*$/.test(compact)) return "info";
+      if (otherTabPattern.test(compact)) return "other";
       return lower || "main";
     };
     const hiddenAvatarTabs = new Set((Array.isArray(data.a) ? data.a : []).map(normalizeTabKey));
@@ -9630,6 +10129,7 @@ function compactExportRuntime(root) {
       const text = String(texts[Number(encodedRows[cursor + 3]) || 0] ?? "");
       const rowOrder = allRecords.length;
       const uid = String(uids[rowOrder] || "");
+      const time = String(times[rowOrder] || "");
       const lowerTab = normalizeTabKey(tab);
       const isOther = !!data.s && lowerTab === "other";
       const isExtraTab = !isOther && lowerTab !== "main" && lowerTab !== "other";
@@ -9641,8 +10141,9 @@ function compactExportRuntime(root) {
         && previousMain.expressionKey === expressionKey;
       const isSystem = !isOther && !isSystemLine && !isExtraTab && (!image || name.toLowerCase() === "system");
       if (!isOther && !grouped) mainGroupOrdinal += 1;
+      const recordKey = uid ? `uid:${uid}` : `order:${rowOrder}`;
       const record = {
-        id, uid, order: rowOrder, tab, lowerTab, name, color, lightColor, imageIndex, image, label, text,
+        id, uid, order: rowOrder, recordKey, time, tab, lowerTab, name, color, lightColor, imageIndex, image, label, text,
         kind: isOther ? "other" : "main",
         isOther, isExtraTab, isSystemLine, isSystem, grouped,
         avatarHidden: hiddenAvatarTabs.has(lowerTab),
@@ -9800,6 +10301,9 @@ function compactExportRuntime(root) {
         this.allRecords = records;
         this.records = records;
         this.renderRecord = renderRecord;
+        this.uidIndex = new Map();
+        this.orderIndex = new Map();
+        this.rebuildIdentityIndex();
         this.mobileMedia = win.matchMedia?.("(max-width: 700px)") || { matches: false };
         this.layout = scope.querySelector?.(".layout") || null;
         this.mobileCompact = !!(this.mobileMedia.matches && this.layout?.classList.contains("is-other-split"));
@@ -9810,6 +10314,8 @@ function compactExportRuntime(root) {
         this.renderedStart = -1;
         this.renderedEnd = -1;
         this.ownScrollCache = { scrollHeight: -1, clientHeight: -1, value: false };
+        this.highlightKey = "";
+        this.syncKey = "";
         this.highlightId = 0;
         this.syncId = 0;
         this.externalScrollControl = false;
@@ -10059,7 +10565,7 @@ function compactExportRuntime(root) {
         const parts = [];
         for (let i = start; i < end; i += 1) {
           const record = this.records[i];
-          parts.push(this.renderRecord(record, i, i === count - 1, record.id === this.highlightId, record.id === this.syncId));
+          parts.push(this.renderRecord(record, i, i === count - 1, this.identityKey(record) === this.highlightKey, this.identityKey(record) === this.syncKey));
         }
         this.window.style.transform = `translateY(${this.tree.prefix(start)}px)`;
         this.window.innerHTML = parts.join("");
@@ -10101,7 +10607,7 @@ function compactExportRuntime(root) {
           if (mobile && (rect.bottom < visibleTop - measureMargin || rect.top > visibleBottom + measureMargin)) return;
           const height = rect.height;
           if (height > 0 && Math.abs(height - this.tree.values[index]) > 0.45) {
-            this.heightCache.set(this.records[index].id, height);
+            this.heightCache.set(this.identityKey(this.records[index]), height);
             this.tree.set(index, height);
             changed = true;
           }
@@ -10118,19 +10624,60 @@ function compactExportRuntime(root) {
         this.schedule();
       }
       applyDynamicClasses() {
-        this.window.querySelectorAll("[data-index]").forEach(row => {
-          const id = Number(row.dataset.index) || 0;
-          row.classList.toggle("is-search-target", id === this.highlightId);
-          if (this.kind === "other") row.classList.toggle("is-sync-target", id === this.syncId);
+        this.window.querySelectorAll("[data-virtual-index]").forEach(row => {
+          const index = Number(row.dataset.virtualIndex);
+          const record = Number.isFinite(index) ? this.records[index] : null;
+          const key = this.identityKey(record);
+          row.classList.toggle("is-search-target", !!key && key === this.highlightKey);
+          if (this.kind === "other") row.classList.toggle("is-sync-target", !!key && key === this.syncKey);
         });
+      }
+      identityKey(record) {
+        if (!record) return "";
+        return record.uid ? `uid:${record.uid}` : `order:${Number(record.order) || 0}`;
+      }
+      rebuildIdentityIndex() {
+        this.uidIndex.clear();
+        this.orderIndex.clear();
+        for (let index = 0; index < this.records.length; index += 1) {
+          const record = this.records[index];
+          if (record?.uid && !this.uidIndex.has(record.uid)) this.uidIndex.set(record.uid, index);
+          const order = Number(record?.order);
+          if (Number.isFinite(order) && !this.orderIndex.has(order)) this.orderIndex.set(order, index);
+        }
       }
       setRecords(records) {
         this.records = records;
-        this.tree = new HeightTree(records.map(record => this.heightCache.get(record.id) || this.estimate(record)));
+        this.rebuildIdentityIndex();
+        this.tree = new HeightTree(records.map(record => this.heightCache.get(this.identityKey(record)) || this.estimate(record)));
         this.renderedStart = -1;
         this.renderedEnd = -1;
         this.host.scrollTop = 0;
         this.schedule(true);
+      }
+      indexForOrder(orderValue) {
+        const target = Number(orderValue);
+        if (!Number.isFinite(target) || !this.records.length) return -1;
+        const direct = this.orderIndex.get(target);
+        if (direct != null) return direct;
+        let low = 0;
+        let high = this.records.length;
+        while (low < high) {
+          const mid = (low + high) >> 1;
+          if ((Number(this.records[mid]?.order) || 0) < target) low = mid + 1;
+          else high = mid;
+        }
+        return Math.max(0, Math.min(this.records.length - 1, low > 0 ? low - 1 : low));
+      }
+      indexForIdentity(identity) {
+        if (!identity || !this.records.length) return -1;
+        const uid = String(identity.uid || "");
+        if (uid && this.uidIndex.has(uid)) return this.uidIndex.get(uid);
+        if (identity.order !== null && identity.order !== undefined && identity.order !== "") {
+          const index = this.indexForOrder(identity.order);
+          if (index >= 0) return index;
+        }
+        return this.indexForId(identity.id);
       }
       indexForId(idValue) {
         const id = Number(idValue) || 0;
@@ -10223,11 +10770,12 @@ function compactExportRuntime(root) {
         if (!this.records.length) return null;
         const viewport = this.viewport();
         const index = Math.max(0, this.tree.indexAt(viewport.start));
-        return { id: this.records[index].id, offset: viewport.start - this.tree.prefix(index), own: viewport.own };
+        const record = this.records[index];
+        return { uid: record?.uid || "", order: record?.order, id: record?.id || 0, offset: viewport.start - this.tree.prefix(index), own: viewport.own };
       }
       restoreAnchor(anchor) {
         if (!anchor) return;
-        const index = this.indexForId(anchor.id);
+        const index = this.indexForIdentity(anchor);
         if (index < 0) return;
         this.setScrollOffset(this.tree.prefix(index) + (Number(anchor.offset) || 0));
       }
@@ -10301,12 +10849,20 @@ function compactExportRuntime(root) {
           || (metrics.bottom > viewport.start && metrics.top < viewport.end);
       }
       setExternalControl(value) { this.externalScrollControl = !!value; }
-      setHighlight(idValue) {
-        this.highlightId = Number(idValue) || 0;
+      setHighlight(identity) {
+        const value = typeof identity === "object" && identity !== null ? identity : { id: identity };
+        const isEmpty = !identity || (!value.uid && (value.order === null || value.order === undefined || value.order === "") && !(Number(value.id) > 0));
+        const index = isEmpty ? -1 : this.indexForIdentity(value);
+        this.highlightKey = index >= 0 ? this.identityKey(this.records[index]) : "";
+        this.highlightId = index >= 0 ? Number(this.records[index]?.id) || 0 : 0;
         this.applyDynamicClasses();
       }
-      setSync(idValue) {
-        this.syncId = Number(idValue) || 0;
+      setSync(identity) {
+        const value = typeof identity === "object" && identity !== null ? identity : { id: identity };
+        const isEmpty = !identity || (!value.uid && (value.order === null || value.order === undefined || value.order === "") && !(Number(value.id) > 0));
+        const index = isEmpty ? -1 : this.indexForIdentity(value);
+        this.syncKey = index >= 0 ? this.identityKey(this.records[index]) : "";
+        this.syncId = index >= 0 ? Number(this.records[index]?.id) || 0 : 0;
         this.applyDynamicClasses();
       }
       renderAroundIndex(index) {
@@ -10319,7 +10875,7 @@ function compactExportRuntime(root) {
         const parts = [];
         for (let i = start; i < end; i += 1) {
           const record = this.records[i];
-          parts.push(this.renderRecord(record, i, i === count - 1, record.id === this.highlightId, record.id === this.syncId));
+          parts.push(this.renderRecord(record, i, i === count - 1, this.identityKey(record) === this.highlightKey, this.identityKey(record) === this.syncKey));
         }
         this.renderedStart = start;
         this.renderedEnd = end;
@@ -10331,15 +10887,15 @@ function compactExportRuntime(root) {
           if (!Number.isFinite(rowIndex) || rowIndex < 0 || rowIndex >= this.records.length) return;
           const height = element.getBoundingClientRect().height;
           if (height > 0) {
-            this.heightCache.set(this.records[rowIndex].id, height);
+            this.heightCache.set(this.identityKey(this.records[rowIndex]), height);
             this.tree.set(rowIndex, height);
           }
         });
         this.setBodyHeight(this.tree.total());
         this.window.style.transform = `translateY(${this.tree.prefix(start)}px)`;
       }
-      jumpToId(idValue, align = "center") {
-        const index = this.indexForId(idValue);
+      jumpToIdentity(identity, align = "center") {
+        const index = this.indexForIdentity(identity);
         if (index < 0 || !this.records[index]) return false;
         this.cancelNativeSmooth();
         this.renderAroundIndex(index);
@@ -10354,6 +10910,9 @@ function compactExportRuntime(root) {
           this.schedule(true);
         });
         return true;
+      }
+      jumpToId(idValue, align = "center") {
+        return this.jumpToIdentity({ id: idValue }, align);
       }
       resize(forceRecalibrate = false) {
         const width = Math.round(this.host.clientWidth || 0);
@@ -10507,17 +11066,448 @@ function compactExportRuntime(root) {
         if (typeof this.ensureIdVisible === "function") await this.ensureIdVisible(record);
         const list = record.kind === "other" ? otherList : mainList;
         if (!list) return false;
-        mainList.setHighlight(record.kind === "main" ? record.id : 0);
-        otherList?.setHighlight(record.kind === "other" ? record.id : 0);
+        mainList.setHighlight(record.kind === "main" ? record : null);
+        otherList?.setHighlight(record.kind === "other" ? record : null);
         if (record.kind === "other" && win.matchMedia?.("(max-width: 700px)").matches) {
           scope.dispatchEvent(new CustomEvent("trpg-open-other", { bubbles: true }));
           await new Promise(resolve => win.setTimeout(resolve, 420));
         }
-        return list.jumpToId(record.id, "center");
+        return list.jumpToIdentity(record, "center");
       },
       destroy() { mainList.destroy(); otherList?.destroy(); }
     };
     scope.__trpgVirtual = api;
+
+    // 60분 이상 메시지 공백을 세션(1일차, 2일차...) 경계로 본다.
+    // v8부터는 모든 메시지의 원문 time 문자열을 싣지 않고, 분이 바뀐 지점만
+    // [행 delta, 분 delta] 쌍으로 저장한 희소 타임라인(data.k)을 사용한다.
+    const parseSessionClock = value => {
+      const raw = String(value || "").replace(/\s+/g, " ").trim();
+      if (!raw) return null;
+      const match = raw.match(/(?:(오전|오후|午前|午後|AM|PM)\s*)?(\d{1,2}):(\d{2})(?::(\d{2}))?/i);
+      if (!match) return null;
+      let hour = Number(match[2]);
+      const minute = Number(match[3]);
+      if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23 || minute > 59) return null;
+      const marker = String(match[1] || "").toLowerCase();
+      if (/오후|午後|pm/i.test(marker) && hour < 12) hour += 12;
+      if (/오전|午前|am/i.test(marker) && hour === 12) hour = 0;
+      return { raw, clock: hour * 60 + minute, label: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}` };
+    };
+    const sessionWeekday = value => {
+      const raw = String(value || "");
+      const patterns = [
+        /월요일|月曜(?:日)?|monday/i, /화요일|火曜(?:日)?|tuesday/i,
+        /수요일|水曜(?:日)?|wednesday/i, /목요일|木曜(?:日)?|thursday/i,
+        /금요일|金曜(?:日)?|friday/i, /토요일|土曜(?:日)?|saturday/i,
+        /일요일|日曜(?:日)?|sunday/i
+      ];
+      for (let i = 0; i < patterns.length; i += 1) if (patterns[i].test(raw)) return i;
+      return null;
+    };
+    const legacyDescriptor = value => {
+      const clock = parseSessionClock(value);
+      if (!clock) return null;
+      const raw = clock.raw;
+      let match = raw.match(/(\d{4})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{1,2})/);
+      if (!match) match = raw.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
+      if (match) {
+        const day = Math.floor(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / 86400000);
+        if (Number.isFinite(day)) return { ...clock, kind: "calendar", day };
+      }
+      if (/(?:그제|一昨日|day\s+before\s+yesterday)/i.test(raw)) return { ...clock, kind: "relative", offset: -2 };
+      if (/(?:어제|昨日|yesterday)/i.test(raw)) return { ...clock, kind: "relative", offset: -1 };
+      if (/(?:오늘|今日|today)/i.test(raw)) return { ...clock, kind: "relative", offset: 0 };
+      const weekday = sessionWeekday(raw);
+      if (weekday != null) {
+        if (/(?:지지난주|저저번주|先々週|two\s+weeks\s+ago)/i.test(raw)) return { ...clock, kind: "week", weekOffset: -2, weekday };
+        if (/(?:지난주|저번주|先週|last\s+week|previous\s+week)/i.test(raw)) return { ...clock, kind: "week", weekOffset: -1, weekday };
+        if (/(?:이번주|今週|this\s+week)/i.test(raw)) return { ...clock, kind: "week", weekOffset: 0, weekday };
+        return { ...clock, kind: "weekday", weekday };
+      }
+      return { ...clock, kind: "clock" };
+    };
+    const legacyIsSymbolic = descriptor => !!descriptor && ["relative", "week", "weekday"].includes(descriptor.kind);
+    const legacySymbolicDay = (descriptor, todayWeekday) => {
+      if (descriptor.kind === "relative") return Number(descriptor.offset);
+      if (descriptor.kind === "week") return Number(descriptor.weekOffset) * 7 + Number(descriptor.weekday) - todayWeekday;
+      if (descriptor.kind === "weekday") {
+        let day = Number(descriptor.weekday) - todayWeekday;
+        if (day > 0) day -= 7;
+        return day;
+      }
+      return null;
+    };
+    const legacyClockGap = (previous, current) => {
+      let gap = Number(current?.clock) - Number(previous?.clock);
+      while (gap < 0) gap += 1440;
+      return Number.isFinite(gap) ? gap : 0;
+    };
+    const legacyCandidateWeekdays = entries => {
+      const symbolic = entries.filter(entry => legacyIsSymbolic(entry.descriptor));
+      if (symbolic.length < 2) return [0, 1, 2, 3, 4, 5, 6];
+      const candidates = [0, 1, 2, 3, 4, 5, 6].filter(todayWeekday => {
+        let previous = null;
+        for (const entry of symbolic) {
+          if (previous) {
+            const gap = (legacySymbolicDay(entry.descriptor, todayWeekday) - legacySymbolicDay(previous.descriptor, todayWeekday)) * 1440
+              + entry.descriptor.clock - previous.descriptor.clock;
+            if (!Number.isFinite(gap) || gap < 0) return false;
+          }
+          previous = entry;
+        }
+        return true;
+      });
+      return candidates.length ? candidates : [0, 1, 2, 3, 4, 5, 6];
+    };
+    const legacyGap = (previous, current, todayWeekdays) => {
+      if (!previous || !current) return 0;
+      if (previous.kind === "calendar" && current.kind === "calendar") {
+        const exact = (current.day - previous.day) * 1440 + current.clock - previous.clock;
+        return Number.isFinite(exact) && exact >= 0 ? exact : legacyClockGap(previous, current);
+      }
+      if (legacyIsSymbolic(previous) && legacyIsSymbolic(current)) {
+        const gaps = [];
+        for (const todayWeekday of todayWeekdays) {
+          const gap = (legacySymbolicDay(current, todayWeekday) - legacySymbolicDay(previous, todayWeekday)) * 1440
+            + current.clock - previous.clock;
+          if (Number.isFinite(gap) && gap >= 0) gaps.push(gap);
+        }
+        if (gaps.length) return Math.min(...gaps);
+      }
+      return legacyClockGap(previous, current);
+    };
+    const decodeTimeline = values => {
+      const points = [];
+      let order = 0;
+      let minute = 0;
+      for (let i = 0; i + 1 < values.length; i += 2) {
+        order += Number(values[i]) || 0;
+        minute += Number(values[i + 1]) || 0;
+        points.push({ order, minute });
+      }
+      return points;
+    };
+    const buildLegacyTimeline = records => {
+      const entries = [];
+      records.forEach(record => {
+        const descriptor = legacyDescriptor(record.time);
+        if (descriptor) entries.push({ order: record.order, descriptor });
+      });
+      const todayWeekdays = legacyCandidateWeekdays(entries);
+      const points = [];
+      let previous = null;
+      let minute = null;
+      let lastStored = null;
+      for (const entry of entries) {
+        const descriptor = entry.descriptor;
+        if (minute == null) minute = descriptor.clock;
+        else minute += legacyGap(previous, descriptor, todayWeekdays);
+        if (lastStored == null || minute !== lastStored) {
+          points.push({ order: entry.order, minute });
+          lastStored = minute;
+        }
+        previous = descriptor;
+      }
+      return points;
+    };
+    const timeline = enableSessionNavigator
+      ? (encodedTimeline.length ? decodeTimeline(encodedTimeline) : buildLegacyTimeline(allRecords))
+      : [];
+    const clockLabelForMinute = minute => {
+      const clock = ((Number(minute) % 1440) + 1440) % 1440;
+      return `${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`;
+    };
+    const timelinePointAtOrder = order => {
+      if (!timeline.length) return null;
+      let low = 0;
+      let high = timeline.length - 1;
+      let found = null;
+      while (low <= high) {
+        const mid = (low + high) >> 1;
+        const point = timeline[mid];
+        if (point.order <= order) { found = point; low = mid + 1; }
+        else high = mid - 1;
+      }
+      return found || timeline[0];
+    };
+    const SESSION_MIN_DAY_NON_OTHER_MESSAGES = 200;
+    const nonOtherCountPrefix = enableSessionNavigator ? new Uint32Array(allRecords.length + 1) : null;
+    if (enableSessionNavigator) {
+      for (let index = 0; index < allRecords.length; index += 1) {
+        nonOtherCountPrefix[index + 1] = nonOtherCountPrefix[index] + (allRecords[index]?.lowerTab !== "other" ? 1 : 0);
+      }
+    }
+    const buildSessionIndex = points => {
+      if (points.length < 2) return [];
+      const sessions = [];
+      let current = null;
+      let previous = null;
+      for (const point of points) {
+        if (!current) {
+          current = {
+            number: 1, startOrder: 0, endOrder: allRecords.length,
+            startMinute: point.minute, endMinute: point.minute,
+            startTime: clockLabelForMinute(point.minute), endTime: clockLabelForMinute(point.minute)
+          };
+          sessions.push(current);
+        } else {
+          const gap = point.minute - previous.minute;
+          if (gap >= 60) {
+            current.endOrder = point.order;
+            current = {
+              number: sessions.length + 1, startOrder: point.order, endOrder: allRecords.length,
+              startMinute: point.minute, endMinute: point.minute,
+              startTime: clockLabelForMinute(point.minute), endTime: clockLabelForMinute(point.minute)
+            };
+            sessions.push(current);
+          } else {
+            current.endMinute = point.minute;
+            current.endTime = clockLabelForMinute(point.minute);
+          }
+        }
+        previous = point;
+      }
+
+      const nonOtherCount = session => {
+        const start = Math.max(0, Math.min(allRecords.length, Number(session.startOrder) || 0));
+        const end = Math.max(start, Math.min(allRecords.length, Number(session.endOrder) || 0));
+        return nonOtherCountPrefix[end] - nonOtherCountPrefix[start];
+      };
+      let guard = 0;
+      while (sessions.length > 1 && guard++ < 1000) {
+        const shortIndex = sessions.findIndex(session => nonOtherCount(session) < SESSION_MIN_DAY_NON_OTHER_MESSAGES);
+        if (shortIndex < 0) break;
+        if (shortIndex === 0) {
+          const left = sessions[0];
+          const right = sessions[1];
+          right.startOrder = left.startOrder;
+          right.startMinute = left.startMinute;
+          right.startTime = left.startTime || right.startTime;
+          sessions.splice(0, 1);
+          continue;
+        }
+        if (shortIndex === sessions.length - 1) {
+          const previousSession = sessions[shortIndex - 1];
+          const shortSession = sessions[shortIndex];
+          previousSession.endOrder = shortSession.endOrder;
+          previousSession.endMinute = shortSession.endMinute;
+          previousSession.endTime = shortSession.endTime || previousSession.endTime;
+          sessions.splice(shortIndex, 1);
+          continue;
+        }
+
+        const previousSession = sessions[shortIndex - 1];
+        const shortSession = sessions[shortIndex];
+        const nextSession = sessions[shortIndex + 1];
+        const beforeGap = shortSession.startMinute - previousSession.endMinute;
+        const afterGap = nextSession.startMinute - shortSession.endMinute;
+        const before = Number.isFinite(beforeGap) && beforeGap >= 0 ? beforeGap : Infinity;
+        const after = Number.isFinite(afterGap) && afterGap >= 0 ? afterGap : Infinity;
+        if (after < before) {
+          nextSession.startOrder = shortSession.startOrder;
+          nextSession.startMinute = shortSession.startMinute;
+          nextSession.startTime = shortSession.startTime || nextSession.startTime;
+          sessions.splice(shortIndex, 1);
+        } else {
+          previousSession.endOrder = shortSession.endOrder;
+          previousSession.endMinute = shortSession.endMinute;
+          previousSession.endTime = shortSession.endTime || previousSession.endTime;
+          sessions.splice(shortIndex, 1);
+        }
+      }
+
+      for (let i = 0; i < sessions.length; i += 1) {
+        const session = sessions[i];
+        const next = sessions[i + 1];
+        session.number = i + 1;
+        session.endOrder = next ? next.startOrder : allRecords.length;
+        session.jumpRecord = mainRecords.find(record => record.order >= session.startOrder && record.order < session.endOrder)
+          || allRecords.find(record => record.order >= session.startOrder && record.order < session.endOrder)
+          || allRecords[Math.min(session.startOrder, allRecords.length - 1)];
+      }
+      return sessions.length >= 2 ? sessions : [];
+    };
+    const sessions = enableSessionNavigator ? buildSessionIndex(timeline) : [];
+    let sessionNavigator = null;
+    let sessionNavList = null;
+    let sessionNavSummary = null;
+    let sessionNavClock = null;
+    let sessionNavSummaryButton = null;
+    let sessionNavHideTimer = 0;
+    let sessionNavHovered = false;
+    let sessionNavScrollbarDrag = false;
+    let sessionNavManualExpanded = false;
+    const sessionNavTouchLike = !!win.matchMedia?.("(hover: none), (pointer: coarse)")?.matches;
+    let sessionNavFastMs = 0;
+    let sessionNavLastOffset = mainList.currentOffset();
+    let sessionNavLastAt = win.performance?.now?.() || Date.now();
+    let sessionNavLastActive = -1;
+    const sessionForOrder = order => {
+      if (!sessions.length) return null;
+      let low = 0, high = sessions.length - 1, found = sessions[0];
+      while (low <= high) {
+        const mid = (low + high) >> 1;
+        if (sessions[mid].startOrder <= order) { found = sessions[mid]; low = mid + 1; }
+        else high = mid - 1;
+      }
+      return found;
+    };
+    const currentSession = () => sessionForOrder(Number(mainList.currentIndices()?.order || 0));
+    const updateSessionNavigator = () => {
+      if (!sessionNavigator) return;
+      const session = currentSession();
+      if (!session) return;
+      if (sessionNavSummary) sessionNavSummary.textContent = `${session.number} / ${sessions.length}일차`;
+      if (sessionNavClock) {
+        const indices = mainList.currentIndices();
+        const point = timelinePointAtOrder(Number(indices?.order || 0));
+        sessionNavClock.textContent = point ? clockLabelForMinute(point.minute) : (session.startTime || "");
+      }
+      if (sessionNavLastActive !== session.number) {
+        sessionNavLastActive = session.number;
+        sessionNavList?.querySelectorAll?.("button[data-session-number]").forEach(button => {
+          button.classList.toggle("is-current", Number(button.dataset.sessionNumber) === session.number);
+        });
+      }
+    };
+    const cancelSessionNavHide = () => {
+      if (sessionNavHideTimer) win.clearTimeout(sessionNavHideTimer);
+      sessionNavHideTimer = 0;
+    };
+    const scheduleSessionNavHide = (delay = 950) => {
+      cancelSessionNavHide();
+      sessionNavHideTimer = win.setTimeout(() => {
+        sessionNavHideTimer = 0;
+        if (!sessionNavigator || sessionNavHovered || sessionNavScrollbarDrag) return;
+        sessionNavigator.classList.remove("is-visible", "is-expanded");
+        sessionNavSummaryButton?.setAttribute("aria-expanded", "false");
+        sessionNavManualExpanded = false;
+        sessionNavFastMs = 0;
+      }, delay);
+    };
+    const showSessionNavigator = expanded => {
+      if (!sessionNavigator) return;
+      updateSessionNavigator();
+      sessionNavigator.classList.add("is-visible");
+      sessionNavigator.classList.toggle("is-expanded", !!expanded || sessionNavHovered || sessionNavScrollbarDrag || sessionNavManualExpanded);
+      sessionNavSummaryButton?.setAttribute("aria-expanded", String(sessionNavigator.classList.contains("is-expanded")));
+      scheduleSessionNavHide(expanded ? (sessionNavTouchLike ? 1900 : 1100) : (sessionNavTouchLike ? 1300 : 900));
+    };
+    const sessionScrollHandler = () => {
+      if (!sessionNavigator) return;
+      const nowValue = win.performance?.now?.() || Date.now();
+      const offset = mainList.currentOffset();
+      const delta = Math.abs(offset - sessionNavLastOffset);
+      const dt = Math.max(1, nowValue - sessionNavLastAt);
+      const viewport = Math.max(1, mainList.viewport().end - mainList.viewport().start);
+      const velocity = delta / dt;
+      const fast = velocity >= 1.35 || delta >= viewport * 0.62;
+      sessionNavFastMs = fast ? Math.min(1000, sessionNavFastMs + Math.min(dt, 90)) : Math.max(0, sessionNavFastMs - dt * 0.8);
+      sessionNavLastOffset = offset;
+      sessionNavLastAt = nowValue;
+      if (sessionNavScrollbarDrag) showSessionNavigator(true);
+      else if (sessionNavFastMs >= 380 || delta >= viewport * 1.8) showSessionNavigator(true);
+      else if (sessionNavFastMs >= 170) showSessionNavigator(false);
+      if (sessionNavigator.classList.contains("is-visible")) updateSessionNavigator();
+    };
+    const sessionPointerDown = event => {
+      if (!sessionNavigator || event.button !== 0 || sessionNavTouchLike) return;
+      const viewport = mainList.viewport();
+      const root = viewport.root;
+      let nearScrollbar = false;
+      if (root && root !== win && root.getBoundingClientRect) {
+        const rect = root.getBoundingClientRect();
+        const scrollbarWidth = Math.max(12, root.offsetWidth - root.clientWidth + 6);
+        nearScrollbar = event.clientX >= rect.right - scrollbarWidth - 5 && event.clientX <= rect.right + 3
+          && event.clientY >= rect.top && event.clientY <= rect.bottom;
+      } else {
+        nearScrollbar = event.clientX >= (win.innerWidth || doc.documentElement.clientWidth || 0) - 22;
+      }
+      if (!nearScrollbar) return;
+      sessionNavScrollbarDrag = true;
+      showSessionNavigator(true);
+    };
+    const sessionPointerUp = () => {
+      if (!sessionNavScrollbarDrag) return;
+      sessionNavScrollbarDrag = false;
+      scheduleSessionNavHide(900);
+    };
+    if (sessions.length >= 2) {
+      sessionNavigator = doc.createElement("nav");
+      sessionNavigator.className = "trpg-session-nav";
+      sessionNavigator.setAttribute("aria-label", "일차 목차");
+      sessionNavigator.innerHTML = `<div class="trpg-session-nav-summary"><strong data-session-summary></strong><span class="trpg-session-nav-clock" data-session-clock></span></div><div class="trpg-session-nav-list" data-session-list></div>`;
+      sessionNavSummary = sessionNavigator.querySelector("[data-session-summary]");
+      sessionNavClock = sessionNavigator.querySelector("[data-session-clock]");
+      sessionNavList = sessionNavigator.querySelector("[data-session-list]");
+      sessionNavList.innerHTML = sessions.map(session => `<button type="button" data-session-number="${session.number}" title="${esc(session.startTime)} → ${esc(session.endTime)}"><span class="trpg-session-nav-mark"><span class="trpg-session-nav-rail"></span><span class="trpg-session-nav-dot"></span></span><span class="trpg-session-nav-label">${session.number}일차</span><span class="trpg-session-nav-meta">${esc(session.startTime || "--:--")} → ${esc(session.endTime || "--:--")}</span></button>`).join("");
+      sessionNavSummaryButton = sessionNavigator.querySelector(".trpg-session-nav-summary");
+      sessionNavSummaryButton?.setAttribute("role", "button");
+      sessionNavSummaryButton?.setAttribute("tabindex", "0");
+      sessionNavSummaryButton?.setAttribute("aria-expanded", "false");
+      const toggleSessionNavigatorExpanded = () => {
+        sessionNavManualExpanded = !sessionNavigator.classList.contains("is-expanded");
+        sessionNavigator.classList.add("is-visible");
+        sessionNavigator.classList.toggle("is-expanded", sessionNavManualExpanded);
+        sessionNavSummaryButton?.setAttribute("aria-expanded", String(sessionNavManualExpanded));
+        if (sessionNavManualExpanded) {
+          updateSessionNavigator();
+          scheduleSessionNavHide(sessionNavTouchLike ? 2600 : 1800);
+        } else {
+          scheduleSessionNavHide(800);
+        }
+      };
+      sessionNavSummaryButton?.addEventListener("click", toggleSessionNavigatorExpanded);
+      sessionNavSummaryButton?.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        toggleSessionNavigatorExpanded();
+      });
+      sessionNavList.addEventListener("click", async event => {
+        const button = event.target?.closest?.("button[data-session-number]");
+        if (!button) return;
+        const session = sessions[Number(button.dataset.sessionNumber) - 1];
+        if (!session?.jumpRecord) return;
+        if (typeof api.ensureIdVisible === "function") await api.ensureIdVisible(session.jumpRecord);
+        mainList.setHighlight(null);
+        otherList?.setHighlight(null);
+        mainList.jumpToIdentity(session.jumpRecord, "top");
+        sessionNavManualExpanded = false;
+        sessionNavSummaryButton?.setAttribute("aria-expanded", "false");
+        updateSessionNavigator();
+        scheduleSessionNavHide(1050);
+      });
+      sessionNavigator.addEventListener("mouseenter", () => {
+        sessionNavHovered = true;
+        cancelSessionNavHide();
+        sessionNavigator.classList.add("is-visible", "is-expanded");
+        sessionNavSummaryButton?.setAttribute("aria-expanded", "true");
+      });
+      sessionNavigator.addEventListener("mouseleave", () => {
+        sessionNavHovered = false;
+        if (!sessionNavScrollbarDrag && !sessionNavManualExpanded) sessionNavigator.classList.remove("is-expanded");
+        sessionNavSummaryButton?.setAttribute("aria-expanded", String(sessionNavigator.classList.contains("is-expanded")));
+        scheduleSessionNavHide(750);
+      });
+      sessionNavigator.addEventListener("pointerdown", () => cancelSessionNavHide());
+      sessionNavigator.addEventListener("pointerup", () => {
+        if (sessionNavTouchLike) scheduleSessionNavHide(1800);
+      });
+      sessionNavigator.addEventListener("focusin", () => {
+        cancelSessionNavHide();
+        sessionNavigator.classList.add("is-visible");
+      });
+      sessionNavigator.addEventListener("focusout", () => {
+        if (!sessionNavigator.contains(doc.activeElement)) scheduleSessionNavHide(900);
+      });
+      scope.append(sessionNavigator);
+      updateSessionNavigator();
+      doc.addEventListener("scroll", sessionScrollHandler, true);
+      doc.addEventListener("pointerdown", sessionPointerDown, true);
+      doc.addEventListener("pointerup", sessionPointerUp, true);
+      doc.addEventListener("pointercancel", sessionPointerUp, true);
+    }
 
     const searchRoot = scope.querySelector("[data-trpg-search]");
     const searchInput = searchRoot?.querySelector("[data-trpg-search-input]");
@@ -10721,6 +11711,12 @@ function compactExportRuntime(root) {
       resizeObserver?.disconnect();
       scope.removeEventListener?.("trpg-host-layout-change", onHostLayoutChange);
       doc.removeEventListener("keydown", searchKeyHandler);
+      if (sessionNavHideTimer) win.clearTimeout(sessionNavHideTimer);
+      doc.removeEventListener("scroll", sessionScrollHandler, true);
+      doc.removeEventListener("pointerdown", sessionPointerDown, true);
+      doc.removeEventListener("pointerup", sessionPointerUp, true);
+      doc.removeEventListener("pointercancel", sessionPointerUp, true);
+      sessionNavigator?.remove?.();
       win.removeEventListener("scroll", requestGlobalFrame);
       win.removeEventListener("resize", requestGlobalFrame);
       if (scope !== doc) scope.removeEventListener?.("scroll", requestGlobalFrame);
@@ -11060,6 +12056,13 @@ body{background:#edf1f5;color:#172033}
 .trpg-search input{background:#fff;color:#172033;border-color:rgba(15,23,42,.14)}
 .trpg-search input::placeholder{color:rgba(15,23,42,.42)}
 .trpg-search-count{color:rgba(15,23,42,.58)}
+.trpg-session-nav{background:rgba(255,255,255,.96);border-color:rgba(15,23,42,.14);box-shadow:0 10px 32px rgba(15,23,42,.18);color:#253044}
+.trpg-session-nav button{color:#334155}
+.trpg-session-nav button:hover,.trpg-session-nav button.is-current{background:rgba(37,99,166,.1);color:#174f86}
+.trpg-session-nav-meta,.trpg-session-nav-clock{color:rgba(15,23,42,.56)}
+.trpg-session-nav-rail{background:rgba(15,23,42,.13)}
+.trpg-session-nav-dot{background:#fff;border-color:rgba(37,99,166,.58)}
+.trpg-session-nav button.is-current .trpg-session-nav-dot{background:#2563eb;border-color:#2563eb}
 .trpg-virtual-window .log-row:last-child{border-bottom-color:rgba(15,23,42,.1)}
 .log-row.is-search-target,.system-line.is-search-target,.other-row.is-search-target{outline-color:rgba(37,99,166,.92);background:rgba(37,99,166,.12)!important}
 @media(max-width:700px){.scene-pager{background:rgba(237,241,245,.94)}}`;
@@ -11154,6 +12157,24 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .trpg-search input::placeholder{color:rgba(255,255,255,.42)}
 .trpg-search button{min-height:32px;padding:5px 9px;font-size:12px}
 .trpg-search-count{min-width:64px;color:var(--muted);font-size:12px;text-align:center;white-space:nowrap}
+.trpg-session-nav{position:fixed;right:14px;top:50%;z-index:52;display:grid;min-width:0;max-width:min(280px,calc(100vw - 28px));padding:0;border:1px solid var(--line);border-radius:10px;background:rgba(27,27,27,.94);color:#f1f1f1;box-shadow:0 10px 34px rgba(0,0,0,.34);backdrop-filter:blur(8px);opacity:0;visibility:hidden;pointer-events:none;transform:translate(8px,-50%) scale(.96);transform-origin:right center;transition:opacity .14s ease,transform .16s ease,visibility 0s linear .16s}
+.trpg-session-nav.is-visible{opacity:.92;visibility:visible;pointer-events:auto;transform:translate(0,-50%) scale(1);transition-delay:0s}
+.trpg-session-nav.is-expanded{width:min(260px,calc(100vw - 28px));opacity:1}
+.trpg-session-nav-summary{display:flex;align-items:baseline;gap:7px;min-height:34px;padding:7px 10px;white-space:nowrap;cursor:pointer;touch-action:manipulation}
+.trpg-session-nav-summary strong{font-size:12px;line-height:1.2}
+.trpg-session-nav-clock{color:var(--muted);font-size:10px}
+.trpg-session-nav-list{display:none;max-height:min(58vh,520px);padding:4px 5px 6px;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border-top:1px solid var(--line)}
+.trpg-session-nav.is-expanded .trpg-session-nav-list{display:grid;gap:2px}
+.trpg-session-nav button{position:relative;display:grid;grid-template-columns:18px minmax(0,1fr);grid-template-areas:"mark label" "mark meta";align-items:center;gap:1px 6px;width:100%;min-height:38px;padding:5px 7px;border:0;border-radius:7px;background:transparent;color:#eee;text-align:left}
+.trpg-session-nav button:hover,.trpg-session-nav button.is-current{background:rgba(143,199,255,.1);color:#cfe8ff}
+.trpg-session-nav-mark{grid-area:mark;position:relative;display:grid;place-items:center;align-self:stretch}
+.trpg-session-nav-rail{position:absolute;top:-8px;bottom:-8px;left:50%;width:1px;transform:translateX(-50%);background:rgba(255,255,255,.16)}
+.trpg-session-nav button:first-child .trpg-session-nav-rail{top:50%}
+.trpg-session-nav button:last-child .trpg-session-nav-rail{bottom:50%}
+.trpg-session-nav-dot{position:relative;z-index:1;width:7px;height:7px;border:2px solid rgba(143,199,255,.72);border-radius:50%;background:#202020}
+.trpg-session-nav button.is-current .trpg-session-nav-dot{width:9px;height:9px;background:#8fc7ff;border-color:#8fc7ff}
+.trpg-session-nav-label{grid-area:label;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:800}
+.trpg-session-nav-meta{grid-area:meta;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:9px}
 .trpg-virtual-body{position:relative;width:100%;min-width:0;max-width:100%;min-height:1px;margin:0!important;padding:0!important;contain:layout style;overflow-anchor:none}
 .trpg-virtual-window{position:absolute;top:0;left:0;right:0;width:100%;min-width:0;max-width:100%;margin:0!important;padding:0!important;will-change:transform;contain:layout style;overflow-anchor:none}
 html.trpg-host-tistory .trpg-virtual-body,html.trpg-host-tistory .trpg-virtual-window{contain:none!important}
@@ -11169,7 +12190,7 @@ html.trpg-host-tistory .trpg-virtual-body,html.trpg-host-tistory .trpg-virtual-w
 .log-row.is-odd{background:#313131}
 .log-row.is-even{background:#383838}
 .log-row.is-search-target,.system-line.is-search-target,.other-row.is-search-target{position:relative;z-index:1;outline:2px solid rgba(143,199,255,.92);outline-offset:-2px;background:rgba(143,199,255,.15)!important}
-@media(max-width:700px){.trpg-search-shell{top:6px}.trpg-search{grid-template-columns:minmax(90px,1fr) auto auto auto;width:calc(100vw - 16px);padding:5px}.trpg-search-count{grid-column:1/3;min-height:15px;text-align:left}.trpg-search button{min-height:29px;padding:3px 7px}.trpg-search input{height:30px}.trpg-virtual-body{contain:layout style}}${normalizeAppTheme(theme) === "light" ? exportLightCssRaw() : ""}`;
+@media(max-width:700px){.trpg-search-shell{top:6px}.trpg-search{grid-template-columns:minmax(90px,1fr) auto auto auto;width:calc(100vw - 16px);padding:5px}.trpg-search-count{grid-column:1/3;min-height:15px;text-align:left}.trpg-search button{min-height:29px;padding:3px 7px}.trpg-search input{height:30px}.trpg-session-nav{right:8px;max-width:calc(100vw - 16px)}.trpg-session-nav.is-expanded{width:min(230px,calc(100vw - 16px))}.trpg-session-nav-summary{min-height:42px;padding:9px 11px}.trpg-session-nav-list{max-height:52vh}.trpg-session-nav button{min-height:44px;padding:7px 8px;touch-action:manipulation}.trpg-virtual-body{contain:layout style}}${normalizeAppTheme(theme) === "light" ? exportLightCssRaw() : ""}`;
 }
 
 function scopeExportCss(css, scope = "#trpg-log-app") {
@@ -11685,7 +12706,7 @@ function utf8ByteLength(value) {
 function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment = false) {
   rows = normalizeRowsForExportRuntime(rows);
   const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
-  const payload = createCompactLogPayload(rows, useSide);
+  const payload = createCompactLogPayload(rows, useSide, sessionNavigatorExportEnabled());
   const payloadJson = escapeScriptJson(payload);
   const includeFallback = tistoryFallbackExportEnabled();
   const fallbackMarkup = includeFallback ? buildStaticRowsBody(rows, useSide, { fallback: true }) : "";
@@ -11713,7 +12734,7 @@ function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment 
   const styleCss = fragment ? exportCss(scopeSelector, exportTheme) : exportDocumentCss(exportTheme);
   const style = `<style>${styleCss}</style>`;
   if (fragment) return `${style}${app}`;
-  const storageMode = includeFallback ? "compact-v6+static-fallback-v1" : "compact-v6";
+  const storageMode = includeFallback ? "compact-v8+static-fallback-v1" : "compact-v8";
   return `<!DOCTYPE html><html lang="ko" data-theme="${exportTheme}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="${themePalette.themeColor}"><meta name="trpg-log-storage" content="${storageMode};rows=${rows.length};profiles=${payload.p.length};images=${imageCount}"><title>${escapeHtml(title)}</title>${style}</head><body style="margin:0;background:${themePalette.background}">${app}</body></html>`;
 }
 
@@ -12118,7 +13139,9 @@ async function analyze() {
     state.title = orderResult.title;
     const jsonRows = state.jsonText ? parseImageJson(state.jsonText) : 0;
     state.messages = applyMatches(combinedRows);
+    state.hasOtherMessages = state.messages.some(message => normalizedTab(message?.tab || "main") === "other");
     rebuildMessageIdentityIndex(state.messages);
+    rebuildSessionPageRanges();
     const importedBgmRestore = reconcileImportedBgmAfterAnalysis(state.importedConverterSettings);
     state.page = 1;
     rebuildFilters();
@@ -12162,8 +13185,12 @@ orderFile.addEventListener("change", async () => {
   state.lastCompactStats = null;
   state.lastAnalysis = null;
   state.messages = [];
+  state.sessionPageRanges = [];
   resetMessageIdentityIndex();
   state.visible = [];
+  state.visibleNonOther = [];
+  state.visibleOther = [];
+  state.hasOtherMessages = false;
   state.selectedTabs = new Set();
   state.selectedChars = new Set();
   state.avatarHiddenTabs = new Set();
