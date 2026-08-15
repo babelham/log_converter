@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.81">
+<meta name="trpg-app-version" content="6.82">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2775,7 +2775,7 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
   </div>
 </dialog>
 
-/* v6.81 — conservative date-only sessions + manual day boundaries:
+/* v6.82 — robust mixed date/relative timeline + manual day boundaries:
    - capture Cocofolia timestamps even when appended to the speaker/name node
    - old YYYY/MM/DD-only logs auto-split only when adjacent known dates are at least 2 days apart
    - ambiguous consecutive sessions can be split manually with a per-message day-boundary button
@@ -10086,11 +10086,54 @@ function timelineSymbolicDay(descriptor, todayWeekday) {
   return null;
 }
 
+function timelineCalendarWeekday(daySerial) {
+  const jsWeekday = new Date(Number(daySerial) * 86400000).getUTCDay();
+  return Number.isFinite(jsWeekday) ? (jsWeekday + 6) % 7 : null;
+}
+
+function timelineNearestWeekdayOnOrAfter(daySerial, weekday) {
+  const baseWeekday = timelineCalendarWeekday(daySerial);
+  if (baseWeekday == null || !Number.isFinite(Number(weekday))) return null;
+  return Number(daySerial) + ((Number(weekday) - baseWeekday + 7) % 7);
+}
+
+function timelineNearestWeekdayOnOrBefore(daySerial, weekday) {
+  const baseWeekday = timelineCalendarWeekday(daySerial);
+  if (baseWeekday == null || !Number.isFinite(Number(weekday))) return null;
+  return Number(daySerial) - ((baseWeekday - Number(weekday) + 7) % 7);
+}
+
+function timelineSameSymbolicDay(previous, current) {
+  if (!previous || !current) return false;
+  if (previous.kind === "relative" && current.kind === "relative") {
+    return Number(previous.offset) === Number(current.offset);
+  }
+  if (previous.kind === "week" && current.kind === "week") {
+    return Number(previous.weekOffset) === Number(current.weekOffset)
+      && Number(previous.weekday) === Number(current.weekday);
+  }
+  if (previous.kind === "weekday" && current.kind === "weekday") {
+    return Number(previous.weekday) === Number(current.weekday);
+  }
+  return false;
+}
+
+function timelineHasClock(descriptor) {
+  return !!descriptor && descriptor.clock != null && descriptor.clock !== "" && Number.isFinite(Number(descriptor.clock));
+}
+
 function timelineMinimalClockGap(previous, current) {
-  if (!previous || !current || !Number.isFinite(Number(previous.clock)) || !Number.isFinite(Number(current.clock))) return 0;
-  let gap = Number(current.clock) - Number(previous.clock);
-  while (gap < 0) gap += 1440;
-  return Number.isFinite(gap) ? gap : 0;
+  if (!previous || !current || !timelineHasClock(previous) || !timelineHasClock(current)) return 0;
+  const previousClock = Number(previous.clock);
+  const currentClock = Number(current.clock);
+  const direct = currentClock - previousClock;
+  if (direct >= 0) return direct;
+
+  // 코코포리아/북마크릿의 가상 목록 수집은 같은 시각대의 메시지가 몇 분씩 역순으로
+  // 섞일 수 있다. 작은 역행을 자정 통과로 보면 1분 역행이 1439분 공백이 되므로,
+  // 8시간 이상 크게 되감긴 경우에만 시각-only 자정 통과로 본다.
+  const rewind = previousClock - currentClock;
+  return rewind >= 8 * 60 ? direct + 1440 : 0;
 }
 
 function timelineCandidateWeekdays(entries) {
@@ -10101,6 +10144,11 @@ function timelineCandidateWeekdays(entries) {
     let previous = null;
     for (const entry of symbolic) {
       if (previous) {
+        if (timelineSameSymbolicDay(previous.descriptor, entry.descriptor)
+          && Number(entry.descriptor.clock) < Number(previous.descriptor.clock)) {
+          // 같은 상대 날짜 안의 소폭 역행은 수집 순서 노이즈이므로 요일 후보를 탈락시키지 않는다.
+          continue;
+        }
         const previousDay = timelineSymbolicDay(previous.descriptor, todayWeekday);
         const currentDay = timelineSymbolicDay(entry.descriptor, todayWeekday);
         const gap = (currentDay - previousDay) * 1440 + entry.descriptor.clock - previous.descriptor.clock;
@@ -10124,16 +10172,21 @@ function timelineConservativeGap(previous, current, todayWeekdays) {
   if (previousCalendar && currentCalendar) {
     const dayGap = Number(current.day) - Number(previous.day);
     if (!Number.isFinite(dayGap) || dayGap < 0) return 0;
-    const hasBothClocks = Number.isFinite(Number(previous.clock)) && Number.isFinite(Number(current.clock));
+    const hasBothClocks = timelineHasClock(previous) && timelineHasClock(current);
     if (hasBothClocks) {
       const exact = dayGap * 1440 + Number(current.clock) - Number(previous.clock);
-      return Number.isFinite(exact) && exact >= 0 ? exact : timelineMinimalClockGap(previous, current);
+      return Number.isFinite(exact) && exact >= 0 ? exact : 0;
     }
     // 오래된 코코포리아 로그는 시각을 버리고 날짜만 남긴다. 날짜 간격은 일단 분 단위로
     // 복원하되, 실제 자동 일차 경계는 날짜-only 구간에서 최소 2일(48시간) 이상 벌어진 경우에만 만든다.
     return dayGap > 0 ? dayGap * 1440 : 0;
   }
   if (timelineIsSymbolic(previous) && timelineIsSymbolic(current)) {
+    if (timelineSameSymbolicDay(previous, current)) {
+      const direct = Number(current.clock) - Number(previous.clock);
+      // 같은 '先週 月曜日' 같은 라벨 안에서는 자정이 바뀔 수 없으므로 역행은 순서 노이즈다.
+      return Number.isFinite(direct) && direct > 0 ? direct : 0;
+    }
     const gaps = [];
     for (const todayWeekday of todayWeekdays || [0, 1, 2, 3, 4, 5, 6]) {
       const previousDay = timelineSymbolicDay(previous, todayWeekday);
@@ -10145,9 +10198,102 @@ function timelineConservativeGap(previous, current, todayWeekdays) {
     // 어떤 기준 요일을 택해도 세션이 끊겼다고 확정할 수 있다.
     if (gaps.length) return Math.min(...gaps);
   }
-  // 달력 날짜와 상대 날짜가 섞였거나 시각만 남은 경우에는 절대 날짜를 추측하지 않는다.
-  // 로그 순서를 만족하는 가장 짧은 시각 차이만 사용해 false-positive 일차 분리를 막는다.
   return timelineMinimalClockGap(previous, current);
+}
+
+function timelineHasDayAnchor(anchorDay) {
+  return anchorDay != null && anchorDay !== "" && Number.isFinite(Number(anchorDay));
+}
+
+function timelineResolveStep(previous, current, todayWeekdays, anchorDay) {
+  if (!previous || !current) return { gap: 0, anchorDay, accept: true };
+  const previousClock = Number(previous.clock);
+  const currentClock = Number(current.clock);
+  const hasPreviousClock = timelineHasClock(previous);
+  const hasCurrentClock = timelineHasClock(current);
+  const previousCalendar = previous.kind === "calendar" || previous.kind === "calendar-date";
+  const currentCalendar = current.kind === "calendar" || current.kind === "calendar-date";
+  const currentHasWeekday = Number.isFinite(Number(current.weekday));
+  const previousHasWeekday = Number.isFinite(Number(previous.weekday));
+
+  if (currentCalendar) {
+    const currentDay = Number(current.day);
+    if (timelineHasDayAnchor(anchorDay)) {
+      const stableDay = Number(anchorDay);
+      // 한 번 더 최근 날짜로 진행한 뒤 잠깐 과거 날짜가 섞이는 것은 수집 순서 노이즈다.
+      if (!Number.isFinite(currentDay) || currentDay < stableDay) {
+        return { gap: 0, anchorDay: stableDay, accept: false };
+      }
+      const dayGap = currentDay - stableDay;
+      let gap = dayGap * 1440;
+      if (hasPreviousClock && hasCurrentClock) {
+        gap += currentClock - previousClock;
+        if (gap < 0) return { gap: 0, anchorDay: stableDay, accept: false };
+      }
+      return { gap: Math.max(0, gap), anchorDay: currentDay, accept: true };
+    }
+
+    // 상대 요일 표기 뒤에 절대 날짜가 처음 등장하면, 그 날짜 이전의 가장 가까운 해당 요일을
+    // 상대 표기의 실제 날짜로 본다. 이후부터는 절대 날짜 축을 유지한다.
+    if (previousHasWeekday && Number.isFinite(currentDay)) {
+      const previousDay = timelineNearestWeekdayOnOrBefore(currentDay, previous.weekday);
+      if (Number.isFinite(previousDay)) {
+        let gap = (currentDay - previousDay) * 1440;
+        if (hasPreviousClock && hasCurrentClock) gap += currentClock - previousClock;
+        return { gap: Math.max(0, gap), anchorDay: currentDay, accept: true };
+      }
+    }
+    return {
+      gap: timelineConservativeGap(previous, current, todayWeekdays),
+      anchorDay: Number.isFinite(currentDay) ? currentDay : null,
+      accept: true
+    };
+  }
+
+  if (currentHasWeekday && timelineHasDayAnchor(anchorDay)) {
+    const stableDay = Number(anchorDay);
+    const currentDay = timelineNearestWeekdayOnOrAfter(stableDay, current.weekday);
+    if (Number.isFinite(currentDay)) {
+      const dayGap = currentDay - stableDay;
+      if (dayGap === 0 && hasPreviousClock && hasCurrentClock && currentClock < previousClock) {
+        // 같은 확정 날짜 안에서 시간이 뒤로 가는 것은 자정이 아니라 수집 순서 노이즈다.
+        return { gap: 0, anchorDay: stableDay, accept: false };
+      }
+      let gap = dayGap * 1440;
+      if (hasPreviousClock && hasCurrentClock) gap += currentClock - previousClock;
+      if (!Number.isFinite(gap) || gap < 0) return { gap: 0, anchorDay: stableDay, accept: false };
+      return { gap, anchorDay: currentDay, accept: true };
+    }
+  }
+
+  if (current.kind === "clock") {
+    const gap = timelineMinimalClockGap(previous, current);
+    if (hasPreviousClock && hasCurrentClock && currentClock < previousClock) {
+      const rewind = previousClock - currentClock;
+      if (rewind < 8 * 60) return { gap: 0, anchorDay, accept: false };
+      return {
+        gap,
+        anchorDay: timelineHasDayAnchor(anchorDay) ? Number(anchorDay) + 1 : anchorDay,
+        accept: true
+      };
+    }
+    return { gap, anchorDay, accept: true };
+  }
+
+  // 오늘/어제처럼 절대 날짜와 직접 연결할 수 없는 상대 표기로 들어가면
+  // 오래된 절대 날짜 앵커를 억지로 끌고 가지 않는다.
+  if (current.kind === "relative" && timelineHasDayAnchor(anchorDay)) {
+    return {
+      gap: timelineConservativeGap(previous, current, todayWeekdays),
+      anchorDay: null,
+      accept: true
+    };
+  }
+
+  const gap = timelineConservativeGap(previous, current, todayWeekdays);
+  const sameDayBackwards = timelineSameSymbolicDay(previous, current)
+    && hasPreviousClock && hasCurrentClock && currentClock < previousClock;
+  return { gap, anchorDay, accept: !sameDayBackwards };
 }
 
 function buildSparseTimeline(rows) {
@@ -10175,25 +10321,34 @@ function buildSparseTimeline(rows) {
   const points = [];
   let previousDescriptor = null;
   let previousMinute = null;
+  let anchorDay = null;
   let lastStoredMinute = null;
   for (const entry of entries) {
     const descriptor = entry.descriptor;
     let minute;
+    let acceptDescriptor = true;
     if (descriptor.kind === "logical") {
       minute = descriptor.logicalMinute;
       if (previousMinute != null && minute < previousMinute) minute = previousMinute;
+      anchorDay = null;
     } else if (previousMinute == null) {
       minute = Number.isFinite(Number(descriptor.clock)) ? Number(descriptor.clock) : 0;
+      if (descriptor.kind === "calendar" || descriptor.kind === "calendar-date") {
+        anchorDay = Number(descriptor.day);
+      }
     } else {
-      const gap = timelineConservativeGap(previousDescriptor, descriptor, todayWeekdays);
+      const resolved = timelineResolveStep(previousDescriptor, descriptor, todayWeekdays, anchorDay);
+      const gap = Number(resolved?.gap);
       minute = previousMinute + (Number.isFinite(gap) && gap >= 0 ? gap : 0);
+      anchorDay = resolved?.anchorDay ?? anchorDay;
+      acceptDescriptor = resolved?.accept !== false;
     }
 
     if (lastStoredMinute == null || minute !== lastStoredMinute) {
       points.push({ order: entry.order, minute, label: descriptor.label || "", precision: descriptor.precision || "minute" });
       lastStoredMinute = minute;
     }
-    previousDescriptor = descriptor;
+    if (acceptDescriptor) previousDescriptor = descriptor;
     previousMinute = minute;
   }
   return points;
@@ -11537,11 +11692,39 @@ function compactExportRuntime(root) {
       }
       return null;
     };
+    const legacyCalendarWeekday = daySerial => {
+      const jsWeekday = new Date(Number(daySerial) * 86400000).getUTCDay();
+      return Number.isFinite(jsWeekday) ? (jsWeekday + 6) % 7 : null;
+    };
+    const legacyNearestWeekdayOnOrAfter = (daySerial, weekday) => {
+      const baseWeekday = legacyCalendarWeekday(daySerial);
+      if (baseWeekday == null || !Number.isFinite(Number(weekday))) return null;
+      return Number(daySerial) + ((Number(weekday) - baseWeekday + 7) % 7);
+    };
+    const legacyNearestWeekdayOnOrBefore = (daySerial, weekday) => {
+      const baseWeekday = legacyCalendarWeekday(daySerial);
+      if (baseWeekday == null || !Number.isFinite(Number(weekday))) return null;
+      return Number(daySerial) - ((baseWeekday - Number(weekday) + 7) % 7);
+    };
+    const legacySameSymbolicDay = (previous, current) => {
+      if (!previous || !current) return false;
+      if (previous.kind === "relative" && current.kind === "relative") return Number(previous.offset) === Number(current.offset);
+      if (previous.kind === "week" && current.kind === "week") {
+        return Number(previous.weekOffset) === Number(current.weekOffset)
+          && Number(previous.weekday) === Number(current.weekday);
+      }
+      if (previous.kind === "weekday" && current.kind === "weekday") return Number(previous.weekday) === Number(current.weekday);
+      return false;
+    };
+    const legacyHasClock = descriptor => !!descriptor && descriptor.clock != null && descriptor.clock !== "" && Number.isFinite(Number(descriptor.clock));
     const legacyClockGap = (previous, current) => {
-      if (!Number.isFinite(Number(previous?.clock)) || !Number.isFinite(Number(current?.clock))) return 0;
-      let gap = Number(current.clock) - Number(previous.clock);
-      while (gap < 0) gap += 1440;
-      return Number.isFinite(gap) ? gap : 0;
+      if (!legacyHasClock(previous) || !legacyHasClock(current)) return 0;
+      const previousClock = Number(previous.clock);
+      const currentClock = Number(current.clock);
+      const direct = currentClock - previousClock;
+      if (direct >= 0) return direct;
+      const rewind = previousClock - currentClock;
+      return rewind >= 8 * 60 ? direct + 1440 : 0;
     };
     const legacyCandidateWeekdays = entries => {
       const symbolic = entries.filter(entry => legacyIsSymbolic(entry.descriptor));
@@ -11550,6 +11733,10 @@ function compactExportRuntime(root) {
         let previous = null;
         for (const entry of symbolic) {
           if (previous) {
+            if (legacySameSymbolicDay(previous.descriptor, entry.descriptor)
+              && Number(entry.descriptor.clock) < Number(previous.descriptor.clock)) {
+              continue;
+            }
             const gap = (legacySymbolicDay(entry.descriptor, todayWeekday) - legacySymbolicDay(previous.descriptor, todayWeekday)) * 1440
               + entry.descriptor.clock - previous.descriptor.clock;
             if (!Number.isFinite(gap) || gap < 0) return false;
@@ -11567,14 +11754,18 @@ function compactExportRuntime(root) {
       if (previousCalendar && currentCalendar) {
         const dayGap = Number(current.day) - Number(previous.day);
         if (!Number.isFinite(dayGap) || dayGap < 0) return 0;
-        const bothClocks = Number.isFinite(Number(previous.clock)) && Number.isFinite(Number(current.clock));
+        const bothClocks = legacyHasClock(previous) && legacyHasClock(current);
         if (bothClocks) {
           const exact = dayGap * 1440 + Number(current.clock) - Number(previous.clock);
-          return Number.isFinite(exact) && exact >= 0 ? exact : legacyClockGap(previous, current);
+          return Number.isFinite(exact) && exact >= 0 ? exact : 0;
         }
         return dayGap > 0 ? dayGap * 1440 : 0;
       }
       if (legacyIsSymbolic(previous) && legacyIsSymbolic(current)) {
+        if (legacySameSymbolicDay(previous, current)) {
+          const direct = Number(current.clock) - Number(previous.clock);
+          return Number.isFinite(direct) && direct > 0 ? direct : 0;
+        }
         const gaps = [];
         for (const todayWeekday of todayWeekdays) {
           const gap = (legacySymbolicDay(current, todayWeekday) - legacySymbolicDay(previous, todayWeekday)) * 1440
@@ -11584,6 +11775,75 @@ function compactExportRuntime(root) {
         if (gaps.length) return Math.min(...gaps);
       }
       return legacyClockGap(previous, current);
+    };
+    const legacyHasDayAnchor = anchorDay => anchorDay != null && anchorDay !== "" && Number.isFinite(Number(anchorDay));
+    const legacyResolveStep = (previous, current, todayWeekdays, anchorDay) => {
+      if (!previous || !current) return { gap: 0, anchorDay, accept: true };
+      const previousClock = Number(previous.clock);
+      const currentClock = Number(current.clock);
+      const hasPreviousClock = legacyHasClock(previous);
+      const hasCurrentClock = legacyHasClock(current);
+      const currentCalendar = current.kind === "calendar" || current.kind === "calendar-date";
+      const currentHasWeekday = Number.isFinite(Number(current.weekday));
+      const previousHasWeekday = Number.isFinite(Number(previous.weekday));
+
+      if (currentCalendar) {
+        const currentDay = Number(current.day);
+        if (legacyHasDayAnchor(anchorDay)) {
+          const stableDay = Number(anchorDay);
+          if (!Number.isFinite(currentDay) || currentDay < stableDay) return { gap: 0, anchorDay: stableDay, accept: false };
+          const dayGap = currentDay - stableDay;
+          let gap = dayGap * 1440;
+          if (hasPreviousClock && hasCurrentClock) {
+            gap += currentClock - previousClock;
+            if (gap < 0) return { gap: 0, anchorDay: stableDay, accept: false };
+          }
+          return { gap: Math.max(0, gap), anchorDay: currentDay, accept: true };
+        }
+        if (previousHasWeekday && Number.isFinite(currentDay)) {
+          const previousDay = legacyNearestWeekdayOnOrBefore(currentDay, previous.weekday);
+          if (Number.isFinite(previousDay)) {
+            let gap = (currentDay - previousDay) * 1440;
+            if (hasPreviousClock && hasCurrentClock) gap += currentClock - previousClock;
+            return { gap: Math.max(0, gap), anchorDay: currentDay, accept: true };
+          }
+        }
+        return { gap: legacyGap(previous, current, todayWeekdays), anchorDay: Number.isFinite(currentDay) ? currentDay : null, accept: true };
+      }
+
+      if (currentHasWeekday && legacyHasDayAnchor(anchorDay)) {
+        const stableDay = Number(anchorDay);
+        const currentDay = legacyNearestWeekdayOnOrAfter(stableDay, current.weekday);
+        if (Number.isFinite(currentDay)) {
+          const dayGap = currentDay - stableDay;
+          if (dayGap === 0 && hasPreviousClock && hasCurrentClock && currentClock < previousClock) {
+            return { gap: 0, anchorDay: stableDay, accept: false };
+          }
+          let gap = dayGap * 1440;
+          if (hasPreviousClock && hasCurrentClock) gap += currentClock - previousClock;
+          if (!Number.isFinite(gap) || gap < 0) return { gap: 0, anchorDay: stableDay, accept: false };
+          return { gap, anchorDay: currentDay, accept: true };
+        }
+      }
+
+      if (current.kind === "clock") {
+        const gap = legacyClockGap(previous, current);
+        if (hasPreviousClock && hasCurrentClock && currentClock < previousClock) {
+          const rewind = previousClock - currentClock;
+          if (rewind < 8 * 60) return { gap: 0, anchorDay, accept: false };
+          return { gap, anchorDay: legacyHasDayAnchor(anchorDay) ? Number(anchorDay) + 1 : anchorDay, accept: true };
+        }
+        return { gap, anchorDay, accept: true };
+      }
+
+      if (current.kind === "relative" && legacyHasDayAnchor(anchorDay)) {
+        return { gap: legacyGap(previous, current, todayWeekdays), anchorDay: null, accept: true };
+      }
+
+      const gap = legacyGap(previous, current, todayWeekdays);
+      const sameDayBackwards = legacySameSymbolicDay(previous, current)
+        && hasPreviousClock && hasCurrentClock && currentClock < previousClock;
+      return { gap, anchorDay, accept: !sameDayBackwards };
     };
     const decodeTimeline = (values, dateLabelValues = []) => {
       const labelsByPoint = new Map();
@@ -11614,16 +11874,25 @@ function compactExportRuntime(root) {
       const points = [];
       let previous = null;
       let minute = null;
+      let anchorDay = null;
       let lastStored = null;
       for (const entry of entries) {
         const descriptor = entry.descriptor;
-        if (minute == null) minute = Number.isFinite(Number(descriptor.clock)) ? Number(descriptor.clock) : 0;
-        else minute += legacyGap(previous, descriptor, todayWeekdays);
+        let acceptDescriptor = true;
+        if (minute == null) {
+          minute = Number.isFinite(Number(descriptor.clock)) ? Number(descriptor.clock) : 0;
+          if (descriptor.kind === "calendar" || descriptor.kind === "calendar-date") anchorDay = Number(descriptor.day);
+        } else {
+          const resolved = legacyResolveStep(previous, descriptor, todayWeekdays, anchorDay);
+          minute += Math.max(0, Number(resolved?.gap) || 0);
+          anchorDay = resolved?.anchorDay ?? anchorDay;
+          acceptDescriptor = resolved?.accept !== false;
+        }
         if (lastStored == null || minute !== lastStored) {
           points.push({ order: entry.order, minute, label: descriptor.label || "", precision: descriptor.precision || "minute" });
           lastStored = minute;
         }
-        previous = descriptor;
+        if (acceptDescriptor) previous = descriptor;
       }
       return points;
     };
