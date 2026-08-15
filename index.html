@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.85">
+<meta name="trpg-app-version" content="6.86">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2775,7 +2775,11 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
   </div>
 </dialog>
 
-<!-- v6.85 — context-aware duplicate portrait matching:
+<!-- v6.86 — recover repeated portraits without reintroducing global offset drift:
+     - repeated exact messages whose collected portraits are all identical now use that portrait safely
+     - anchor-bounded segments use monotonic local LCS, so extra collector duplicates are skipped instead of shifting later portraits
+     - truly ambiguous repeated portraits still fall back rather than guessing.
+     v6.85 — context-aware duplicate portrait matching:
      - match priority: messageId/index → unique exact → context sequence → representative portrait
      - align collector rows to HTML per tab with patience-style unique anchors and orientation detection
      - repeated short messages no longer cycle portrait arrays when ambiguous; unresolved cases use representative portrait.
@@ -2848,7 +2852,7 @@ const state = {
   importedConverterSettings: null,
   lastImportedBgmRestore: null,
   collectedSequenceRows: [],
-  stats: { messageId: 0, index: 0, exact: 0, context: 0, fallback: 0, system: 0 }
+  stats: { messageId: 0, index: 0, exact: 0, shared: 0, context: 0, fallback: 0, system: 0 }
 };
 
 const el = id => document.getElementById(id);
@@ -4400,6 +4404,56 @@ function buildPatienceSequenceAnchors(originalRows, collectedRows) {
   return [...unique.values()].sort((left, right) => left[0] - right[0] || left[1] - right[1]);
 }
 
+function sequenceSegmentLcsPairs(originalRows, collectedRows, originalStart, originalEnd, collectedStart, collectedEnd, mappedOriginal, mappedCollected) {
+  const originalIndices = [];
+  const collectedIndices = [];
+  for (let index = originalStart; index < originalEnd; index += 1) {
+    if (!mappedOriginal?.has(index) && originalRows[index]?.key) originalIndices.push(index);
+  }
+  for (let index = collectedStart; index < collectedEnd; index += 1) {
+    if (!mappedCollected?.has(index) && collectedRows[index]?.key) collectedIndices.push(index);
+  }
+  const n = originalIndices.length;
+  const m = collectedIndices.length;
+  if (!n || !m) return [];
+  // Patience anchors normally make these windows tiny. Avoid a pathological allocation when an
+  // imported collector file has almost no usable anchors.
+  if (n * m > 120000) return [];
+
+  const rows = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i -= 1) {
+    const originalKey = originalRows[originalIndices[i]]?.key || "";
+    const current = rows[i];
+    const next = rows[i + 1];
+    for (let j = m - 1; j >= 0; j -= 1) {
+      if (originalKey === (collectedRows[collectedIndices[j]]?.key || "")) {
+        current[j] = next[j + 1] + 1;
+      } else {
+        current[j] = Math.max(next[j], current[j + 1]);
+      }
+    }
+  }
+
+  const pairs = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    const oi = originalIndices[i];
+    const ci = collectedIndices[j];
+    const same = (originalRows[oi]?.key || "") === (collectedRows[ci]?.key || "");
+    if (same && rows[i][j] === rows[i + 1][j + 1] + 1) {
+      pairs.push([oi, ci]);
+      i += 1;
+      j += 1;
+    } else if (rows[i + 1][j] >= rows[i][j + 1]) {
+      i += 1;
+    } else {
+      j += 1;
+    }
+  }
+  return pairs;
+}
+
 function safeSharedCollectedMedia(collectedRows, indices) {
   const source = (indices || []).map(index => collectedRows[index]).filter(Boolean);
   if (!source.length) return null;
@@ -4454,6 +4508,14 @@ function buildContextSequenceMatchMap(messages) {
       const [leftO, leftC] = boundaries[boundaryIndex];
       const [rightO, rightC] = boundaries[boundaryIndex + 1];
       if (rightO <= leftO + 1 || rightC <= leftC + 1) continue;
+      const lcsPairs = sequenceSegmentLcsPairs(
+        originalRows, collectedRows,
+        leftO + 1, rightO,
+        leftC + 1, rightC,
+        mappedOriginal, mappedCollected
+      );
+      lcsPairs.forEach(([oi, ci]) => assign(oi, ci, "context-lcs"));
+
       const originalPositions = new Map();
       const collectedPositions = new Map();
       for (let oi = leftO + 1; oi < rightO; oi += 1) {
@@ -4509,6 +4571,20 @@ function takeUniqueExactMedia(urlMap, timeMap, key) {
   };
 }
 
+function takeSharedExactMedia(urlMap, timeMap, key) {
+  if (!key) return { url: "", time: "" };
+  const urls = (urlMap.get(key) || []).map(value => String(value || "").trim()).filter(Boolean);
+  if (urls.length < 2) return { url: "", time: "" };
+  const uniqueUrls = [...new Set(urls)];
+  if (uniqueUrls.length !== 1) return { url: "", time: "" };
+  const times = timeMap.get(key) || [];
+  const safeTimes = conservativeExactTimeValues(times);
+  return {
+    url: uniqueUrls[0],
+    time: normalizeText(safeTimes.find(Boolean) || "").replace(/\s+/g, " ").trim()
+  };
+}
+
 function safeExactTimeForKey(timeMap, key) {
   if (!key) return "";
   const values = (timeMap.get(key) || []).map(value => normalizeText(value || "").replace(/\s+/g, " ").trim()).filter(Boolean);
@@ -4523,7 +4599,7 @@ function applyMatches(messages) {
   state.tabMessageIdOffsets = new Map();
   state.tabIndexOffsets = new Map();
   const contextMatches = buildContextSequenceMatchMap(messages);
-  const stats = { messageId: 0, index: 0, exact: 0, context: 0, fallback: 0, system: 0 };
+  const stats = { messageId: 0, index: 0, exact: 0, shared: 0, context: 0, fallback: 0, system: 0 };
   const matched = messages.map((message, index) => {
     const tab = message.tab || "main";
     const key = messageKey(message.name, message.text);
@@ -4552,6 +4628,16 @@ function applyMatches(messages) {
       imgUrl = media.url;
       if (!time && media.time) time = media.time;
       if (imgUrl) { stats.exact += 1; match = "exact"; }
+    }
+    if (!imgUrl) {
+      let media = takeSharedExactMedia(state.tabExactMap, state.tabExactTimeMap, scopedKey);
+      if (!media.url) media = takeSharedExactMedia(state.exactMap, state.exactTimeMap, key);
+      if (media.url) {
+        imgUrl = media.url;
+        if (!time && media.time) time = media.time;
+        stats.shared += 1;
+        match = "shared";
+      }
     }
     if (!imgUrl) {
       const media = contextMatches.get(index);
@@ -4598,7 +4684,7 @@ function applyMatches(messages) {
       searchText: normalizeText(`${message.name || ""}\n${tab}\n${message.text || ""}`).toLowerCase()
     };
   });
-  stats.highConfidence = stats.messageId + stats.index + stats.exact + stats.context;
+  stats.highConfidence = stats.messageId + stats.index + stats.exact + stats.shared + stats.context;
   state.stats = stats;
   return matched;
 }
@@ -14128,7 +14214,7 @@ async function analyze() {
     updateView();
     el("resetFiltersBtn").disabled = false;
     const otherNote = state.otherText ? `, other ${otherRows.length.toLocaleString()}개 별도 병합` : "";
-    const portraitMatches = (state.stats.messageId || 0) + (state.stats.index || 0) + state.stats.exact + (state.stats.context || 0) + state.stats.fallback;
+    const portraitMatches = (state.stats.messageId || 0) + (state.stats.index || 0) + state.stats.exact + (state.stats.shared || 0) + (state.stats.context || 0) + state.stats.fallback;
     renderBgmTriggerList();
     state.lastAnalysis = {
       total: combinedRows.length,
@@ -14141,7 +14227,7 @@ async function analyze() {
       setStatus(`${combinedRows.length.toLocaleString()}개 메시지와 ${jsonRows.toLocaleString()}개 이미지 행을 읽었지만 포트레이트가 매칭되지 않았습니다. 탭·캐릭터명·대사 형식을 확인해 주세요.`);
     } else {
       const detail = jsonRows
-        ? ` ID ${(state.stats.messageId || 0).toLocaleString()} · 인덱스 ${(state.stats.index || 0).toLocaleString()} · 고유대사 ${state.stats.exact.toLocaleString()} · 문맥 ${(state.stats.context || 0).toLocaleString()} · 대표표정 ${state.stats.fallback.toLocaleString()}`
+        ? ` ID ${(state.stats.messageId || 0).toLocaleString()} · 인덱스 ${(state.stats.index || 0).toLocaleString()} · 고유대사 ${state.stats.exact.toLocaleString()} · 동일표정 ${(state.stats.shared || 0).toLocaleString()} · 문맥 ${(state.stats.context || 0).toLocaleString()} · 대표표정 ${state.stats.fallback.toLocaleString()}`
         : "";
       const bgmNote = importedBgmRestore.restored
         ? ` 기존 HTML의 BGM ${importedBgmRestore.restored.toLocaleString()}개를 복구했습니다.${importedBgmRestore.unresolved ? ` 위치를 찾지 못한 항목 ${importedBgmRestore.unresolved.toLocaleString()}개.` : ""}`
