@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.82">
+<meta name="trpg-app-version" content="6.83">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -2775,7 +2775,12 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
   </div>
 </dialog>
 
-/* v6.82 — robust mixed date/relative timeline + manual day boundaries:
+/* v6.83 — conservative duplicate-time matching + robust mixed date/relative timeline:
+   - repeated exact-text matches no longer attach timestamps across different days
+   - ambiguous repeated messages keep only a shared day label, not an unsafe minute
+   - symbolic day-only labels (e.g. 先週 月曜日) participate in the timeline conservatively
+   - retains v6.82 mixed calendar/relative anchoring and manual day boundaries.
+   v6.82 — robust mixed date/relative timeline + manual day boundaries:
    - capture Cocofolia timestamps even when appended to the speaker/name node
    - old YYYY/MM/DD-only logs auto-split only when adjacent known dates are at least 2 days apart
    - ambiguous consecutive sessions can be split manually with a per-message day-boundary button
@@ -4096,6 +4101,63 @@ function pushMatchTime(map, key, value) {
   map.get(key).push(normalizeText(value || "").replace(/\s+/g, " ").trim());
 }
 
+function exactTimeDayToken(value) {
+  const raw = normalizeText(value || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+
+  let match = raw.match(/(\d{4})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{1,2})/);
+  if (!match) match = raw.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
+  if (match) {
+    return `${String(match[1]).padStart(4, "0")}/${String(match[2]).padStart(2, "0")}/${String(match[3]).padStart(2, "0")}`;
+  }
+
+  const clockSuffix = /\s+(?:(?:오전|오후|午前|午後|AM|PM)\s*)?\d{1,2}:\d{2}(?::\d{2})?\s*$/i;
+  const dayOnly = raw.replace(clockSuffix, "").trim();
+  if (!dayOnly || dayOnly === raw) return "";
+
+  if (/^(?:오늘|어제|그제|今日|昨日|一昨日|today|yesterday|day\s+before\s+yesterday)$/i.test(dayOnly)) {
+    return dayOnly;
+  }
+  if (/^(?:(?:지지난주|저저번주|지난주|저번주|이번주|先々週|先週|今週|two\s+weeks\s+ago|last\s+week|previous\s+week|this\s+week)\s*(?:의|の)?\s*)?(?:월요일|화요일|수요일|목요일|금요일|토요일|일요일|月曜(?:日)?|火曜(?:日)?|水曜(?:日)?|木曜(?:日)?|金曜(?:日)?|土曜(?:日)?|日曜(?:日)?|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/i.test(dayOnly)) {
+    return dayOnly;
+  }
+  return "";
+}
+
+function conservativeExactTimeValues(values) {
+  const source = Array.isArray(values)
+    ? values.map(value => normalizeText(value || "").replace(/\s+/g, " ").trim())
+    : [];
+  if (!source.length) return source;
+  const nonEmpty = source.filter(Boolean);
+  if (!nonEmpty.length) return source.map(() => "");
+
+  const exactValues = new Set(nonEmpty);
+  if (exactValues.size === 1) {
+    const stable = nonEmpty[0];
+    return source.map(() => stable);
+  }
+
+  const dayTokens = nonEmpty.map(exactTimeDayToken);
+  if (dayTokens.every(Boolean) && new Set(dayTokens).size === 1) {
+    const stableDay = dayTokens[0];
+    return source.map(() => stableDay);
+  }
+
+  // 같은 이름+같은 대사가 여러 날짜에 걸쳐 반복됐는데 messageId/index가 없다면
+  // 어느 HTML 메시지에 어느 시간이 속하는지 안전하게 결정할 수 없다.
+  // 잘못된 날짜를 붙여 가짜 일차를 만드는 것보다 시간 메타데이터를 버리는 편이 낫다.
+  return source.map(() => "");
+}
+
+function sanitizeExactTimeMap(map) {
+  if (!(map instanceof Map)) return map;
+  for (const [key, values] of map.entries()) {
+    map.set(key, conservativeExactTimeValues(values));
+  }
+  return map;
+}
+
 function registerUrl(tab, name, text, url, metadata = {}) {
   const displayName = stripCollectedNameMetadata(name);
   const nameKey = normalizedCharacterName(displayName);
@@ -4173,6 +4235,10 @@ function parseImageJson(source) {
     });
     validRows += 1;
   });
+  // messageId/index가 없는 exact 매칭은 동일 대사가 여러 날짜에 반복될 수 있다.
+  // 분 단위 시각이 안전한 경우만 유지하고, 애매하면 공통 날짜 라벨까지만 남긴다.
+  sanitizeExactTimeMap(state.exactTimeMap);
+  sanitizeExactTimeMap(state.tabExactTimeMap);
   for (const [name, counts] of state.defaultByName.entries()) {
     const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
     state.defaultByName.set(name, sorted[0]?.[0] || "");
@@ -10054,18 +10120,34 @@ function timelineDateDescriptor(value) {
     }
   }
 
-  if (!clock) return null;
-  if (/(?:그제|一昨日|day\s+before\s+yesterday)/i.test(raw)) return { ...clock, kind: "relative", offset: -2, precision: "minute" };
-  if (/(?:어제|昨日|yesterday)/i.test(raw)) return { ...clock, kind: "relative", offset: -1, precision: "minute" };
-  if (/(?:오늘|今日|today)/i.test(raw)) return { ...clock, kind: "relative", offset: 0, precision: "minute" };
+  const relativeKind = /(?:그제|一昨日|day\s+before\s+yesterday)/i.test(raw)
+    ? -2
+    : /(?:어제|昨日|yesterday)/i.test(raw)
+      ? -1
+      : /(?:오늘|今日|today)/i.test(raw)
+        ? 0
+        : null;
+  if (relativeKind != null) {
+    if (clock) return { ...clock, kind: "relative", offset: relativeKind, precision: "minute" };
+    return { raw, kind: "relative", offset: relativeKind, clock: null, label: raw, precision: "date" };
+  }
 
   const weekday = timelineWeekdayIndex(raw);
   if (weekday != null) {
-    if (/(?:지지난주|저저번주|先々週|two\s+weeks\s+ago)/i.test(raw)) return { ...clock, kind: "week", weekOffset: -2, weekday, precision: "minute" };
-    if (/(?:지난주|저번주|先週|last\s+week|previous\s+week)/i.test(raw)) return { ...clock, kind: "week", weekOffset: -1, weekday, precision: "minute" };
-    if (/(?:이번주|今週|this\s+week)/i.test(raw)) return { ...clock, kind: "week", weekOffset: 0, weekday, precision: "minute" };
-    return { ...clock, kind: "weekday", weekday, precision: "minute" };
+    let weekOffset = null;
+    if (/(?:지지난주|저저번주|先々週|two\s+weeks\s+ago)/i.test(raw)) weekOffset = -2;
+    else if (/(?:지난주|저번주|先週|last\s+week|previous\s+week)/i.test(raw)) weekOffset = -1;
+    else if (/(?:이번주|今週|this\s+week)/i.test(raw)) weekOffset = 0;
+
+    if (weekOffset != null) {
+      if (clock) return { ...clock, kind: "week", weekOffset, weekday, precision: "minute" };
+      return { raw, kind: "week", weekOffset, weekday, clock: null, label: raw, precision: "date" };
+    }
+    if (clock) return { ...clock, kind: "weekday", weekday, precision: "minute" };
+    return { raw, kind: "weekday", weekday, clock: null, label: raw, precision: "date" };
   }
+
+  if (!clock) return null;
   return { ...clock, kind: "clock", precision: "minute" };
 }
 
@@ -10145,13 +10227,18 @@ function timelineCandidateWeekdays(entries) {
     for (const entry of symbolic) {
       if (previous) {
         if (timelineSameSymbolicDay(previous.descriptor, entry.descriptor)
+          && timelineHasClock(previous.descriptor)
+          && timelineHasClock(entry.descriptor)
           && Number(entry.descriptor.clock) < Number(previous.descriptor.clock)) {
           // 같은 상대 날짜 안의 소폭 역행은 수집 순서 노이즈이므로 요일 후보를 탈락시키지 않는다.
           continue;
         }
         const previousDay = timelineSymbolicDay(previous.descriptor, todayWeekday);
         const currentDay = timelineSymbolicDay(entry.descriptor, todayWeekday);
-        const gap = (currentDay - previousDay) * 1440 + entry.descriptor.clock - previous.descriptor.clock;
+        let gap = (currentDay - previousDay) * 1440;
+        if (timelineHasClock(previous.descriptor) && timelineHasClock(entry.descriptor)) {
+          gap += Number(entry.descriptor.clock) - Number(previous.descriptor.clock);
+        }
         if (!Number.isFinite(gap) || gap < 0) return false;
       }
       previous = entry;
@@ -10183,6 +10270,7 @@ function timelineConservativeGap(previous, current, todayWeekdays) {
   }
   if (timelineIsSymbolic(previous) && timelineIsSymbolic(current)) {
     if (timelineSameSymbolicDay(previous, current)) {
+      if (!timelineHasClock(previous) || !timelineHasClock(current)) return 0;
       const direct = Number(current.clock) - Number(previous.clock);
       // 같은 '先週 月曜日' 같은 라벨 안에서는 자정이 바뀔 수 없으므로 역행은 순서 노이즈다.
       return Number.isFinite(direct) && direct > 0 ? direct : 0;
@@ -10191,7 +10279,10 @@ function timelineConservativeGap(previous, current, todayWeekdays) {
     for (const todayWeekday of todayWeekdays || [0, 1, 2, 3, 4, 5, 6]) {
       const previousDay = timelineSymbolicDay(previous, todayWeekday);
       const currentDay = timelineSymbolicDay(current, todayWeekday);
-      const gap = (currentDay - previousDay) * 1440 + current.clock - previous.clock;
+      let gap = (currentDay - previousDay) * 1440;
+      if (timelineHasClock(previous) && timelineHasClock(current)) {
+        gap += Number(current.clock) - Number(previous.clock);
+      }
       if (Number.isFinite(gap) && gap >= 0) gaps.push(gap);
     }
     // 가능한 모든 일관된 해석의 최솟값을 쓴다. 이 값이 60분 이상일 때만
@@ -10332,7 +10423,7 @@ function buildSparseTimeline(rows) {
       if (previousMinute != null && minute < previousMinute) minute = previousMinute;
       anchorDay = null;
     } else if (previousMinute == null) {
-      minute = Number.isFinite(Number(descriptor.clock)) ? Number(descriptor.clock) : 0;
+      minute = timelineHasClock(descriptor) ? Number(descriptor.clock) : 0;
       if (descriptor.kind === "calendar" || descriptor.kind === "calendar-date") {
         anchorDay = Number(descriptor.day);
       }
