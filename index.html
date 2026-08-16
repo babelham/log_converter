@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.93">
+<meta name="trpg-app-version" content="6.97">
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -929,6 +929,11 @@ label { color: var(--muted); font-size: 13px; }
   content: "♫";
 }
 
+.split-button.message-edit-button::before {
+  content: "✎";
+  font-size: 13px;
+}
+
 .split-button.day-split-button::before {
   content: "☀";
   font-size: 12px;
@@ -1071,6 +1076,19 @@ label { color: var(--muted); font-size: 13px; }
   transform: none;
   background: rgba(58,46,24,.94);
   box-shadow: 0 2px 10px rgba(0,0,0,.24), 0 0 0 1px rgba(255,205,102,.14);
+}
+
+.row-actions.has-edit,
+.other-actions.has-edit {
+  opacity: .9;
+  pointer-events: auto;
+  transform: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,.24), 0 0 0 1px rgba(143,199,255,.16);
+}
+.preview-edit-tag {
+  color: #bfe0ff;
+  border-color: rgba(143,199,255,.24);
+  background: rgba(52,127,198,.13);
 }
 
 .manual-day-split-help {
@@ -2443,6 +2461,90 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
   .theme-toggle-label { display: none; }
 }
 
+
+/* v6.97 — bookmarklet optimization, unified BGM helper, compact expression-library delta */
+.analysis-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.analysis-actions[hidden] { display:none; }
+.analysis-actions button { flex:1 1 120px; min-height:34px; }
+.analysis-diagnostics { margin-top:7px; white-space:normal; line-height:1.55; }
+.section-collapse-button { margin-left:auto; min-width:30px; width:30px; height:28px; padding:0; border-radius:7px; font-size:15px; line-height:1; }
+.section.is-collapsed > :not(.section-title) { display:none !important; }
+.section.is-collapsed .section-title { margin-bottom:0; }
+.section-title.is-collapsible { cursor:default; }
+.portrait-review-dialog { width:min(760px,calc(100vw - 24px)); }
+.portrait-review-body { padding:16px; overflow:auto; max-height:calc(100vh - 150px); }
+.portrait-review-summary { display:flex; align-items:center; gap:10px; justify-content:space-between; margin-bottom:12px; }
+.portrait-review-summary strong { font-size:14px; }
+.portrait-review-context { display:grid; gap:5px; margin-bottom:14px; padding:10px; border:1px solid var(--line-soft); border-radius:9px; background:rgba(255,255,255,.025); }
+.portrait-review-context-row { display:grid; grid-template-columns:minmax(72px,auto) 1fr; gap:8px; font-size:12px; line-height:1.45; opacity:.72; }
+.portrait-review-context-row.is-target { opacity:1; font-weight:700; background:rgba(52,127,198,.12); border-radius:6px; padding:6px; margin:-1px -2px; }
+.portrait-review-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.portrait-review-text { white-space:pre-wrap; overflow-wrap:anywhere; }
+.portrait-review-choices { display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:8px; }
+.portrait-review-choice { display:grid; gap:6px; justify-items:center; padding:8px 6px; min-width:0; border:1px solid var(--line-soft); border-radius:9px; background:rgba(255,255,255,.025); cursor:pointer; }
+.portrait-review-choice:hover, .portrait-review-choice:focus-visible { border-color:rgba(52,127,198,.62); background:rgba(52,127,198,.1); }
+.portrait-review-choice.is-selected { border-color:#347fc6; box-shadow:0 0 0 1px #347fc6 inset; }
+.portrait-review-choice img { width:54px; height:54px; object-fit:cover; border-radius:8px; background:rgba(255,255,255,.06); }
+.portrait-review-choice span { max-width:100%; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.portrait-review-empty { padding:22px 10px; text-align:center; opacity:.7; }
+.portrait-review-footer { display:flex; gap:7px; padding:12px 16px 16px; border-top:1px solid var(--line-soft); }
+.portrait-review-footer button { flex:1; }
+html[data-theme="light"] .portrait-review-context, html[data-theme="light"] .portrait-review-choice { background:rgba(15,23,42,.025); }
+@media (max-width:560px) {
+  .portrait-review-context-row { grid-template-columns:1fr; gap:2px; }
+  .portrait-review-choices { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .analysis-actions button { flex-basis:100%; }
+}
+
+.message-edit-dialog { width:min(720px,calc(100vw - 24px)); }
+.message-edit-body { display:grid; gap:14px; padding:16px; overflow:auto; max-height:calc(100vh - 150px); }
+.message-edit-meta { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:baseline; }
+.message-edit-meta strong { font-size:14px; }
+.message-edit-meta span { color:var(--muted); font-size:12px; }
+.message-edit-field { display:grid; gap:6px; }
+.message-edit-field > span, .message-edit-portrait-head strong { font-size:12px; font-weight:800; }
+.message-edit-field textarea { width:100%; min-height:120px; resize:vertical; }
+.message-edit-portrait-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.message-edit-portrait-head span { color:var(--muted); font-size:11px; }
+.message-edit-portrait-choices { display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:8px; }
+.message-edit-portrait-choice { display:grid; gap:6px; justify-items:center; padding:8px 6px; min-width:0; border:1px solid var(--line-soft); border-radius:9px; background:rgba(255,255,255,.025); cursor:pointer; }
+.message-edit-portrait-choice:hover, .message-edit-portrait-choice:focus-visible { border-color:rgba(52,127,198,.62); background:rgba(52,127,198,.1); }
+.message-edit-portrait-choice.is-selected { border-color:#347fc6; box-shadow:0 0 0 1px #347fc6 inset; }
+.message-edit-portrait-choice img { width:54px; height:54px; object-fit:cover; border-radius:8px; background:rgba(255,255,255,.06); }
+.message-edit-portrait-choice span { max-width:100%; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.message-edit-current { display:flex; align-items:center; gap:10px; padding:9px; border:1px solid var(--line-soft); border-radius:9px; background:rgba(255,255,255,.02); }
+.message-edit-current img { width:48px; height:48px; border-radius:8px; object-fit:cover; background:rgba(255,255,255,.06); }
+.message-edit-current div { min-width:0; }
+.message-edit-current strong, .message-edit-current span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.message-edit-current span { margin-top:2px; color:var(--muted); font-size:11px; }
+.message-edit-footer { display:flex; gap:7px; padding:12px 16px 16px; border-top:1px solid var(--line-soft); flex-wrap:wrap; }
+.message-edit-footer button { flex:1 1 120px; }
+.portrait-review-tools { display:flex; gap:7px; margin-top:10px; }
+.portrait-review-tools button { flex:1; }
+html[data-theme="light"] .message-edit-portrait-choice, html[data-theme="light"] .message-edit-current { background:rgba(15,23,42,.025); }
+@media (max-width:560px) {
+  .message-edit-portrait-choices { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .portrait-review-tools { flex-direction:column; }
+}
+
+.bookmarklet-update-notice {
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+.bookmarklet-update-notice strong { display:block; margin-bottom:4px; font-size:13px; }
+.bookmarklet-update-notice p { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
+.bookmarklet-update-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.bookmarklet-update-actions button { min-height:30px; font-size:12px; flex:1 1 105px; }
+.bookmarklet-update-actions .bookmarklet-update-dismiss { flex:0 0 auto; }
+.bgm-helper-note { margin-top:-2px; }
+.bookmarklet-fallback-details { margin-top:10px; }
+.bookmarklet-fallback-details summary { cursor:pointer; color:var(--muted); font-size:12px; }
+.bookmarklet-fallback-buttons { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; }
+@media (max-width:560px) { .bookmarklet-fallback-buttons { grid-template-columns:1fr; } }
+
 </style>
 </head>
 <body>
@@ -2458,6 +2560,15 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
       </div>
     </section>
 
+    <div id="bookmarkletUpdateNotice" class="bookmarklet-update-notice" hidden>
+      <strong>북마크릿이 업데이트되었습니다</strong>
+      <p>기존 북마크를 쓰고 있다면 북마크 편집에서 URL만 새 코드로 교체해 주세요.</p>
+      <div class="bookmarklet-update-actions">
+        <button type="button" data-copy-helper-bookmarklet>표정 수집 복사</button>
+        <button type="button" data-copy-bgm-playlist-bookmarklet>BGM 목록 복사</button>
+        <button id="bookmarkletUpdateDismiss" class="bookmarklet-update-dismiss" type="button">확인</button>
+      </div>
+    </div>
 
     <section class="section" id="section-files">
       <div class="section-title"><h2>파일 업로드</h2><span class="section-badge required">HTML 필수 · TXT 권장</span></div>
@@ -2498,9 +2609,14 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
         </div>
       </details>
       <div id="fileStatus" class="status status-box persistent-status" aria-live="polite" hidden></div>
+      <div id="analysisActions" class="analysis-actions" hidden>
+        <button id="portraitReviewBtn" type="button" class="soft-button">표정 검수</button>
+        <button id="analysisDiagBtn" type="button" class="soft-button" aria-expanded="false">진단 보기</button>
+      </div>
+      <div id="analysisDiagnostics" class="status analysis-diagnostics" hidden></div>
       <div id="draftRecovery" class="draft-recovery" hidden>
         <strong>이 로그의 이전 편집 작업이 있습니다.</strong>
-        <p id="draftRecoveryText">BGM·분할점·필터 상태를 복구할 수 있습니다.</p>
+        <p id="draftRecoveryText">BGM·분할점·메시지 수정·필터 상태를 복구할 수 있습니다.</p>
         <div class="draft-recovery-actions">
           <button id="restoreDraftBtn" type="button" class="primary-button">이전 작업 복구</button>
           <button id="discardDraftBtn" type="button" class="soft-button">새로 시작</button>
@@ -2571,8 +2687,8 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
       <div class="stack">
         <label>BGM 목록 / 기본 링크</label>
         <textarea id="bgmUrl" rows="3" placeholder="한 줄에 하나씩: 제목 + YouTube 또는 외부 MP3 주소&#10;예: 전투곡 https://example.com/battle.mp3"></textarea>
-        <button id="playlistHelperBtn" data-copy-youtube-playlist-bookmarklet type="button">YouTube 목록 북마크릿 복사</button>
-        <button id="jukeboxPlaylistHelperBtn" data-copy-jukebox-playlist-bookmarklet type="button">Jukebox 목록 북마크릿 복사</button>
+        <button id="playlistHelperBtn" data-copy-bgm-playlist-bookmarklet type="button">BGM 목록 북마크릿 복사</button>
+        <div class="status bgm-helper-note">YouTube 재생목록과 Jukebox.today를 자동으로 구분합니다.</div>
         <div class="subsection-title bgm-trigger-heading">
           <h3>설정된 채팅</h3>
           <span id="bgmTriggerCount" class="status">0개</span>
@@ -2670,6 +2786,49 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
   </main>
 </div>
 
+<dialog id="portraitReviewDialog" class="app-dialog portrait-review-dialog">
+  <div class="dialog-head">
+    <div><strong>표정 검수</strong><small id="portraitReviewHeadNote">자동 매칭이 애매한 메시지만 확인합니다.</small></div>
+    <button type="button" data-close-dialog="portraitReviewDialog" aria-label="닫기">×</button>
+  </div>
+  <div class="portrait-review-body">
+    <div class="portrait-review-summary"><strong id="portraitReviewProgress">0 / 0</strong><span id="portraitReviewMatchInfo" class="status"></span></div>
+    <div id="portraitReviewContext" class="portrait-review-context"></div>
+    <div id="portraitReviewChoices" class="portrait-review-choices"></div>
+    <div class="portrait-review-tools">
+      <button id="portraitReviewAccept" type="button" class="soft-button">현재 표정 사용</button>
+      <button id="portraitReviewEditMessage" type="button" class="soft-button">이 메시지 수정</button>
+    </div>
+  </div>
+  <div class="portrait-review-footer">
+    <button id="portraitReviewPrev" type="button" class="soft-button">이전</button>
+    <button id="portraitReviewReset" type="button" class="soft-button">자동 표정으로</button>
+    <button id="portraitReviewNext" type="button" class="primary-button">다음</button>
+  </div>
+</dialog>
+
+<dialog id="messageEditDialog" class="app-dialog message-edit-dialog">
+  <div class="dialog-head">
+    <div><strong>메시지 수정</strong><small>원문의 오타나 잘못 띄운 표정을 출력 전에 바로잡습니다.</small></div>
+    <button type="button" data-close-dialog="messageEditDialog" aria-label="닫기">×</button>
+  </div>
+  <div class="message-edit-body">
+    <div class="message-edit-meta"><strong id="messageEditName">-</strong><span id="messageEditMeta">-</span></div>
+    <label class="message-edit-field"><span>대사</span><textarea id="messageEditText" rows="6" placeholder="출력할 대사를 입력하세요."></textarea></label>
+    <div class="message-edit-field">
+      <div class="message-edit-portrait-head"><strong>표정</strong><span>수집된 같은 캐릭터의 표정 중 선택</span></div>
+      <div id="messageEditCurrent" class="message-edit-current"></div>
+      <div id="messageEditPortraitChoices" class="message-edit-portrait-choices"></div>
+    </div>
+  </div>
+  <div class="message-edit-footer">
+    <button id="messageEditResetText" type="button" class="soft-button">대사 원문으로</button>
+    <button id="messageEditResetPortrait" type="button" class="soft-button">자동 표정으로</button>
+    <button id="messageEditCancel" type="button" class="soft-button">취소</button>
+    <button id="messageEditSave" type="button" class="primary-button">저장</button>
+  </div>
+</dialog>
+
 <dialog id="helpDialog" class="app-dialog">
   <div class="dialog-head">
     <div><span class="dialog-eyebrow">GUIDE</span><h2>사용 방법</h2></div>
@@ -2738,25 +2897,21 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
           <li>독자가 처음 한 번 BGM 활성화 버튼을 누르면 스크롤에 맞춰 전환됩니다.</li>
         </ol>
 
-        <h3>YouTube 목록 북마크릿</h3>
-        <button type="button" class="soft-button full-button help-copy-bookmarklet" data-copy-youtube-playlist-bookmarklet>YouTube 목록 북마크릿 복사</button>
+        <h3>BGM 목록 북마크릿</h3>
+        <button type="button" class="soft-button full-button help-copy-bookmarklet" data-copy-bgm-playlist-bookmarklet>BGM 목록 북마크릿 복사</button>
         <ol>
-          <li>위의 <b>YouTube 목록 북마크릿 복사</b>를 누릅니다.</li>
-          <li>브라우저에 새 북마크를 만들고, 북마크 편집 창의 <b>URL</b> 칸에 복사된 코드를 붙여넣습니다. 이름은 자유롭게 정해도 됩니다.</li>
-          <li>곡을 가져올 <b>YouTube 재생목록 페이지</b>를 연 뒤 만든 북마크를 실행합니다.</li>
-          <li>도우미가 재생목록을 아래로 읽으며 곡 제목과 링크를 수집합니다. 완료되면 자동으로 복사되며, 자동 복사가 막히면 열린 패널의 내용을 직접 복사합니다.</li>
-          <li>복사한 목록을 변환기의 <b>BGM 목록 / 기본 링크</b> 칸에 붙여넣습니다.</li>
+          <li>위 버튼으로 북마크릿을 복사하고, 브라우저 북마크 편집 창의 <b>URL</b> 칸에 붙여넣습니다.</li>
+          <li><b>YouTube 재생목록</b> 또는 <b>Jukebox.today 룸</b>에서 같은 북마크를 실행합니다. 사이트는 자동으로 구분됩니다.</li>
+          <li>YouTube에서는 재생목록을 아래로 읽어 곡을 수집하고, Jukebox에서는 재생목록·대기열과 필요한 페이지 내부 데이터를 읽어 목록별로 분류합니다.</li>
+          <li>완료된 목록을 복사하거나 TXT로 저장한 뒤 <b>BGM 목록 / 기본 링크</b> 칸에 붙여넣습니다.</li>
         </ol>
-
-        <h3>Jukebox 목록 북마크릿</h3>
-        <button type="button" class="soft-button full-button help-copy-bookmarklet" data-copy-jukebox-playlist-bookmarklet>Jukebox 목록 북마크릿 복사</button>
-        <ol>
-          <li>위의 <b>Jukebox 목록 북마크릿 복사</b>를 누르고, 브라우저 북마크의 URL 칸에 등록합니다.</li>
-          <li><b>Jukebox.today</b>에서 사용할 룸을 열고 재생목록 정보가 불러와진 상태에서 북마크를 실행합니다. 목록이 접혀 있거나 아직 로드되지 않았다면 재생목록·대기열 화면을 먼저 열어 둡니다.</li>
-          <li>도우미가 화면과 페이지 내부 데이터를 읽어 재생목록별로 곡을 분류할 때까지 기다립니다.</li>
-          <li>일부 목록이 빠졌다면 필요한 재생목록 화면을 연 뒤 패널의 <b>다시 읽기</b>를 누릅니다.</li>
-          <li><b>복사</b>를 누르거나 <b>TXT 저장</b>으로 저장한 내용을 복사해 변환기의 플레이리스트 칸에 붙여넣습니다.</li>
-        </ol>
+        <details class="bookmarklet-fallback-details">
+          <summary>문제가 있을 때 · 전용 북마크릿</summary>
+          <div class="bookmarklet-fallback-buttons">
+            <button type="button" class="soft-button" data-copy-youtube-playlist-bookmarklet>YouTube 전용 복사</button>
+            <button type="button" class="soft-button" data-copy-jukebox-playlist-bookmarklet>Jukebox 전용 복사</button>
+          </div>
+        </details>
 
         <div class="help-note">북마크릿은 주소창이 아니라 북마크 편집 창의 URL 칸에 넣어야 합니다. 영상의 임베드 제한·지역 제한·자동 재생 제한은 YouTube와 브라우저 정책에 따라 달라집니다.</div>
       </section>
@@ -2774,6 +2929,13 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
     </div>
   </div>
 </dialog>
+
+<!-- v6.97 — maintenance and bookmarklet UX:
+     - Jukebox automatic rounds use light DOM scans; deep framework/storage/IndexedDB scans run only at start, a checkpoint, completion, and manual rescan
+     - default BGM bookmarklet auto-dispatches between YouTube and Jukebox.today; dedicated helpers remain in troubleshooting help
+     - saved expression library stores only candidates absent from rendered messages; used portraits are rebuilt from saved rows
+     - one-time v6.97 bookmarklet update notice is dismissible and keyed by bookmarklet release, not ordinary app version changes
+-->
 
 <!-- v6.90 — replace unstable React/data-index identity dedupe with conservative sequence-overlap collection:
      - React props messageId is NOT treated as a persistent chat ID (observed to track virtual slots)
@@ -2816,6 +2978,23 @@ html[data-theme="light"] .bgm-picker-backdrop { background: rgba(15,23,42,.38); 
      v6.79 — mobile/session-navigation controls:
      session navigator is touch-friendly on mobile and uses UID/order jumps; exported logs may disable it.
      When disabled, compact exports omit the sparse session timeline and create no navigator DOM/listeners. -->
+<!-- v6.96 — saved HTML expression-library recovery:
+     - rebuilds per-character portrait choices from avatars embedded in an imported saved HTML when no collector TXT is present.
+     - persists the compact collected expression library in new saved HTML settings so unused collected portraits remain editable after re-import.
+     - merges saved-HTML candidates with TXT candidates without using them as automatic match evidence. -->
+<!-- v6.95 — review-count consistency + per-message correction UI:
+     - portrait review count and queue now use the same fallback-message source; every counted item is navigable.
+     - fallback messages with no alternate portrait can still be explicitly accepted as reviewed.
+     - every preview message gets a pencil action for correcting source text and selecting another collected portrait.
+     - text/portrait edits persist in work drafts and exported converter settings; final HTML uses corrected content without changing stable UID/order.
+-->
+<!-- v6.94 — conservative matching audit + portrait review UX:
+     - repeated two-line capture batches no longer become reliable solely because both rows match; ambiguous candidates require uniqueness/context/a clear score lead.
+     - collector overlap suppression ignores low-information short repeats such as ㅋ/ㅋ unless a stronger multi-row overlap exists.
+     - exact/shared portrait matches now verify occurrence coverage against the original HTML to avoid overconfidence on partially collected TXT files.
+     - adds compact analysis summary/diagnostics, collapsible sidebar sections, and a manual portrait review dialog persisted in drafts/export settings.
+     - collector TXT includes schema/version/capture timestamp metadata while remaining backward-compatible.
+-->
 <!-- v6.93 — bookmarklet URL registration fix:
      - restores the required javascript: scheme prefix on the copied Cocofolia portrait collector bookmarklet.
      - no collector/matching behavior changes from v6.92.
@@ -2879,6 +3058,16 @@ const state = {
   importedConverterSettings: null,
   lastImportedBgmRestore: null,
   collectedSequenceRows: [],
+  manualPortraitOverrides: new Map(),
+  autoPortraits: new Map(),
+  manualTextOverrides: new Map(),
+  originalTexts: new Map(),
+  portraitReviewQueue: [],
+  portraitReviewIndex: 0,
+  messageEditUid: "",
+  messageEditPortraitDraft: "",
+  messageEditPortraitTouched: false,
+  messageEditPortraitResetRequested: false,
   stats: { messageId: 0, index: 0, exact: 0, shared: 0, context: 0, fallback: 0, system: 0 }
 };
 
@@ -2887,6 +3076,9 @@ const orderFile = el("orderFile");
 const otherFile = el("otherFile");
 const jsonFile = el("jsonFile");
 const APP_VERSION = document.querySelector('meta[name="trpg-app-version"]')?.content?.trim() || "dev";
+const BOOKMARKLET_RELEASE = "portrait-6|bgm-2";
+const BOOKMARKLET_NOTICE_STORAGE_KEY = "trpg-log-converter:bookmarklet-notice";
+const BOOKMARKLET_NOTICE_APP_VERSION = "6.97";
 const PREFERENCE_STORAGE_KEY = "trpg-log-converter:last-preferences";
 const THEME_STORAGE_KEY = "trpg-log-converter:theme";
 const PREFERENCE_SCHEMA_VERSION = 4;
@@ -3189,6 +3381,8 @@ function workDraftPayload() {
     manualSplits: el("manualSplits")?.value || "",
     manualOtherSplits: el("manualOtherSplits")?.value || "",
     manualDaySplits: state.manualDaySplits.map(entry => ({ ...entry })),
+    portraitOverrides: [...state.manualPortraitOverrides.entries()],
+    textOverrides: [...state.manualTextOverrides.entries()],
     splitOrderHints: [...state.splitOrderHints.entries()],
     splitUidHints: [...state.splitUidHints.entries()],
     selectedTabs: [...state.selectedTabs],
@@ -3244,7 +3438,7 @@ function offerWorkDraftRecovery() {
   state.draftDecisionPending = true;
   const updated = Number(draft.updatedAt) ? new Date(draft.updatedAt).toLocaleString("ko-KR") : "저장 시각 없음";
   const count = Number(draft.messageCount || 0).toLocaleString();
-  if (el("draftRecoveryText")) el("draftRecoveryText").textContent = `${updated} · ${count}개 메시지 작업. BGM·분할점·필터 상태를 복구할 수 있습니다.`;
+  if (el("draftRecoveryText")) el("draftRecoveryText").textContent = `${updated} · ${count}개 메시지 작업. BGM·분할점·메시지 수정·필터 상태를 복구할 수 있습니다.`;
   banner.hidden = false;
 }
 
@@ -3255,6 +3449,9 @@ function applyWorkDraft(draft) {
   if (typeof draft.manualSplits === "string") el("manualSplits").value = draft.manualSplits;
   if (typeof draft.manualOtherSplits === "string") el("manualOtherSplits").value = draft.manualOtherSplits;
   state.manualDaySplits = normalizeManualDaySplitEntries(draft.manualDaySplits);
+  state.manualPortraitOverrides = normalizePortraitOverrideEntries(draft.portraitOverrides);
+  state.manualTextOverrides = normalizeTextOverrideEntries(draft.textOverrides);
+  applyManualMessageEdits();
   Object.entries(draft.controls || {}).forEach(([id, value]) => writeControlValue(el(id), value));
   if (el("exportFilteredOnly")) el("exportFilteredOnly").checked = !!draft.exportFilteredOnly;
   state.splitOrderHints = new Map(Array.isArray(draft.splitOrderHints) ? draft.splitOrderHints : []);
@@ -3278,6 +3475,349 @@ function applyWorkDraft(draft) {
   rebuildSessionPageRanges();
   updateView();
   return true;
+}
+
+
+function normalizePortraitOverrideEntries(value) {
+  const result = new Map();
+  if (Array.isArray(value)) {
+    value.forEach(entry => {
+      if (!Array.isArray(entry) || entry.length < 2) return;
+      const uid = String(entry[0] || "").trim();
+      const url = String(entry[1] || "").trim();
+      if (uid && url) result.set(uid, url);
+    });
+  } else if (value && typeof value === "object") {
+    Object.entries(value).forEach(([uid, url]) => {
+      uid = String(uid || "").trim();
+      url = String(url || "").trim();
+      if (uid && url) result.set(uid, url);
+    });
+  }
+  return result;
+}
+
+function normalizeTextOverrideEntries(value) {
+  const result = new Map();
+  if (Array.isArray(value)) {
+    value.forEach(entry => {
+      if (!Array.isArray(entry) || entry.length < 2) return;
+      const uid = String(entry[0] || "").trim();
+      if (!uid) return;
+      result.set(uid, String(entry[1] ?? "").replace(/\r\n?/g, "\n"));
+    });
+  } else if (value && typeof value === "object") {
+    Object.entries(value).forEach(([uid, text]) => {
+      uid = String(uid || "").trim();
+      if (!uid) return;
+      result.set(uid, String(text ?? "").replace(/\r\n?/g, "\n"));
+    });
+  }
+  return result;
+}
+
+function captureAutoPortraits() {
+  state.autoPortraits = new Map(state.messages.map(message => [message.uid, {
+    imgUrl: message.imgUrl || "",
+    match: message.match || "system"
+  }]));
+}
+
+function captureOriginalTexts() {
+  state.originalTexts = new Map(state.messages.map(message => [message.uid, String(message.text ?? "")]));
+}
+
+function refreshMessageSearchText(message) {
+  if (!message) return;
+  message.searchText = normalizeText(`${message.name || ""}\n${message.tab || "main"}\n${message.text || ""}`).toLowerCase();
+}
+
+function applyManualMessageEdits() {
+  if (!state.messages.length) return;
+  state.messages.forEach(message => {
+    const originalText = state.originalTexts.has(message.uid) ? state.originalTexts.get(message.uid) : String(message.text ?? "");
+    message.text = state.manualTextOverrides.has(message.uid) ? state.manualTextOverrides.get(message.uid) : originalText;
+    const auto = state.autoPortraits.get(message.uid);
+    const manualPortrait = state.manualPortraitOverrides.get(message.uid);
+    if (manualPortrait) {
+      message.imgUrl = manualPortrait;
+      message.match = "manual";
+    } else if (auto) {
+      message.imgUrl = auto.imgUrl;
+      message.match = auto.match;
+    }
+    refreshMessageSearchText(message);
+  });
+}
+
+function applyManualPortraitOverrides() {
+  applyManualMessageEdits();
+}
+
+function messageHasManualEdit(message) {
+  return !!message && (state.manualPortraitOverrides.has(message.uid) || state.manualTextOverrides.has(message.uid));
+}
+
+function portraitReviewAllCandidates() {
+  return state.messages.filter(message => {
+    const auto = state.autoPortraits.get(message.uid);
+    return auto?.match === "fallback" && String(message.name || "").toLowerCase() !== "system";
+  });
+}
+
+function portraitReviewPendingCount() {
+  return portraitReviewAllCandidates().filter(message => !state.manualPortraitOverrides.has(message.uid)).length;
+}
+
+function portraitChoicesForMessage(message) {
+  if (!message) return [];
+  let expressions = state.expressionsByName.get(message.name);
+  if (!expressions) {
+    const normalized = normalizedCharacterName(message.name);
+    for (const [name, map] of state.expressionsByName.entries()) {
+      if (normalizedCharacterName(name) === normalized) { expressions = map; break; }
+    }
+  }
+  if (!(expressions instanceof Map)) return [];
+  return [...expressions.entries()]
+    .filter(([url]) => String(url || "").trim())
+    .sort((left, right) => Number(right[1] || 0) - Number(left[1] || 0) || String(left[0]).localeCompare(String(right[0])))
+    .map(([url, count], index) => ({ url, count: Number(count || 0), label: state.expressionLabels.get(`${message.name}\u001f${url}`) || `표정 ${index + 1}` }));
+}
+
+function updateAnalysisSummaryUi(extraNote = "") {
+  const actions = el("analysisActions");
+  const diag = el("analysisDiagnostics");
+  if (!state.lastAnalysis || !state.messages.length) {
+    if (actions) actions.hidden = true;
+    if (diag) diag.hidden = true;
+    return;
+  }
+  const reviewCandidates = portraitReviewAllCandidates();
+  const pending = portraitReviewPendingCount();
+  const manualPortrait = state.messages.filter(message => message.match === "manual").length;
+  const manualText = state.manualTextOverrides.size;
+  const dayCount = Math.max(1, state.sessionPageRanges?.length || 1);
+  const confident = state.messages.filter(message => !["fallback", "system"].includes(message.match || "system")).length;
+  const infoRows = Number(state.lastAnalysis.jsonRows || 0);
+  const otherNote = state.lastAnalysis.otherRows ? ` · other ${state.lastAnalysis.otherRows.toLocaleString()}개 별도 병합` : "";
+  const note = extraNote ? ` ${extraNote}` : "";
+  if (infoRows) setStatus(`${state.messages.length.toLocaleString()}개 메시지 · ${dayCount.toLocaleString()}일차 · 표정 ${confident.toLocaleString()}개 매칭 · 확인 필요 ${pending.toLocaleString()}개${otherNote}.${note}`);
+  else if (state.lastAnalysis.importedExpressionRows || state.lastAnalysis.savedExpressionRows) setStatus(`${state.messages.length.toLocaleString()}개 메시지 · ${dayCount.toLocaleString()}일차 · 저장 HTML 표정 후보 복원${otherNote}.${note}`);
+  else setStatus(`${state.messages.length.toLocaleString()}개 메시지 · ${dayCount.toLocaleString()}일차 · 이미지 정보 없음${otherNote}.${note}`);
+  if (actions) actions.hidden = false;
+  const reviewButton = el("portraitReviewBtn");
+  if (reviewButton) {
+    reviewButton.textContent = pending ? `표정 확인 필요 ${pending.toLocaleString()}개` : (reviewCandidates.length ? "표정 검수 완료" : "표정 검수 대상 없음");
+    reviewButton.disabled = !reviewCandidates.length;
+  }
+  if (diag) {
+    diag.textContent = infoRows
+      ? `이미지 정보 ${infoRows.toLocaleString()}행 · ID ${(state.stats.messageId || 0).toLocaleString()} · 인덱스 ${(state.stats.index || 0).toLocaleString()} · 고유대사 ${(state.stats.exact || 0).toLocaleString()} · 동일표정 ${(state.stats.shared || 0).toLocaleString()} · 문맥 ${(state.stats.context || 0).toLocaleString()} · 대표표정 ${(state.stats.fallback || 0).toLocaleString()} · 수동표정 ${manualPortrait.toLocaleString()} · 대사수정 ${manualText.toLocaleString()} · 시스템 ${(state.stats.system || 0).toLocaleString()}`
+      : ((state.lastAnalysis.importedExpressionRows || state.lastAnalysis.savedExpressionRows)
+        ? `저장 HTML에서 표정 후보를 복원했습니다. 사용 인장 ${Number(state.lastAnalysis.importedExpressionRows || 0).toLocaleString()}건 · 저장 후보 ${Number(state.lastAnalysis.savedExpressionRows || 0).toLocaleString()}건`
+        : "이미지 정보 파일을 사용하지 않았습니다.");
+  }
+}
+
+function renderPortraitReview() {
+  const queue = state.portraitReviewQueue || [];
+  const total = queue.length;
+  if (!total) {
+    el("portraitReviewProgress").textContent = "0 / 0";
+    el("portraitReviewContext").innerHTML = '<div class="portrait-review-empty">검수할 표정이 없습니다.</div>';
+    el("portraitReviewChoices").replaceChildren();
+    el("portraitReviewMatchInfo").textContent = "";
+    el("portraitReviewPrev").disabled = true;
+    el("portraitReviewNext").disabled = true;
+    el("portraitReviewReset").disabled = true;
+    el("portraitReviewAccept").disabled = true;
+    el("portraitReviewEditMessage").disabled = true;
+    return;
+  }
+  state.portraitReviewIndex = Math.max(0, Math.min(total - 1, Number(state.portraitReviewIndex) || 0));
+  const uid = queue[state.portraitReviewIndex];
+  const message = messageByUid(uid);
+  if (!message) { state.portraitReviewQueue.splice(state.portraitReviewIndex, 1); renderPortraitReview(); return; }
+  const auto = state.autoPortraits.get(uid) || {};
+  const selected = state.manualPortraitOverrides.get(uid) || auto.imgUrl || message.imgUrl || "";
+  const pending = portraitReviewPendingCount();
+  el("portraitReviewProgress").textContent = `${state.portraitReviewIndex + 1} / ${total} · 미확인 ${pending}`;
+  el("portraitReviewMatchInfo").textContent = state.manualPortraitOverrides.has(uid) ? "확인 완료" : "대표표정 폴백";
+  const context = el("portraitReviewContext");
+  context.replaceChildren();
+  const order = messageOrder(message);
+  const start = Math.max(0, order - 2);
+  const end = Math.min(state.messages.length, order + 3);
+  for (let index = start; index < end; index += 1) {
+    const row = state.messages[index];
+    const line = document.createElement("div");
+    line.className = `portrait-review-context-row${row.uid === uid ? " is-target" : ""}`;
+    const name = document.createElement("span"); name.className = "portrait-review-name"; name.textContent = row.name || "system";
+    const text = document.createElement("span"); text.className = "portrait-review-text"; text.textContent = row.text || "";
+    line.append(name, text); context.append(line);
+  }
+  const choicesRoot = el("portraitReviewChoices");
+  choicesRoot.replaceChildren();
+  const choices = portraitChoicesForMessage(message);
+  if (!choices.length) {
+    const empty = document.createElement("div");
+    empty.className = "portrait-review-empty";
+    empty.textContent = "이 캐릭터에서 수집된 다른 표정이 없습니다. 현재 표정을 그대로 확정하거나 메시지 수정으로 대사를 고칠 수 있습니다.";
+    choicesRoot.append(empty);
+  } else {
+    choices.forEach(choice => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `portrait-review-choice${choice.url === selected ? " is-selected" : ""}`;
+      const image = document.createElement("img"); image.src = choice.url; image.alt = ""; image.loading = "lazy";
+      const label = document.createElement("span"); label.textContent = `${choice.label} · ${choice.count}`;
+      button.append(image, label);
+      button.addEventListener("click", () => {
+        state.manualPortraitOverrides.set(uid, choice.url);
+        applyManualMessageEdits();
+        renderPreview({ preserveScroll: true });
+        updateAnalysisSummaryUi();
+        scheduleWorkDraftSave();
+        renderPortraitReview();
+      });
+      choicesRoot.append(button);
+    });
+  }
+  el("portraitReviewPrev").disabled = state.portraitReviewIndex <= 0;
+  el("portraitReviewNext").disabled = state.portraitReviewIndex >= total - 1;
+  el("portraitReviewReset").disabled = !state.manualPortraitOverrides.has(uid);
+  el("portraitReviewAccept").disabled = !selected;
+  el("portraitReviewEditMessage").disabled = false;
+}
+
+function openPortraitReview() {
+  state.portraitReviewQueue = portraitReviewAllCandidates().map(message => message.uid);
+  const firstPending = state.portraitReviewQueue.findIndex(uid => !state.manualPortraitOverrides.has(uid));
+  state.portraitReviewIndex = firstPending >= 0 ? firstPending : 0;
+  renderPortraitReview();
+  openAppDialog("portraitReviewDialog");
+}
+
+function renderMessageEditorPortraitChoices(message) {
+  const root = el("messageEditPortraitChoices");
+  const current = el("messageEditCurrent");
+  if (!root || !current || !message) return;
+  root.replaceChildren();
+  current.replaceChildren();
+  const draft = state.messageEditPortraitDraft || "";
+  if (draft) {
+    const image = document.createElement("img"); image.src = draft; image.alt = "";
+    const copy = document.createElement("div");
+    const strong = document.createElement("strong"); strong.textContent = "현재 선택";
+    const label = document.createElement("span");
+    label.textContent = state.manualPortraitOverrides.has(message.uid)
+      ? (draft === (state.autoPortraits.get(message.uid)?.imgUrl || "") ? "확정한 자동 표정" : "수동 선택 표정")
+      : "자동 매칭 표정";
+    copy.append(strong, label); current.append(image, copy);
+  } else {
+    const copy = document.createElement("div");
+    const strong = document.createElement("strong"); strong.textContent = "표정 없음";
+    const label = document.createElement("span"); label.textContent = "이 메시지에는 표시할 인장이 없습니다.";
+    copy.append(strong, label); current.append(copy);
+  }
+  const choices = portraitChoicesForMessage(message);
+  if (!choices.length) {
+    const empty = document.createElement("div");
+    empty.className = "portrait-review-empty";
+    empty.textContent = "수집된 다른 표정이 없습니다.";
+    root.append(empty);
+    return;
+  }
+  choices.forEach(choice => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `message-edit-portrait-choice${choice.url === draft ? " is-selected" : ""}`;
+    const image = document.createElement("img"); image.src = choice.url; image.alt = ""; image.loading = "lazy";
+    const label = document.createElement("span"); label.textContent = `${choice.label} · ${choice.count}`;
+    button.append(image, label);
+    button.addEventListener("click", () => {
+      state.messageEditPortraitDraft = choice.url;
+      state.messageEditPortraitTouched = true;
+      state.messageEditPortraitResetRequested = false;
+      renderMessageEditorPortraitChoices(message);
+    });
+    root.append(button);
+  });
+}
+
+function openMessageEditor(identity = {}) {
+  const message = messageByIdentity(identity);
+  if (!message) return;
+  state.messageEditUid = message.uid;
+  state.messageEditPortraitDraft = state.manualPortraitOverrides.get(message.uid) || message.imgUrl || state.autoPortraits.get(message.uid)?.imgUrl || "";
+  state.messageEditPortraitTouched = false;
+  state.messageEditPortraitResetRequested = false;
+  el("messageEditName").textContent = message.name || "system";
+  const order = messageOrder(message);
+  el("messageEditMeta").textContent = `${message.tab || "main"} · #${Number.isFinite(order) ? order + 1 : message.id}`;
+  el("messageEditText").value = String(message.text ?? "");
+  renderMessageEditorPortraitChoices(message);
+  openAppDialog("messageEditDialog");
+  setTimeout(() => el("messageEditText")?.focus(), 0);
+}
+
+function saveMessageEditor() {
+  const uid = state.messageEditUid;
+  const message = messageByUid(uid);
+  if (!message) return;
+  const text = String(el("messageEditText")?.value ?? "").replace(/\r\n?/g, "\n");
+  const original = String(state.originalTexts.get(uid) ?? "");
+  if (text === original) state.manualTextOverrides.delete(uid);
+  else state.manualTextOverrides.set(uid, text);
+  const chosen = String(state.messageEditPortraitDraft || "");
+  if (state.messageEditPortraitTouched) {
+    if (state.messageEditPortraitResetRequested || !chosen) state.manualPortraitOverrides.delete(uid);
+    else state.manualPortraitOverrides.set(uid, chosen);
+  }
+  applyManualMessageEdits();
+  updateView();
+  updateAnalysisSummaryUi();
+  scheduleWorkDraftSave();
+  if (el("portraitReviewDialog")?.open) renderPortraitReview();
+  closeAppDialog("messageEditDialog");
+}
+
+function setupCollapsibleSidebarSections() {
+  const ids = ["section-style", "section-filter", "section-bgm", "section-export"];
+  const openSection = targetId => {
+    ids.forEach(id => {
+      const section = el(id);
+      if (!section) return;
+      const collapsed = id !== targetId;
+      section.classList.toggle("is-collapsed", collapsed);
+      const button = section.querySelector(".section-collapse-button");
+      if (button) { button.textContent = collapsed ? "+" : "−"; button.setAttribute("aria-expanded", String(!collapsed)); }
+    });
+    if (targetId) appStorage()?.setItem("trpg-log-converter:sidebar-section", targetId);
+  };
+  ids.forEach(id => {
+    const section = el(id);
+    const title = section?.querySelector(":scope > .section-title");
+    if (!section || !title || title.querySelector(".section-collapse-button")) return;
+    title.classList.add("is-collapsible");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "section-collapse-button soft-button";
+    button.setAttribute("aria-label", `${title.querySelector("h2")?.textContent || "설정"} 열기/접기`);
+    button.addEventListener("click", () => {
+      const isCollapsed = section.classList.contains("is-collapsed");
+      openSection(isCollapsed ? id : "");
+      if (!isCollapsed) {
+        section.classList.add("is-collapsed");
+        button.textContent = "+";
+        button.setAttribute("aria-expanded", "false");
+      }
+    });
+    title.append(button);
+  });
+  openSection("");
+  window.__trpgOpenSidebarSection = openSection;
 }
 
 /* MODULE: counters and export scope */
@@ -3344,7 +3884,7 @@ function updateFilterAndExportSummary() {
   setExportButtonLabel("stickySaveBtn", "파일 저장", countLabel);
 }
 /* 북마크릿 배포 원본: 아래 문자열과 TXT는 동일 원본에서 생성 */
-const KKUL_ROOM_HELPER_BOOKMARKLET = "javascript:(function () { const ACTIVE_KEY = \"__kkulRoomHelperActive\"; if (window[ACTIVE_KEY]) { alert(\"이미 도우미가 실행 중입니다.\\n기존 패널의 [완료] 또는 닫기를 먼저 눌러주세요.\"); return; } window[ACTIVE_KEY] = true; const FONT = \"'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif\"; const BLUE = \"#2563eb\"; const BORDER = \"#e2e8f0\"; const TEXT = \"#0f172a\"; const MUTED = \"#64748b\"; let stopped = false; let rafId = 0; let intervalId = 0; let direction = 0; let touchY = 0; let sequence = 0; let captureSequence = 0; let activeTabName = \"\"; let manualTabName = \"\"; let pendingTabName = \"\"; let tabSwitchStartedAt = 0; let tabSwitchTimer = 0; let transitionFingerprint = \"\"; let lastVisibleFingerprint = \"\"; let collectionArmed = true; let collectionDeadline = Date.now() + 900; let armFromFingerprint = \"\"; const seenViewportFingerprints = new Set(); const collectedTabs = new Set(); const records = []; const recordByStableKey = new Map(); const lastUnkeyedBatchByTab = new Map(); const recentUnkeyedBatchesByTab = new Map(); let duplicateSuppressed = 0; const panel = document.createElement(\"div\"); panel.style.cssText = \"position:fixed;left:20px;bottom:20px;z-index:2147483647;background:#fff;padding:14px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28);font-family:\" + FONT + \";min-width:220px;max-width:320px;border:1px solid \" + BORDER + \";\"; const title = document.createElement(\"div\"); title.style.cssText = \"font-size:13px;font-weight:700;color:\" + TEXT + \";margin-bottom:4px;\"; title.textContent = \"코코포리아 표정 수집\"; const count = document.createElement(\"div\"); count.style.cssText = \"font-size:18px;font-weight:700;color:\" + BLUE + \";margin-bottom:5px;\"; count.textContent = \"탐색 중…\"; const guide = document.createElement(\"div\"); guide.style.cssText = \"font-size:11px;color:\" + MUTED + \";margin-bottom:10px;line-height:1.5;white-space:pre-line;\"; guide.textContent = \"북마크릿은 켜 둔 채, 원하는 탭에서 채팅을 자유롭게 스크롤해 주세요.\"; const actions = document.createElement(\"div\"); actions.style.cssText = \"display:flex;gap:6px;\"; const finishButton = document.createElement(\"button\"); finishButton.textContent = \"완료\"; finishButton.style.cssText = \"flex:1;padding:8px;cursor:pointer;font-size:13px;background:\" + BLUE + \";color:#fff;border:none;border-radius:6px;font-weight:700;font-family:\" + FONT + \";\"; finishButton.onmouseover = function () { finishButton.style.background = \"#1d4ed8\"; }; finishButton.onmouseout = function () { finishButton.style.background = BLUE; }; const closeButton = document.createElement(\"button\"); closeButton.textContent = \"닫기\"; closeButton.style.cssText = \"padding:8px 12px;cursor:pointer;font-size:13px;background:#fff;color:\" + TEXT + \";border:1px solid \" + BORDER + \";border-radius:6px;font-family:\" + FONT + \";\"; actions.appendChild(finishButton); actions.appendChild(closeButton); panel.appendChild(title); panel.appendChild(count); panel.appendChild(guide); panel.appendChild(actions); document.body.appendChild(panel); function cleanMultiline(value) { return String(value || \"\") .replace(/\\u00a0/g, \" \") .replace(/[ \\t]+/g, \" \") .replace(/\\s*\\n\\s*/g, \"\\n\") .trim(); } function cleanInline(value) { return cleanMultiline(value).replace(/\\s+/g, \" \").trim(); } function cleanCollectedMessageText(value) { return cleanMultiline(value).replace(/\\s*(?:\\[(?:편집\\s*완료|편집됨|edited|編集済み)\\]|[（(](?:edited|編集済み)[）)])\\s*$/i, \"\").trim(); } function cleanMessageName(value) { const name = cleanInline(value); const separator = name.lastIndexOf(\" - \"); if (separator < 1) return name; const suffix = name.slice(separator + 3).trim(); const clock = \"(?:(?:오전|오후|午前|午後|AM|PM)\\\\s*)?\\\\d{1,2}:\\\\d{2}(?::\\\\d{2})?\"; const isDate = new RegExp(\"^(?:\\\\d{4}[.\\\\/-]\\\\d{1,2}[.\\\\/-]\\\\d{1,2}|\\\\d{1,2}[.\\\\/-]\\\\d{1,2})(?:\\\\s+\" + clock + \")?$\", \"i\").test(suffix); const isRelative = new RegExp(\"^(?:今日|昨日|一昨日|오늘|어제|그제|today|yesterday)(?:\\\\s+\" + clock + \")?$\", \"i\").test(suffix); const isWeekday = new RegExp(\"^(?:(?:先々週|先週|今週|지난주|저번주|이번주|last\\\\s+week|previous\\\\s+week|this\\\\s+week)\\\\s*(?:の)?\\\\s*)?(?:月曜(?:日)?|火曜(?:日)?|水曜(?:日)?|木曜(?:日)?|金曜(?:日)?|土曜(?:日)?|日曜(?:日)?|월요일|화요일|수요일|목요일|금요일|토요일|일요일|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\\\s+\" + clock + \"$\", \"i\").test(suffix); const isTime = new RegExp(\"^\" + clock + \"$\", \"i\").test(suffix); return isDate || isRelative || isWeekday || isTime ? name.slice(0, separator).trim() : name; } function detectTime(value) { const text = cleanInline(value); if (!text || text.length > 90) return \"\"; return /(\\d{1,2}:\\d{2}(?::\\d{2})?|\\d{4}[.\\/-]\\d{1,2}[.\\/-]\\d{1,2}|오전|오후|午前|午後|AM|PM)/i.test(text) ? text : \"\"; } function isVisible(node) { if (!node || !node.getBoundingClientRect) return false; const style = getComputedStyle(node); if (style.display === \"none\" || style.visibility === \"hidden\") return false; const rect = node.getBoundingClientRect(); return rect.width > 0 && rect.height > 0; } function backgroundImageUrl(value) { const match = String(value || \"\").match(/url\\([\"']?(.*?)[\"']?\\)/i); return match ? match[1] : \"\"; } function findMessageRoot(node) { if (!node) return null; const closest = node.closest('.MuiListItem-root,[role=\"listitem\"],[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset]'); if (closest) return closest; let current = node; for (let depth = 0; depth < 7 && current && current !== document.body; depth += 1, current = current.parentElement) { if (current.querySelector && current.querySelector('img,.MuiAvatar-root,.MuiListItemAvatar-root,[class*=\"Avatar\"]')) return current; } return null; } function findRows() { const found = new Set(); document.querySelectorAll('[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset],.MuiListItem-root,[role=\"listitem\"]').forEach(function (node) { if (node.querySelector('.MuiListItemText-primary,.MuiListItemText-secondary,[class*=\"ListItemText-primary\"],[class*=\"ListItemText-secondary\"]')) found.add(node); }); document.querySelectorAll('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]').forEach(function (node) { const root = findMessageRoot(node); if (root) found.add(root); }); const rows = Array.from(found).filter(isVisible); const canonical = rows.filter(function (node) { return !rows.some(function (other) { return other !== node && node.contains(other) && other.querySelector && other.querySelector('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]'); }); }); canonical.sort(function (a, b) { const ar = a.getBoundingClientRect(); const br = b.getBoundingClientRect(); return ar.top - br.top || ar.left - br.left || (ar.width * ar.height) - (br.width * br.height); }); return canonical.filter(function (node, index, array) { const rect = node.getBoundingClientRect(); for (let cursor = index - 1; cursor >= 0; cursor -= 1) { const other = array[cursor]; const otherRect = other.getBoundingClientRect(); if (rect.top - otherRect.bottom > 8) break; const overlapY = Math.max(0, Math.min(rect.bottom, otherRect.bottom) - Math.max(rect.top, otherRect.top)); const overlapX = Math.max(0, Math.min(rect.right, otherRect.right) - Math.max(rect.left, otherRect.left)); if (overlapY >= Math.min(rect.height, otherRect.height) * 0.8 && overlapX >= Math.min(rect.width, otherRect.width) * 0.8) return false; } return true; }); } function normalizeBuiltInTabLabel(value) { const label = cleanInline(value).replace(/\\s*[（(]\\d+[）)]\\s*$/, \"\").trim(); const compact = label.replace(/\\s+/g, \"\"); const match = compact.match(/^(main|메인|メイン|info|정보|情報|other|잡담|기타|雑談|その他)\\d+$/i); return match ? match[1] : label; } function tabLabel(node) { return normalizeBuiltInTabLabel((node && (node.getAttribute(\"aria-label\") || node.getAttribute(\"title\") || node.textContent)) || \"\"); } function tabsInGroup(group) { if (!group) return []; return Array.from(group.querySelectorAll('[role=\"tab\"],button.MuiTab-root,.MuiTab-root')).filter(function (node, index, array) { return isVisible(node) && tabLabel(node) && array.indexOf(node) === index; }); } function findChatTabs() { const groups = new Set(); document.querySelectorAll('[role=\"tablist\"],.MuiTabs-root,.MuiTabs-flexContainer').forEach(function (node) { if (isVisible(node)) groups.add(node); }); document.querySelectorAll('[role=\"tab\"],button.MuiTab-root,.MuiTab-root').forEach(function (tab) { if (!isVisible(tab)) return; groups.add(tab.closest('[role=\"tablist\"],.MuiTabs-root,.MuiTabs-flexContainer') || tab.parentElement); }); const rows = findRows(); const firstRect = rows.length ? rows[0].getBoundingClientRect() : null; let best = []; let bestScore = -Infinity; groups.forEach(function (group) { const tabs = tabsInGroup(group); if (tabs.length < 2 || tabs.length > 30) return; const rect = group.getBoundingClientRect(); let score = tabs.length * 4; if (tabs.some(function (tab) { return tab.getAttribute(\"aria-selected\") === \"true\" || tab.classList.contains(\"Mui-selected\"); })) score += 30; if (firstRect) { const overlap = Math.max(0, Math.min(rect.right, firstRect.right) - Math.max(rect.left, firstRect.left)); const ratio = overlap / Math.max(1, Math.min(rect.width, firstRect.width)); score += ratio * 45; const distance = Math.abs(firstRect.top - rect.bottom); score += Math.max(0, 55 - distance / 4); if (rect.top > firstRect.bottom + 120) score -= 80; } if (score > bestScore) { bestScore = score; best = tabs; } }); return best; } function selectedTab(tabs) { return (tabs || []).find(function (tab) { return tab.getAttribute(\"aria-selected\") === \"true\" || tab.classList.contains(\"Mui-selected\") || tab.getAttribute(\"tabindex\") === \"0\"; }) || (tabs || [])[0] || null; } function currentTabName() { if (manualTabName) return manualTabName; const tabs = findChatTabs(); const active = selectedTab(tabs); return tabLabel(active) || activeTabName || \"main\"; } function textCandidates(root) { return Array.from(root.querySelectorAll(\"p,span,div\")).filter(function (node) { if (!isVisible(node) || node.closest('button,input,textarea,select,[role=\"button\"]')) return false; if (node.querySelector(\"p,span,div\") && cleanInline(node.textContent) === Array.from(node.children).map(function (child) { return cleanInline(child.textContent); }).join(\" \").trim()) return false; const text = cleanMultiline(node.textContent); return !!text && text.length < 5000; }); } function findNameAndText(root) { let name = root.querySelector('.MuiListItemText-primary,[class*=\"ListItemText-primary\"],[data-message-name]'); let text = root.querySelector('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]'); if (name && text) return { name: name, text: text }; const candidates = textCandidates(root); if (!text) { const ranked = candidates.map(function (node) { const value = cleanMultiline(node.textContent); let score = value.length; if (value.indexOf(\"\\n\") >= 0) score += 30; if (detectTime(value)) score -= 200; if (node === name || (name && name.contains(node))) score -= 500; return { node: node, score: score }; }).sort(function (a, b) { return b.score - a.score; }); text = ranked.length ? ranked[0].node : null; } if (!name && text) { const preceding = candidates.filter(function (node) { if (node === text || text.contains(node) || node.contains(text)) return false; const value = cleanInline(node.textContent); if (!value || value.length > 120 || detectTime(value)) return false; return (node.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0; }); name = preceding.length ? preceding[preceding.length - 1] : null; } return name && text ? { name: name, text: text } : null; } function imageUrl(root) { const preferred = root.querySelector('.MuiListItemAvatar-root img,.MuiAvatar-root img,[class*=\"ListItemAvatar\"] img,[class*=\"Avatar\"] img'); const images = preferred ? [preferred] : Array.from(root.querySelectorAll(\"img\")); for (let index = 0; index < images.length; index += 1) { const image = images[index]; const url = image.currentSrc || image.src || image.getAttribute(\"src\") || \"\"; if (url && !/^data:image\\/svg/i.test(url)) return url; } const candidates = [root].concat(Array.from(root.querySelectorAll('.MuiListItemAvatar-root,.MuiAvatar-root,[class*=\"Avatar\"],[style*=\"background-image\"]'))); for (let index = 0; index < candidates.length; index += 1) { const node = candidates[index]; const url = backgroundImageUrl(getComputedStyle(node).backgroundImage) || backgroundImageUrl(node.style && node.style.backgroundImage); if (url && url !== \"none\") return url; } return \"\"; } function messageTime(root, nameNode, textNode) { const rawName = cleanInline(nameNode && nameNode.textContent); const separator = rawName.lastIndexOf(\" - \"); if (separator >= 1) { const suffixTime = detectTime(rawName.slice(separator + 3)); if (suffixTime) return suffixTime; } const attributes = [\"datetime\", \"title\", \"aria-label\"]; const candidates = Array.from(root.querySelectorAll('time,[datetime],[title],[aria-label],.MuiTypography-caption,[class*=\"caption\"]')); for (let index = 0; index < candidates.length; index += 1) { const node = candidates[index]; if (node === nameNode || node === textNode || nameNode.contains(node) || textNode.contains(node)) continue; for (let attrIndex = 0; attrIndex < attributes.length; attrIndex += 1) { const value = detectTime(node.getAttribute(attributes[attrIndex])); if (value) return value; } const value = detectTime(node.textContent); if (value) return value; } return \"\"; } function identityNodes(root) { const nodes = []; let current = root; for (let depth = 0; depth < 6 && current && current !== document.body && current !== document.documentElement; depth += 1, current = current.parentElement) { nodes.push(current); if (current.matches && current.matches('[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset]')) break; } return nodes; } function numericIndex(root) { const nodes = identityNodes(root); for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) { const node = nodes[nodeIndex]; const values = [ node.dataset && node.dataset.index, node.dataset && node.dataset.itemIndex, node.dataset && node.dataset.virtuosoIndex, node.getAttribute && node.getAttribute(\"aria-posinset\") ]; for (let index = 0; index < values.length; index += 1) { if (values[index] != null && values[index] !== \"\" && !isNaN(Number(values[index]))) return Number(values[index]); } } return null; } function explicitId(root) { const attributes = [\"data-message-id\", \"data-chat-id\"]; const nodes = identityNodes(root); for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) { const node = nodes[nodeIndex]; for (let index = 0; index < attributes.length; index += 1) { const value = node.getAttribute && node.getAttribute(attributes[index]); if (value && value.length >= 6) return String(value).trim(); } } return \"\"; } function canonicalImageKey(value) { const url = String(value || \"\").trim(); if (!url) return \"\"; try { const parsed = new URL(url, location.href); if (/ccfolia-cdn\\.net$/i.test(parsed.hostname) || /storage\\.ccfolia/i.test(parsed.hostname)) parsed.search = \"\"; parsed.hash = \"\"; return parsed.href; } catch (error) { return url.replace(/[?#].*$/, \"\"); } } function visibleRowsFingerprint(rows) {\n  const sourceRows = rows && rows.length ? rows : captureRows(findRows(), null);\n  return sourceRows.map(function (root) {\n    const pair = findNameAndText(root);\n    if (!pair) return \"\";\n    return JSON.stringify([\n      cleanMessageName(pair.name.textContent),\n      cleanCollectedMessageText(pair.text.innerText || pair.text.textContent),\n      canonicalImageKey(imageUrl(root)),\n      messageTime(root, pair.name, pair.text) || \"\"\n    ]);\n  }).filter(Boolean).join(\"␞\");\n} function extract(root, activeTab) { const pair = findNameAndText(root); if (!pair) return null; const rawName = cleanMessageName(pair.name.textContent); const text = cleanCollectedMessageText(pair.text.innerText || pair.text.textContent); const imgUrl = imageUrl(root); if (!rawName || !text || !imgUrl) return null; let tab = cleanInline(activeTab || currentTabName()) || \"main\"; let name = rawName; const tabMatch = rawName.match(/^\\[([^\\]]+)\\]\\s*(.+)$/); if (tabMatch) { tab = tabMatch[1].trim(); name = tabMatch[2].trim(); } const time = messageTime(root, pair.name, pair.text); const index = numericIndex(root); const domId = explicitId(root); const signature = JSON.stringify([tab.toLowerCase(), cleanInline(name).toLowerCase(), text, canonicalImageKey(imgUrl)]); const tabPrefix = \"tab:\" + tab.toLowerCase() + \"|\"; const stableKey = domId ? tabPrefix + \"dom-id:\" + domId : \"\"; const rect = root.getBoundingClientRect(); return { stableKey: stableKey, fallbackKey: signature, signature: signature, top: rect.top, bottom: rect.bottom, data: { name: name, tab: tab, text: text, imgUrl: imgUrl, messageId: domId || undefined, idx: index == null ? undefined : index, idxStable: false, identitySource: domId ? \"dom-id\" : \"sequence\", time: time || undefined, __seq: sequence++ } }; }\nfunction updateRecord(target, incoming) { if (!target || !incoming) return; if (incoming.data.imgUrl) target.data.imgUrl = incoming.data.imgUrl; if (incoming.data.time) target.data.time = incoming.data.time; if (incoming.data.messageId) target.data.messageId = incoming.data.messageId; if (incoming.data.idx || incoming.data.idx === 0) target.data.idx = incoming.data.idx; if (incoming.data.idxStable === false) target.data.idxStable = false; if (incoming.data.identitySource) target.data.identitySource = incoming.data.identitySource; if (incoming.stableKey) target.stableKey = incoming.stableKey; }\nfunction appendRecord(incoming) { if (!incoming) return; const stableKey = incoming.stableKey || \"\"; if (stableKey && recordByStableKey.has(stableKey)) { const existingIndex = recordByStableKey.get(stableKey); const existing = records[existingIndex]; if (existing) { updateRecord(existing, incoming); duplicateSuppressed += 1; return; } recordByStableKey.delete(stableKey); } const index = records.length; records.push(incoming); if (stableKey) recordByStableKey.set(stableKey, index); }\nfunction sequenceIdentity(item) { if (!item) return \"\"; if (item.stableKey) return \"id:\" + item.stableKey; return \"msg:\" + item.signature + \"|time:\" + String(item.data && item.data.time || \"\"); } function sequenceContextHash(value) { const source = String(value || \"\"); let left = 0x811c9dc5; let right = 0x9e3779b9; for (let index = 0; index < source.length; index += 1) { const code = source.charCodeAt(index); left ^= code; left = Math.imul(left, 0x01000193) >>> 0; right ^= code + 0x9e37 + ((right << 6) >>> 0) + (right >>> 2); right = Math.imul(right ^ (right >>> 16), 0x85ebca6b) >>> 0; } return left.toString(16).padStart(8, \"0\") + right.toString(16).padStart(8, \"0\"); } function contextIdentity(item) { if (!item || !item.data) return \"\"; return cleanInline(item.data.name || \"\").toLowerCase() + \"\\u001f\" + cleanCollectedMessageText(item.data.text || \"\"); }\nfunction overlapSuffixPrefix(left, right) { const limit = Math.min(left.length, right.length); for (let size = limit; size > 0; size -= 1) { let same = true; for (let index = 0; index < size; index += 1) { if (left[left.length - size + index] !== right[index]) { same = false; break; } } if (same) return size; } return 0; }\nfunction sequenceContains(haystack, needle) { if (!needle.length || needle.length > haystack.length) return false; outer: for (let start = 0; start <= haystack.length - needle.length; start += 1) { for (let index = 0; index < needle.length; index += 1) { if (haystack[start + index] !== needle[index]) continue outer; } return true; } return false; }\nfunction rememberSequenceBatch(tabKey, tokens) { if (!tokens.length) return; const recent = recentUnkeyedBatchesByTab.get(tabKey) || []; recent.push(tokens.slice()); while (recent.length > 12) recent.shift(); recentUnkeyedBatchesByTab.set(tabKey, recent); }\nfunction mergeBatch(batch) { if (!batch.length) return; const tabKey = String(activeTabName || \"main\").toLowerCase(); const current = batch.slice(); const currentTokens = current.map(sequenceIdentity); const previous = lastUnkeyedBatchByTab.get(tabKey) || []; const previousTokens = previous.map(sequenceIdentity); let additions = current; let suppressedBySequence = 0;\n  const recent = recentUnkeyedBatchesByTab.get(tabKey) || [];\n  const fullRepeat = currentTokens.length >= 6 && new Set(currentTokens).size >= 3 && recent.some(function (tokens) { return sequenceContains(tokens, currentTokens); });\n  if (fullRepeat) { additions = []; suppressedBySequence = current.length; }\n  else if (previousTokens.length) {\n    const upOverlap = overlapSuffixPrefix(currentTokens, previousTokens);\n    const downOverlap = overlapSuffixPrefix(previousTokens, currentTokens);\n    if (direction < 0 && upOverlap >= 2) { additions = current.slice(0, Math.max(0, current.length - upOverlap)); suppressedBySequence = upOverlap; }\n    else if (direction > 0 && downOverlap >= 2) { additions = current.slice(downOverlap); suppressedBySequence = downOverlap; }\n    else if (!direction) {\n      if (currentTokens.length === previousTokens.length && currentTokens.every(function (token, index) { return token === previousTokens[index]; })) { additions = []; suppressedBySequence = current.length; }\n      else { const best = Math.max(upOverlap, downOverlap); if (best >= 2) { if (upOverlap >= downOverlap) additions = current.slice(0, Math.max(0, current.length - upOverlap)); else additions = current.slice(downOverlap); suppressedBySequence = best; } }\n    }\n  }\n  duplicateSuppressed += suppressedBySequence;\n  const captureId = captureSequence++;\n  const fullContextHashes = current.map(function (item) { return sequenceContextHash(contextIdentity(item)); });\n  additions.forEach(function (item, capturePos) {\n    if (item && item.data) {\n      const fullPos = current.indexOf(item);\n      item.data.captureId = captureId;\n      item.data.capturePos = capturePos;\n      item.data.captureDirection = direction;\n      if (fullPos >= 0) {\n        item.data.contextPrev2 = fullPos >= 2 ? fullContextHashes[fullPos - 2] : undefined;\n        item.data.contextPrev = fullPos >= 1 ? fullContextHashes[fullPos - 1] : undefined;\n        item.data.contextNext = fullPos + 1 < fullContextHashes.length ? fullContextHashes[fullPos + 1] : undefined;\n        item.data.contextNext2 = fullPos + 2 < fullContextHashes.length ? fullContextHashes[fullPos + 2] : undefined;\n      }\n    }\n    appendRecord(item);\n  });\n  lastUnkeyedBatchByTab.set(tabKey, current);\n  rememberSequenceBatch(tabKey, currentTokens);\n} function armCollection(timeout) { collectionArmed = true; collectionDeadline = Date.now() + (timeout || 700); armFromFingerprint = lastVisibleFingerprint; } function currentChatScrollHost(rows) {\n  const candidates = rows && rows.length ? rows : findRows();\n  if (!candidates.length) return null;\n  let node = candidates[0].parentElement;\n  while (node && node !== document.body && node !== document.documentElement) {\n    const style = getComputedStyle(node);\n    if (/(?:auto|scroll|overlay)/.test(style.overflowY || \"\") && node.scrollHeight > node.clientHeight + 3) return node;\n    node = node.parentElement;\n  }\n  return document.scrollingElement || document.documentElement;\n} function captureViewport(host) {\n  const isDocumentHost = !host || host === document.body || host === document.documentElement || host === document.scrollingElement;\n  if (isDocumentHost) return { top: 0, bottom: window.innerHeight || document.documentElement.clientHeight || 0, height: window.innerHeight || document.documentElement.clientHeight || 0 };\n  const rect = host.getBoundingClientRect();\n  const top = Math.max(0, rect.top);\n  const bottom = Math.min(window.innerHeight || document.documentElement.clientHeight || rect.bottom, rect.bottom);\n  return { top: top, bottom: bottom, height: Math.max(1, bottom - top) };\n} function captureRows(rows, host) {\n  const sourceRows = rows || findRows();\n  if (!sourceRows.length) return [];\n  const scrollHost = host || currentChatScrollHost(sourceRows);\n  const viewport = captureViewport(scrollHost);\n  const ahead = Math.min(88, Math.max(34, viewport.height * 0.12));\n  const behind = Math.min(28, Math.max(12, viewport.height * 0.04));\n  const topMargin = direction < 0 ? ahead : behind;\n  const bottomMargin = direction > 0 ? ahead : behind;\n  const topLimit = viewport.top - topMargin;\n  const bottomLimit = viewport.bottom + bottomMargin;\n  return sourceRows.filter(function (row) {\n    const rect = row.getBoundingClientRect();\n    return rect.bottom >= topLimit && rect.top <= bottomLimit;\n  });\n} function isChatScrollTarget(target) { const host = currentChatScrollHost(); if (!host) return true; return target === host || target === document || target === window || target === document.body || target === document.documentElement || target === document.scrollingElement; } function updateCollectorStatus() {\n  const nextCount = records.length ? records.length + \"개 · \" + collectedTabs.size + \"개 탭\" : \"탐색 중…\";\n  if (count.textContent !== nextCount) count.textContent = nextCount;\n  const nextGuide = records.length\n    ? \"현재 \" + activeTabName + \" 탭 수집 중 · 채팅을 자유롭게 스크롤해 주세요.\"\n    : \"채팅을 자유롭게 스크롤해 주세요.\";\n  if (guide.textContent !== nextGuide) guide.textContent = nextGuide;\n} function scan() {\n  if (stopped) return;\n  const detectedTab = cleanInline(currentTabName()) || activeTabName || \"main\";\n  if (detectedTab !== activeTabName) {\n    activeTabName = detectedTab;\n    pendingTabName = detectedTab;\n    tabSwitchStartedAt = Date.now();\n    transitionFingerprint = lastVisibleFingerprint;\n    direction = 0;\n    armCollection(950);\n    guide.textContent = activeTabName + \" 탭으로 전환됨 · 메시지 화면을 불러오는 중…\";\n    clearTimeout(tabSwitchTimer);\n    tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 210);\n    return;\n  }\n\n  const allRows = findRows();\n  const initialScrollHost = currentChatScrollHost(allRows);\n  if (initialScrollHost && initialScrollHost.__kkulLastScrollTop == null) initialScrollHost.__kkulLastScrollTop = Number(initialScrollHost.scrollTop || 0);\n  const viewportRows = captureRows(allRows, initialScrollHost);\n  const currentFingerprint = visibleRowsFingerprint(viewportRows);\n\n  if (pendingTabName) {\n    const elapsed = Date.now() - tabSwitchStartedAt;\n    const stillPreviousRows = !!transitionFingerprint && currentFingerprint === transitionFingerprint;\n    if (elapsed < 170 || (stillPreviousRows && elapsed < 620)) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, stillPreviousRows ? 120 : 70);\n      return;\n    }\n    pendingTabName = \"\";\n    transitionFingerprint = \"\";\n  }\n\n  const batch = [];\n  const stableSeen = new Set();\n  const unkeyedSeen = new Map();\n  viewportRows.forEach(function (root) {\n    const item = extract(root, activeTabName);\n    if (!item) return;\n    if (item.stableKey && stableSeen.has(item.stableKey)) return;\n    if (item.stableKey) stableSeen.add(item.stableKey);\n    const prior = unkeyedSeen.get(item.fallbackKey);\n    if (prior && (!item.stableKey || !prior.stableKey) && Math.max(0, Math.min(prior.bottom, item.bottom) - Math.max(prior.top, item.top)) >= Math.min(prior.bottom - prior.top, item.bottom - item.top) * 0.65) return;\n    unkeyedSeen.set(item.fallbackKey, item);\n    batch.push(item);\n  });\n\n  const viewportFingerprint = activeTabName.toLowerCase() + \"|\" + currentFingerprint;\n  if (!collectionArmed) {\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (armFromFingerprint && currentFingerprint === armFromFingerprint) {\n    if (Date.now() < collectionDeadline) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 90);\n    } else collectionArmed = false;\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (currentFingerprint && seenViewportFingerprints.has(viewportFingerprint)) {\n    collectionArmed = false;\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (!batch.length) {\n    if (Date.now() < collectionDeadline) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 90);\n    } else collectionArmed = false;\n    updateCollectorStatus();\n    return;\n  }\n\n  mergeBatch(batch);\n  collectedTabs.add(activeTabName);\n  if (currentFingerprint) seenViewportFingerprints.add(viewportFingerprint);\n  collectionArmed = false;\n  lastVisibleFingerprint = currentFingerprint;\n  updateCollectorStatus();\n} function scheduleScan() { if (stopped || rafId) return; rafId = requestAnimationFrame(function () { rafId = 0; scan(); }); } function onScroll(event) { const target = event.target === document ? document.scrollingElement : event.target; if (!target || typeof target.scrollTop !== \"number\" || !isChatScrollTarget(target)) return; const previous = Number(target.__kkulLastScrollTop == null ? target.scrollTop : target.__kkulLastScrollTop); const current = Number(target.scrollTop); target.__kkulLastScrollTop = current; if (current === previous) return; direction = current > previous ? 1 : -1; armCollection(750); scheduleScan(); setTimeout(scheduleScan, 70); setTimeout(scheduleScan, 180); } function onWheel(event) { if (event.deltaY) direction = event.deltaY > 0 ? 1 : -1; } function onTouchMove(event) { const current = event.touches && event.touches[0] ? event.touches[0].clientY : 0; if (touchY && current !== touchY) direction = current < touchY ? 1 : -1; touchY = current; } function onDocumentClick(event) { const target = event.target && event.target.closest ? event.target.closest('[role=\"tab\"],button.MuiTab-root,.MuiTab-root') : null; if (!target) return; const chatTabs = findChatTabs(); if (chatTabs.length && chatTabs.indexOf(target) < 0) return; const clickedLabel = tabLabel(target); if (clickedLabel) { manualTabName = clickedLabel; armCollection(950); guide.textContent = clickedLabel + \" 탭 선택 감지 · 메시지 화면을 불러오는 중…\"; } setTimeout(scheduleScan, 20); setTimeout(scheduleScan, 120); setTimeout(scheduleScan, 280); setTimeout(scheduleScan, 650); } const observer = new MutationObserver(function (mutations) { const external = mutations.some(function (mutation) { return !panel.contains(mutation.target); }); if (!external) return; const tabChanged = mutations.some(function (mutation) { return mutation.type === \"attributes\" && (mutation.attributeName === \"aria-selected\" || mutation.attributeName === \"tabindex\" || mutation.attributeName === \"class\") && mutation.target && mutation.target.matches && mutation.target.matches('[role=\"tab\"],button.MuiTab-root,.MuiTab-root'); }); if (tabChanged || pendingTabName || collectionArmed) scheduleScan(); }); observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: [\"src\", \"style\", \"data-index\", \"data-item-index\", \"data-virtuoso-index\", \"aria-selected\", \"tabindex\", \"class\"] }); window.addEventListener(\"scroll\", onScroll, true); window.addEventListener(\"wheel\", onWheel, true); window.addEventListener(\"touchmove\", onTouchMove, true); document.addEventListener(\"click\", onDocumentClick, true); intervalId = setInterval(function () { const detected = cleanInline(currentTabName()) || activeTabName || \"main\"; if (detected !== activeTabName) { armCollection(950); scheduleScan(); } }, 900); scheduleScan(); function stop() { stopped = true; clearInterval(intervalId); clearTimeout(tabSwitchTimer); if (rafId) cancelAnimationFrame(rafId); window.removeEventListener(\"scroll\", onScroll, true); window.removeEventListener(\"wheel\", onWheel, true); window.removeEventListener(\"touchmove\", onTouchMove, true); document.removeEventListener(\"click\", onDocumentClick, true); observer.disconnect(); window[ACTIVE_KEY] = false; } function roomName() {\n  let xpathTitle = \"\";\n  try {\n    const roomTitleNode = document.evaluate(\n      '//*[@id=\"root\"]/div/header/div/button[1]/h6',\n      document,\n      null,\n      XPathResult.FIRST_ORDERED_NODE_TYPE,\n      null\n    ).singleNodeValue;\n    xpathTitle = cleanInline(roomTitleNode && roomTitleNode.textContent);\n  } catch (error) {}\n\n  const selectorTitle = Array.from(document.querySelectorAll(\n    '#root > div > header > div > button:first-of-type h6, #root header button:first-of-type h6, header button h6'\n  )).map(function (node) {\n    return cleanInline(node.textContent);\n  }).find(function (value) {\n    return value && value.length <= 160;\n  }) || \"\";\n\n  const titleText = cleanInline(document.title)\n    .replace(/\\s*[|｜–—-]\\s*(?:CCFOLIA|ココフォリア).*$/i, \"\")\n    .replace(/^\\s*(?:CCFOLIA|ココフォリア)\\s*[|｜–—-]?\\s*/i, \"\")\n    .trim();\n\n  const heading = Array.from(document.querySelectorAll(\"h1,h2,h6\"))\n    .map(function (node) { return cleanInline(node.textContent); })\n    .find(function (value) {\n      return value && value.length <= 100 && !/채팅|chat|코코포리아|ccfolia/i.test(value);\n    });\n\n  return xpathTitle\n    || selectorTitle\n    || (titleText && !/^(?:CCFOLIA|ココフォリア)$/i.test(titleText) ? titleText : \"\")\n    || heading\n    || \"코코포리아_표정정보\";\n} function safeFilename(value) { const cleaned = cleanInline(value) .replace(/[\\\\/:*?\"<>|]/g, \"_\") .replace(/[. ]+$/g, \"\") .slice(0, 120); return (cleaned || \"코코포리아_표정정보\") + \".txt\"; } function exportData() { return records.map(function (record) { const data = Object.assign({}, record.data); if (!Number.isFinite(data.idx)) { delete data.idx; delete data.idxStable; } else { data.idxStable = false; } delete data.__seq; if (!data.time) delete data.time; if (!data.messageId) delete data.messageId; if (!data.identitySource) delete data.identitySource; return data; }); } function downloadText(filename, text) { const blob = new Blob([\"\\ufeff\", text], { type: \"text/plain;charset=utf-8\" }); const url = URL.createObjectURL(blob); const anchor = document.createElement(\"a\"); anchor.href = url; anchor.download = filename; anchor.style.display = \"none\"; document.body.appendChild(anchor); anchor.click(); setTimeout(function () { URL.revokeObjectURL(url); anchor.remove(); }, 1000); } function showResult(data) { const json = JSON.stringify({ kind: \"messages\", data: data }); const overlay = document.createElement(\"div\"); overlay.style.cssText = \"position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:\" + FONT + \";\"; const card = document.createElement(\"div\"); card.style.cssText = \"background:#fff;padding:22px 22px 18px;border-radius:12px;max-width:640px;width:90%;color:\" + TEXT + \";box-shadow:0 20px 60px rgba(0,0,0,.3);\"; const heading = document.createElement(\"div\"); heading.style.cssText = \"font-size:15px;font-weight:700;margin-bottom:10px;\"; const tabCount = new Set(data.map(function (item) { return item.tab || \"main\"; })).size; heading.textContent = \"완료 - \" + tabCount + \"개 탭 · 총 \" + data.length + \"개\"; const textarea = document.createElement(\"textarea\"); textarea.value = json; textarea.readOnly = true; textarea.style.cssText = \"width:100%;height:140px;font-family:monospace;font-size:11px;box-sizing:border-box;border:1px solid \" + BORDER + \";border-radius:8px;padding:8px;background:#f8fafc;color:\" + TEXT + \";resize:none;\"; const status = document.createElement(\"div\"); status.style.cssText = \"margin-top:10px;font-size:13px;min-height:20px;color:\" + MUTED + \";\"; status.textContent = \"TXT 다운로드를 누르면 룸 이름으로 바로 저장됩니다.\"; const buttons = document.createElement(\"div\"); buttons.style.cssText = \"display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;\"; const downloadButton = document.createElement(\"button\"); downloadButton.textContent = \"TXT 다운로드\"; downloadButton.style.cssText = \"flex:1 1 150px;padding:10px;cursor:pointer;font-size:14px;background:\" + BLUE + \";color:#fff;border:none;border-radius:8px;font-weight:700;font-family:\" + FONT + \";\"; const copyButton = document.createElement(\"button\"); copyButton.textContent = \"복사하기\"; copyButton.style.cssText = \"flex:1 1 120px;padding:10px;cursor:pointer;font-size:14px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:8px;font-weight:700;font-family:\" + FONT + \";\"; const dismissButton = document.createElement(\"button\"); dismissButton.textContent = \"닫기\"; dismissButton.style.cssText = \"padding:10px 18px;cursor:pointer;font-size:14px;background:#fff;color:\" + TEXT + \";border:1px solid \" + BORDER + \";border-radius:8px;font-family:\" + FONT + \";\"; downloadButton.onclick = function () { const filename = safeFilename(roomName()); downloadText(filename, json); status.textContent = filename + \" 저장을 시작했습니다.\"; status.style.color = \"#16a34a\"; downloadButton.textContent = \"저장됨\"; }; function copySuccess() { status.textContent = \"복사 완료!\"; status.style.color = \"#16a34a\"; copyButton.textContent = \"복사됨\"; } function copyFallback() { textarea.focus(); textarea.select(); textarea.setSelectionRange(0, json.length); try { if (!document.execCommand(\"copy\")) throw new Error(\"copy failed\"); copySuccess(); } catch (error) { status.textContent = \"복사 실패. Ctrl+A → Ctrl+C로 직접 복사해 주세요.\"; status.style.color = \"#dc2626\"; } } copyButton.onclick = function () { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json).then(copySuccess).catch(copyFallback); } else copyFallback(); }; dismissButton.onclick = function () { overlay.remove(); }; buttons.appendChild(downloadButton); buttons.appendChild(copyButton); buttons.appendChild(dismissButton); card.appendChild(heading); card.appendChild(textarea); card.appendChild(status); card.appendChild(buttons); overlay.appendChild(card); document.body.appendChild(overlay); } finishButton.onclick = function () { scan(); const data = exportData(); stop(); if (panel.parentNode) panel.remove(); if (data.length) showResult(data); else alert(\"메시지를 찾지 못했습니다.\\n채팅 패널을 열고 메시지가 보이는 상태에서 다시 실행해 주세요.\"); }; closeButton.onclick = function () { stop(); panel.remove(); }; })();";
+const KKUL_ROOM_HELPER_BOOKMARKLET = "javascript:(function () { const ACTIVE_KEY = \"__kkulRoomHelperActive\"; if (window[ACTIVE_KEY]) { alert(\"이미 도우미가 실행 중입니다.\\n기존 패널의 [완료] 또는 닫기를 먼저 눌러주세요.\"); return; } window[ACTIVE_KEY] = true; const FONT = \"'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif\"; const BLUE = \"#2563eb\"; const BORDER = \"#e2e8f0\"; const TEXT = \"#0f172a\"; const MUTED = \"#64748b\"; let stopped = false; let rafId = 0; let intervalId = 0; let direction = 0; let touchY = 0; let sequence = 0; let captureSequence = 0; let activeTabName = \"\"; let manualTabName = \"\"; let pendingTabName = \"\"; let tabSwitchStartedAt = 0; let tabSwitchTimer = 0; let transitionFingerprint = \"\"; let lastVisibleFingerprint = \"\"; let collectionArmed = true; let collectionDeadline = Date.now() + 900; let armFromFingerprint = \"\"; const seenViewportFingerprints = new Set(); const collectedTabs = new Set(); const records = []; const recordByStableKey = new Map(); const lastUnkeyedBatchByTab = new Map(); const recentUnkeyedBatchesByTab = new Map(); let duplicateSuppressed = 0; const panel = document.createElement(\"div\"); panel.style.cssText = \"position:fixed;left:20px;bottom:20px;z-index:2147483647;background:#fff;padding:14px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28);font-family:\" + FONT + \";min-width:220px;max-width:320px;border:1px solid \" + BORDER + \";\"; const title = document.createElement(\"div\"); title.style.cssText = \"font-size:13px;font-weight:700;color:\" + TEXT + \";margin-bottom:4px;\"; title.textContent = \"코코포리아 표정 수집\"; const count = document.createElement(\"div\"); count.style.cssText = \"font-size:18px;font-weight:700;color:\" + BLUE + \";margin-bottom:5px;\"; count.textContent = \"탐색 중…\"; const guide = document.createElement(\"div\"); guide.style.cssText = \"font-size:11px;color:\" + MUTED + \";margin-bottom:10px;line-height:1.5;white-space:pre-line;\"; guide.textContent = \"북마크릿은 켜 둔 채, 원하는 탭에서 채팅을 자유롭게 스크롤해 주세요.\"; const actions = document.createElement(\"div\"); actions.style.cssText = \"display:flex;gap:6px;\"; const finishButton = document.createElement(\"button\"); finishButton.textContent = \"완료\"; finishButton.style.cssText = \"flex:1;padding:8px;cursor:pointer;font-size:13px;background:\" + BLUE + \";color:#fff;border:none;border-radius:6px;font-weight:700;font-family:\" + FONT + \";\"; finishButton.onmouseover = function () { finishButton.style.background = \"#1d4ed8\"; }; finishButton.onmouseout = function () { finishButton.style.background = BLUE; }; const closeButton = document.createElement(\"button\"); closeButton.textContent = \"닫기\"; closeButton.style.cssText = \"padding:8px 12px;cursor:pointer;font-size:13px;background:#fff;color:\" + TEXT + \";border:1px solid \" + BORDER + \";border-radius:6px;font-family:\" + FONT + \";\"; actions.appendChild(finishButton); actions.appendChild(closeButton); panel.appendChild(title); panel.appendChild(count); panel.appendChild(guide); panel.appendChild(actions); document.body.appendChild(panel); function cleanMultiline(value) { return String(value || \"\") .replace(/\\u00a0/g, \" \") .replace(/[ \\t]+/g, \" \") .replace(/\\s*\\n\\s*/g, \"\\n\") .trim(); } function cleanInline(value) { return cleanMultiline(value).replace(/\\s+/g, \" \").trim(); } function cleanCollectedMessageText(value) { return cleanMultiline(value).replace(/\\s*(?:\\[(?:편집\\s*완료|편집됨|edited|編集済み)\\]|[（(](?:edited|編集済み)[）)])\\s*$/i, \"\").trim(); } function cleanMessageName(value) { const name = cleanInline(value); const separator = name.lastIndexOf(\" - \"); if (separator < 1) return name; const suffix = name.slice(separator + 3).trim(); const clock = \"(?:(?:오전|오후|午前|午後|AM|PM)\\\\s*)?\\\\d{1,2}:\\\\d{2}(?::\\\\d{2})?\"; const isDate = new RegExp(\"^(?:\\\\d{4}[.\\\\/-]\\\\d{1,2}[.\\\\/-]\\\\d{1,2}|\\\\d{1,2}[.\\\\/-]\\\\d{1,2})(?:\\\\s+\" + clock + \")?$\", \"i\").test(suffix); const isRelative = new RegExp(\"^(?:今日|昨日|一昨日|오늘|어제|그제|today|yesterday)(?:\\\\s+\" + clock + \")?$\", \"i\").test(suffix); const isWeekday = new RegExp(\"^(?:(?:先々週|先週|今週|지난주|저번주|이번주|last\\\\s+week|previous\\\\s+week|this\\\\s+week)\\\\s*(?:の)?\\\\s*)?(?:月曜(?:日)?|火曜(?:日)?|水曜(?:日)?|木曜(?:日)?|金曜(?:日)?|土曜(?:日)?|日曜(?:日)?|월요일|화요일|수요일|목요일|금요일|토요일|일요일|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\\\s+\" + clock + \"$\", \"i\").test(suffix); const isTime = new RegExp(\"^\" + clock + \"$\", \"i\").test(suffix); return isDate || isRelative || isWeekday || isTime ? name.slice(0, separator).trim() : name; } function detectTime(value) { const text = cleanInline(value); if (!text || text.length > 90) return \"\"; return /(\\d{1,2}:\\d{2}(?::\\d{2})?|\\d{4}[.\\/-]\\d{1,2}[.\\/-]\\d{1,2}|오전|오후|午前|午後|AM|PM)/i.test(text) ? text : \"\"; } function isVisible(node) { if (!node || !node.getBoundingClientRect) return false; const style = getComputedStyle(node); if (style.display === \"none\" || style.visibility === \"hidden\") return false; const rect = node.getBoundingClientRect(); return rect.width > 0 && rect.height > 0; } function backgroundImageUrl(value) { const match = String(value || \"\").match(/url\\([\"']?(.*?)[\"']?\\)/i); return match ? match[1] : \"\"; } function findMessageRoot(node) { if (!node) return null; const closest = node.closest('.MuiListItem-root,[role=\"listitem\"],[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset]'); if (closest) return closest; let current = node; for (let depth = 0; depth < 7 && current && current !== document.body; depth += 1, current = current.parentElement) { if (current.querySelector && current.querySelector('img,.MuiAvatar-root,.MuiListItemAvatar-root,[class*=\"Avatar\"]')) return current; } return null; } function findRows() { const found = new Set(); document.querySelectorAll('[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset],.MuiListItem-root,[role=\"listitem\"]').forEach(function (node) { if (node.querySelector('.MuiListItemText-primary,.MuiListItemText-secondary,[class*=\"ListItemText-primary\"],[class*=\"ListItemText-secondary\"]')) found.add(node); }); document.querySelectorAll('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]').forEach(function (node) { const root = findMessageRoot(node); if (root) found.add(root); }); const rows = Array.from(found).filter(isVisible); const canonical = rows.filter(function (node) { return !rows.some(function (other) { return other !== node && node.contains(other) && other.querySelector && other.querySelector('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]'); }); }); canonical.sort(function (a, b) { const ar = a.getBoundingClientRect(); const br = b.getBoundingClientRect(); return ar.top - br.top || ar.left - br.left || (ar.width * ar.height) - (br.width * br.height); }); return canonical.filter(function (node, index, array) { const rect = node.getBoundingClientRect(); for (let cursor = index - 1; cursor >= 0; cursor -= 1) { const other = array[cursor]; const otherRect = other.getBoundingClientRect(); if (rect.top - otherRect.bottom > 8) break; const overlapY = Math.max(0, Math.min(rect.bottom, otherRect.bottom) - Math.max(rect.top, otherRect.top)); const overlapX = Math.max(0, Math.min(rect.right, otherRect.right) - Math.max(rect.left, otherRect.left)); if (overlapY >= Math.min(rect.height, otherRect.height) * 0.8 && overlapX >= Math.min(rect.width, otherRect.width) * 0.8) return false; } return true; }); } function normalizeBuiltInTabLabel(value) { const label = cleanInline(value).replace(/\\s*[（(]\\d+[）)]\\s*$/, \"\").trim(); const compact = label.replace(/\\s+/g, \"\"); const match = compact.match(/^(main|메인|メイン|info|정보|情報|other|잡담|기타|雑談|その他)\\d+$/i); return match ? match[1] : label; } function tabLabel(node) { return normalizeBuiltInTabLabel((node && (node.getAttribute(\"aria-label\") || node.getAttribute(\"title\") || node.textContent)) || \"\"); } function tabsInGroup(group) { if (!group) return []; return Array.from(group.querySelectorAll('[role=\"tab\"],button.MuiTab-root,.MuiTab-root')).filter(function (node, index, array) { return isVisible(node) && tabLabel(node) && array.indexOf(node) === index; }); } function findChatTabs() { const groups = new Set(); document.querySelectorAll('[role=\"tablist\"],.MuiTabs-root,.MuiTabs-flexContainer').forEach(function (node) { if (isVisible(node)) groups.add(node); }); document.querySelectorAll('[role=\"tab\"],button.MuiTab-root,.MuiTab-root').forEach(function (tab) { if (!isVisible(tab)) return; groups.add(tab.closest('[role=\"tablist\"],.MuiTabs-root,.MuiTabs-flexContainer') || tab.parentElement); }); const rows = findRows(); const firstRect = rows.length ? rows[0].getBoundingClientRect() : null; let best = []; let bestScore = -Infinity; groups.forEach(function (group) { const tabs = tabsInGroup(group); if (tabs.length < 2 || tabs.length > 30) return; const rect = group.getBoundingClientRect(); let score = tabs.length * 4; if (tabs.some(function (tab) { return tab.getAttribute(\"aria-selected\") === \"true\" || tab.classList.contains(\"Mui-selected\"); })) score += 30; if (firstRect) { const overlap = Math.max(0, Math.min(rect.right, firstRect.right) - Math.max(rect.left, firstRect.left)); const ratio = overlap / Math.max(1, Math.min(rect.width, firstRect.width)); score += ratio * 45; const distance = Math.abs(firstRect.top - rect.bottom); score += Math.max(0, 55 - distance / 4); if (rect.top > firstRect.bottom + 120) score -= 80; } if (score > bestScore) { bestScore = score; best = tabs; } }); return best; } function selectedTab(tabs) { return (tabs || []).find(function (tab) { return tab.getAttribute(\"aria-selected\") === \"true\" || tab.classList.contains(\"Mui-selected\") || tab.getAttribute(\"tabindex\") === \"0\"; }) || (tabs || [])[0] || null; } function currentTabName() { if (manualTabName) return manualTabName; const tabs = findChatTabs(); const active = selectedTab(tabs); return tabLabel(active) || activeTabName || \"main\"; } function textCandidates(root) { return Array.from(root.querySelectorAll(\"p,span,div\")).filter(function (node) { if (!isVisible(node) || node.closest('button,input,textarea,select,[role=\"button\"]')) return false; if (node.querySelector(\"p,span,div\") && cleanInline(node.textContent) === Array.from(node.children).map(function (child) { return cleanInline(child.textContent); }).join(\" \").trim()) return false; const text = cleanMultiline(node.textContent); return !!text && text.length < 5000; }); } function findNameAndText(root) { let name = root.querySelector('.MuiListItemText-primary,[class*=\"ListItemText-primary\"],[data-message-name]'); let text = root.querySelector('.MuiListItemText-secondary,[class*=\"ListItemText-secondary\"],[data-message-text]'); if (name && text) return { name: name, text: text }; const candidates = textCandidates(root); if (!text) { const ranked = candidates.map(function (node) { const value = cleanMultiline(node.textContent); let score = value.length; if (value.indexOf(\"\\n\") >= 0) score += 30; if (detectTime(value)) score -= 200; if (node === name || (name && name.contains(node))) score -= 500; return { node: node, score: score }; }).sort(function (a, b) { return b.score - a.score; }); text = ranked.length ? ranked[0].node : null; } if (!name && text) { const preceding = candidates.filter(function (node) { if (node === text || text.contains(node) || node.contains(text)) return false; const value = cleanInline(node.textContent); if (!value || value.length > 120 || detectTime(value)) return false; return (node.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0; }); name = preceding.length ? preceding[preceding.length - 1] : null; } return name && text ? { name: name, text: text } : null; } function imageUrl(root) { const preferred = root.querySelector('.MuiListItemAvatar-root img,.MuiAvatar-root img,[class*=\"ListItemAvatar\"] img,[class*=\"Avatar\"] img'); const images = preferred ? [preferred] : Array.from(root.querySelectorAll(\"img\")); for (let index = 0; index < images.length; index += 1) { const image = images[index]; const url = image.currentSrc || image.src || image.getAttribute(\"src\") || \"\"; if (url && !/^data:image\\/svg/i.test(url)) return url; } const candidates = [root].concat(Array.from(root.querySelectorAll('.MuiListItemAvatar-root,.MuiAvatar-root,[class*=\"Avatar\"],[style*=\"background-image\"]'))); for (let index = 0; index < candidates.length; index += 1) { const node = candidates[index]; const url = backgroundImageUrl(getComputedStyle(node).backgroundImage) || backgroundImageUrl(node.style && node.style.backgroundImage); if (url && url !== \"none\") return url; } return \"\"; } function messageTime(root, nameNode, textNode) { const rawName = cleanInline(nameNode && nameNode.textContent); const separator = rawName.lastIndexOf(\" - \"); if (separator >= 1) { const suffixTime = detectTime(rawName.slice(separator + 3)); if (suffixTime) return suffixTime; } const attributes = [\"datetime\", \"title\", \"aria-label\"]; const candidates = Array.from(root.querySelectorAll('time,[datetime],[title],[aria-label],.MuiTypography-caption,[class*=\"caption\"]')); for (let index = 0; index < candidates.length; index += 1) { const node = candidates[index]; if (node === nameNode || node === textNode || nameNode.contains(node) || textNode.contains(node)) continue; for (let attrIndex = 0; attrIndex < attributes.length; attrIndex += 1) { const value = detectTime(node.getAttribute(attributes[attrIndex])); if (value) return value; } const value = detectTime(node.textContent); if (value) return value; } return \"\"; } function identityNodes(root) { const nodes = []; let current = root; for (let depth = 0; depth < 6 && current && current !== document.body && current !== document.documentElement; depth += 1, current = current.parentElement) { nodes.push(current); if (current.matches && current.matches('[data-index],[data-item-index],[data-virtuoso-index],[aria-posinset]')) break; } return nodes; } function numericIndex(root) { const nodes = identityNodes(root); for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) { const node = nodes[nodeIndex]; const values = [ node.dataset && node.dataset.index, node.dataset && node.dataset.itemIndex, node.dataset && node.dataset.virtuosoIndex, node.getAttribute && node.getAttribute(\"aria-posinset\") ]; for (let index = 0; index < values.length; index += 1) { if (values[index] != null && values[index] !== \"\" && !isNaN(Number(values[index]))) return Number(values[index]); } } return null; } function explicitId(root) { const attributes = [\"data-message-id\", \"data-chat-id\"]; const nodes = identityNodes(root); for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) { const node = nodes[nodeIndex]; for (let index = 0; index < attributes.length; index += 1) { const value = node.getAttribute && node.getAttribute(attributes[index]); if (value && value.length >= 6) return String(value).trim(); } } return \"\"; } function canonicalImageKey(value) { const url = String(value || \"\").trim(); if (!url) return \"\"; try { const parsed = new URL(url, location.href); if (/ccfolia-cdn\\.net$/i.test(parsed.hostname) || /storage\\.ccfolia/i.test(parsed.hostname)) parsed.search = \"\"; parsed.hash = \"\"; return parsed.href; } catch (error) { return url.replace(/[?#].*$/, \"\"); } } function visibleRowsFingerprint(rows) {\n  const sourceRows = rows && rows.length ? rows : captureRows(findRows(), null);\n  return sourceRows.map(function (root) {\n    const pair = findNameAndText(root);\n    if (!pair) return \"\";\n    return JSON.stringify([\n      cleanMessageName(pair.name.textContent),\n      cleanCollectedMessageText(pair.text.innerText || pair.text.textContent),\n      canonicalImageKey(imageUrl(root)),\n      messageTime(root, pair.name, pair.text) || \"\"\n    ]);\n  }).filter(Boolean).join(\"␞\");\n} function extract(root, activeTab) { const pair = findNameAndText(root); if (!pair) return null; const rawName = cleanMessageName(pair.name.textContent); const text = cleanCollectedMessageText(pair.text.innerText || pair.text.textContent); const imgUrl = imageUrl(root); if (!rawName || !text || !imgUrl) return null; let tab = cleanInline(activeTab || currentTabName()) || \"main\"; let name = rawName; const tabMatch = rawName.match(/^\\[([^\\]]+)\\]\\s*(.+)$/); if (tabMatch) { tab = tabMatch[1].trim(); name = tabMatch[2].trim(); } const time = messageTime(root, pair.name, pair.text); const index = numericIndex(root); const domId = explicitId(root); const signature = JSON.stringify([tab.toLowerCase(), cleanInline(name).toLowerCase(), text, canonicalImageKey(imgUrl)]); const tabPrefix = \"tab:\" + tab.toLowerCase() + \"|\"; const stableKey = domId ? tabPrefix + \"dom-id:\" + domId : \"\"; const rect = root.getBoundingClientRect(); return { stableKey: stableKey, fallbackKey: signature, signature: signature, top: rect.top, bottom: rect.bottom, data: { name: name, tab: tab, text: text, imgUrl: imgUrl, messageId: domId || undefined, idx: index == null ? undefined : index, idxStable: false, identitySource: domId ? \"dom-id\" : \"sequence\", time: time || undefined, __seq: sequence++ } }; }\nfunction updateRecord(target, incoming) { if (!target || !incoming) return; if (incoming.data.imgUrl) target.data.imgUrl = incoming.data.imgUrl; if (incoming.data.time) target.data.time = incoming.data.time; if (incoming.data.messageId) target.data.messageId = incoming.data.messageId; if (incoming.data.idx || incoming.data.idx === 0) target.data.idx = incoming.data.idx; if (incoming.data.idxStable === false) target.data.idxStable = false; if (incoming.data.identitySource) target.data.identitySource = incoming.data.identitySource; if (incoming.stableKey) target.stableKey = incoming.stableKey; }\nfunction appendRecord(incoming) { if (!incoming) return; const stableKey = incoming.stableKey || \"\"; if (stableKey && recordByStableKey.has(stableKey)) { const existingIndex = recordByStableKey.get(stableKey); const existing = records[existingIndex]; if (existing) { updateRecord(existing, incoming); duplicateSuppressed += 1; return; } recordByStableKey.delete(stableKey); } const index = records.length; records.push(incoming); if (stableKey) recordByStableKey.set(stableKey, index); }\nfunction sequenceIdentity(item) { if (!item) return \"\"; if (item.stableKey) return \"id:\" + item.stableKey; return \"msg:\" + item.signature + \"|time:\" + String(item.data && item.data.time || \"\"); } function sequenceContextHash(value) { const source = String(value || \"\"); let left = 0x811c9dc5; let right = 0x9e3779b9; for (let index = 0; index < source.length; index += 1) { const code = source.charCodeAt(index); left ^= code; left = Math.imul(left, 0x01000193) >>> 0; right ^= code + 0x9e37 + ((right << 6) >>> 0) + (right >>> 2); right = Math.imul(right ^ (right >>> 16), 0x85ebca6b) >>> 0; } return left.toString(16).padStart(8, \"0\") + right.toString(16).padStart(8, \"0\"); } function contextIdentity(item) { if (!item || !item.data) return \"\"; return cleanInline(item.data.name || \"\").toLowerCase() + \"\\u001f\" + cleanCollectedMessageText(item.data.text || \"\"); }\nfunction overlapSuffixPrefix(left, right) { const limit = Math.min(left.length, right.length); for (let size = limit; size > 0; size -= 1) { let same = true; for (let index = 0; index < size; index += 1) { if (left[left.length - size + index] !== right[index]) { same = false; break; } } if (same) return size; } return 0; }\nfunction sequenceRowInformative(item) { const text = cleanCollectedMessageText(item && item.data && item.data.text || \"\"); return text.length >= 10 || (text.length >= 6 && /[\\s.,!?！？。、…]/.test(text)); }\nfunction strongCollectorOverlap(left, right, size) { if (size < 2) return 0; let informative = 0; const leftStart = Math.max(0, left.length - size); for (let index = 0; index < size; index += 1) { if (sequenceRowInformative(left[leftStart + index]) || sequenceRowInformative(right[index])) informative += 1; } if ((size >= 3 && informative >= 1) || (size >= 2 && informative >= 2)) return size; return 0; }\nfunction sequenceContains(haystack, needle) { if (!needle.length || needle.length > haystack.length) return false; outer: for (let start = 0; start <= haystack.length - needle.length; start += 1) { for (let index = 0; index < needle.length; index += 1) { if (haystack[start + index] !== needle[index]) continue outer; } return true; } return false; }\nfunction rememberSequenceBatch(tabKey, tokens) { if (!tokens.length) return; const recent = recentUnkeyedBatchesByTab.get(tabKey) || []; recent.push(tokens.slice()); while (recent.length > 12) recent.shift(); recentUnkeyedBatchesByTab.set(tabKey, recent); }\nfunction mergeBatch(batch) { if (!batch.length) return; const tabKey = String(activeTabName || \"main\").toLowerCase(); const current = batch.slice(); const currentTokens = current.map(sequenceIdentity); const previous = lastUnkeyedBatchByTab.get(tabKey) || []; const previousTokens = previous.map(sequenceIdentity); let additions = current; let suppressedBySequence = 0;\n  const recent = recentUnkeyedBatchesByTab.get(tabKey) || [];\n  const fullRepeat = currentTokens.length >= 6 && new Set(currentTokens).size >= 3 && recent.some(function (tokens) { return sequenceContains(tokens, currentTokens); });\n  if (fullRepeat) { additions = []; suppressedBySequence = current.length; }\n  else if (previousTokens.length) {\n    const rawUpOverlap = overlapSuffixPrefix(currentTokens, previousTokens);\n    const rawDownOverlap = overlapSuffixPrefix(previousTokens, currentTokens);\n    const upOverlap = strongCollectorOverlap(current, previous, rawUpOverlap);\n    const downOverlap = strongCollectorOverlap(previous, current, rawDownOverlap);\n    if (direction < 0 && upOverlap) { additions = current.slice(0, Math.max(0, current.length - upOverlap)); suppressedBySequence = upOverlap; }\n    else if (direction > 0 && downOverlap) { additions = current.slice(downOverlap); suppressedBySequence = downOverlap; }\n    else if (!direction) {\n      const exactRepeat = currentTokens.length === previousTokens.length && currentTokens.every(function (token, index) { return token === previousTokens[index]; });\n      const strongExactRepeat = exactRepeat && ((current.length >= 6 && new Set(currentTokens).size >= 2) || current.filter(sequenceRowInformative).length >= 2);\n      if (strongExactRepeat) { additions = []; suppressedBySequence = current.length; }\n      else { const best = Math.max(upOverlap, downOverlap); if (best) { if (upOverlap >= downOverlap) additions = current.slice(0, Math.max(0, current.length - upOverlap)); else additions = current.slice(downOverlap); suppressedBySequence = best; } }\n    }\n  }\n  duplicateSuppressed += suppressedBySequence;\n  const captureId = captureSequence++;\n  const fullContextHashes = current.map(function (item) { return sequenceContextHash(contextIdentity(item)); });\n  additions.forEach(function (item, capturePos) {\n    if (item && item.data) {\n      const fullPos = current.indexOf(item);\n      item.data.captureId = captureId;\n      item.data.capturePos = capturePos;\n      item.data.captureDirection = direction;\n      if (fullPos >= 0) {\n        item.data.contextPrev2 = fullPos >= 2 ? fullContextHashes[fullPos - 2] : undefined;\n        item.data.contextPrev = fullPos >= 1 ? fullContextHashes[fullPos - 1] : undefined;\n        item.data.contextNext = fullPos + 1 < fullContextHashes.length ? fullContextHashes[fullPos + 1] : undefined;\n        item.data.contextNext2 = fullPos + 2 < fullContextHashes.length ? fullContextHashes[fullPos + 2] : undefined;\n      }\n    }\n    appendRecord(item);\n  });\n  lastUnkeyedBatchByTab.set(tabKey, current);\n  rememberSequenceBatch(tabKey, currentTokens);\n} function armCollection(timeout) { collectionArmed = true; collectionDeadline = Date.now() + (timeout || 700); armFromFingerprint = lastVisibleFingerprint; } function currentChatScrollHost(rows) {\n  const candidates = rows && rows.length ? rows : findRows();\n  if (!candidates.length) return null;\n  let node = candidates[0].parentElement;\n  while (node && node !== document.body && node !== document.documentElement) {\n    const style = getComputedStyle(node);\n    if (/(?:auto|scroll|overlay)/.test(style.overflowY || \"\") && node.scrollHeight > node.clientHeight + 3) return node;\n    node = node.parentElement;\n  }\n  return document.scrollingElement || document.documentElement;\n} function captureViewport(host) {\n  const isDocumentHost = !host || host === document.body || host === document.documentElement || host === document.scrollingElement;\n  if (isDocumentHost) return { top: 0, bottom: window.innerHeight || document.documentElement.clientHeight || 0, height: window.innerHeight || document.documentElement.clientHeight || 0 };\n  const rect = host.getBoundingClientRect();\n  const top = Math.max(0, rect.top);\n  const bottom = Math.min(window.innerHeight || document.documentElement.clientHeight || rect.bottom, rect.bottom);\n  return { top: top, bottom: bottom, height: Math.max(1, bottom - top) };\n} function captureRows(rows, host) {\n  const sourceRows = rows || findRows();\n  if (!sourceRows.length) return [];\n  const scrollHost = host || currentChatScrollHost(sourceRows);\n  const viewport = captureViewport(scrollHost);\n  const ahead = Math.min(88, Math.max(34, viewport.height * 0.12));\n  const behind = Math.min(28, Math.max(12, viewport.height * 0.04));\n  const topMargin = direction < 0 ? ahead : behind;\n  const bottomMargin = direction > 0 ? ahead : behind;\n  const topLimit = viewport.top - topMargin;\n  const bottomLimit = viewport.bottom + bottomMargin;\n  return sourceRows.filter(function (row) {\n    const rect = row.getBoundingClientRect();\n    return rect.bottom >= topLimit && rect.top <= bottomLimit;\n  });\n} function isChatScrollTarget(target) { const host = currentChatScrollHost(); if (!host) return true; return target === host || target === document || target === window || target === document.body || target === document.documentElement || target === document.scrollingElement; } function updateCollectorStatus() {\n  const nextCount = records.length ? records.length + \"개 · \" + collectedTabs.size + \"개 탭\" : \"탐색 중…\";\n  if (count.textContent !== nextCount) count.textContent = nextCount;\n  const nextGuide = records.length\n    ? \"현재 \" + activeTabName + \" 탭 수집 중 · 채팅을 자유롭게 스크롤해 주세요.\"\n    : \"채팅을 자유롭게 스크롤해 주세요.\";\n  if (guide.textContent !== nextGuide) guide.textContent = nextGuide;\n} function scan() {\n  if (stopped) return;\n  const detectedTab = cleanInline(currentTabName()) || activeTabName || \"main\";\n  if (detectedTab !== activeTabName) {\n    activeTabName = detectedTab;\n    pendingTabName = detectedTab;\n    tabSwitchStartedAt = Date.now();\n    transitionFingerprint = lastVisibleFingerprint;\n    direction = 0;\n    armCollection(950);\n    guide.textContent = activeTabName + \" 탭으로 전환됨 · 메시지 화면을 불러오는 중…\";\n    clearTimeout(tabSwitchTimer);\n    tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 210);\n    return;\n  }\n\n  const allRows = findRows();\n  const initialScrollHost = currentChatScrollHost(allRows);\n  if (initialScrollHost && initialScrollHost.__kkulLastScrollTop == null) initialScrollHost.__kkulLastScrollTop = Number(initialScrollHost.scrollTop || 0);\n  const viewportRows = captureRows(allRows, initialScrollHost);\n  const currentFingerprint = visibleRowsFingerprint(viewportRows);\n\n  if (pendingTabName) {\n    const elapsed = Date.now() - tabSwitchStartedAt;\n    const stillPreviousRows = !!transitionFingerprint && currentFingerprint === transitionFingerprint;\n    if (elapsed < 170 || (stillPreviousRows && elapsed < 620)) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, stillPreviousRows ? 120 : 70);\n      return;\n    }\n    pendingTabName = \"\";\n    transitionFingerprint = \"\";\n  }\n\n  const batch = [];\n  const stableSeen = new Set();\n  const unkeyedSeen = new Map();\n  viewportRows.forEach(function (root) {\n    const item = extract(root, activeTabName);\n    if (!item) return;\n    if (item.stableKey && stableSeen.has(item.stableKey)) return;\n    if (item.stableKey) stableSeen.add(item.stableKey);\n    const prior = unkeyedSeen.get(item.fallbackKey);\n    if (prior && (!item.stableKey || !prior.stableKey) && Math.max(0, Math.min(prior.bottom, item.bottom) - Math.max(prior.top, item.top)) >= Math.min(prior.bottom - prior.top, item.bottom - item.top) * 0.65) return;\n    unkeyedSeen.set(item.fallbackKey, item);\n    batch.push(item);\n  });\n\n  const viewportFingerprint = activeTabName.toLowerCase() + \"|\" + currentFingerprint;\n  if (!collectionArmed) {\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (armFromFingerprint && currentFingerprint === armFromFingerprint) {\n    if (Date.now() < collectionDeadline) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 90);\n    } else collectionArmed = false;\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (currentFingerprint && seenViewportFingerprints.has(viewportFingerprint)) {\n    collectionArmed = false;\n    lastVisibleFingerprint = currentFingerprint;\n    updateCollectorStatus();\n    return;\n  }\n  if (!batch.length) {\n    if (Date.now() < collectionDeadline) {\n      clearTimeout(tabSwitchTimer);\n      tabSwitchTimer = setTimeout(function () { tabSwitchTimer = 0; scheduleScan(); }, 90);\n    } else collectionArmed = false;\n    updateCollectorStatus();\n    return;\n  }\n\n  mergeBatch(batch);\n  collectedTabs.add(activeTabName);\n  if (currentFingerprint) seenViewportFingerprints.add(viewportFingerprint);\n  collectionArmed = false;\n  lastVisibleFingerprint = currentFingerprint;\n  updateCollectorStatus();\n} function scheduleScan() { if (stopped || rafId) return; rafId = requestAnimationFrame(function () { rafId = 0; scan(); }); } function onScroll(event) { const target = event.target === document ? document.scrollingElement : event.target; if (!target || typeof target.scrollTop !== \"number\" || !isChatScrollTarget(target)) return; const previous = Number(target.__kkulLastScrollTop == null ? target.scrollTop : target.__kkulLastScrollTop); const current = Number(target.scrollTop); target.__kkulLastScrollTop = current; if (current === previous) return; direction = current > previous ? 1 : -1; armCollection(750); scheduleScan(); setTimeout(scheduleScan, 70); setTimeout(scheduleScan, 180); } function onWheel(event) { if (event.deltaY) direction = event.deltaY > 0 ? 1 : -1; } function onTouchMove(event) { const current = event.touches && event.touches[0] ? event.touches[0].clientY : 0; if (touchY && current !== touchY) direction = current < touchY ? 1 : -1; touchY = current; } function onDocumentClick(event) { const target = event.target && event.target.closest ? event.target.closest('[role=\"tab\"],button.MuiTab-root,.MuiTab-root') : null; if (!target) return; const chatTabs = findChatTabs(); if (chatTabs.length && chatTabs.indexOf(target) < 0) return; const clickedLabel = tabLabel(target); if (clickedLabel) { manualTabName = clickedLabel; armCollection(950); guide.textContent = clickedLabel + \" 탭 선택 감지 · 메시지 화면을 불러오는 중…\"; } setTimeout(scheduleScan, 20); setTimeout(scheduleScan, 120); setTimeout(scheduleScan, 280); setTimeout(scheduleScan, 650); } const observer = new MutationObserver(function (mutations) { const external = mutations.some(function (mutation) { return !panel.contains(mutation.target); }); if (!external) return; const tabChanged = mutations.some(function (mutation) { return mutation.type === \"attributes\" && (mutation.attributeName === \"aria-selected\" || mutation.attributeName === \"tabindex\" || mutation.attributeName === \"class\") && mutation.target && mutation.target.matches && mutation.target.matches('[role=\"tab\"],button.MuiTab-root,.MuiTab-root'); }); if (tabChanged || pendingTabName || collectionArmed) scheduleScan(); }); observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: [\"src\", \"style\", \"data-index\", \"data-item-index\", \"data-virtuoso-index\", \"aria-selected\", \"tabindex\", \"class\"] }); window.addEventListener(\"scroll\", onScroll, true); window.addEventListener(\"wheel\", onWheel, true); window.addEventListener(\"touchmove\", onTouchMove, true); document.addEventListener(\"click\", onDocumentClick, true); intervalId = setInterval(function () { const detected = cleanInline(currentTabName()) || activeTabName || \"main\"; if (detected !== activeTabName) { armCollection(950); scheduleScan(); } }, 900); scheduleScan(); function stop() { stopped = true; clearInterval(intervalId); clearTimeout(tabSwitchTimer); if (rafId) cancelAnimationFrame(rafId); window.removeEventListener(\"scroll\", onScroll, true); window.removeEventListener(\"wheel\", onWheel, true); window.removeEventListener(\"touchmove\", onTouchMove, true); document.removeEventListener(\"click\", onDocumentClick, true); observer.disconnect(); window[ACTIVE_KEY] = false; } function roomName() {\n  let xpathTitle = \"\";\n  try {\n    const roomTitleNode = document.evaluate(\n      '//*[@id=\"root\"]/div/header/div/button[1]/h6',\n      document,\n      null,\n      XPathResult.FIRST_ORDERED_NODE_TYPE,\n      null\n    ).singleNodeValue;\n    xpathTitle = cleanInline(roomTitleNode && roomTitleNode.textContent);\n  } catch (error) {}\n\n  const selectorTitle = Array.from(document.querySelectorAll(\n    '#root > div > header > div > button:first-of-type h6, #root header button:first-of-type h6, header button h6'\n  )).map(function (node) {\n    return cleanInline(node.textContent);\n  }).find(function (value) {\n    return value && value.length <= 160;\n  }) || \"\";\n\n  const titleText = cleanInline(document.title)\n    .replace(/\\s*[|｜–—-]\\s*(?:CCFOLIA|ココフォリア).*$/i, \"\")\n    .replace(/^\\s*(?:CCFOLIA|ココフォリア)\\s*[|｜–—-]?\\s*/i, \"\")\n    .trim();\n\n  const heading = Array.from(document.querySelectorAll(\"h1,h2,h6\"))\n    .map(function (node) { return cleanInline(node.textContent); })\n    .find(function (value) {\n      return value && value.length <= 100 && !/채팅|chat|코코포리아|ccfolia/i.test(value);\n    });\n\n  return xpathTitle\n    || selectorTitle\n    || (titleText && !/^(?:CCFOLIA|ココフォリア)$/i.test(titleText) ? titleText : \"\")\n    || heading\n    || \"코코포리아_표정정보\";\n} function safeFilename(value) { const cleaned = cleanInline(value) .replace(/[\\\\/:*?\"<>|]/g, \"_\") .replace(/[. ]+$/g, \"\") .slice(0, 120); return (cleaned || \"코코포리아_표정정보\") + \".txt\"; } function exportData() { return records.map(function (record) { const data = Object.assign({}, record.data); if (!Number.isFinite(data.idx)) { delete data.idx; delete data.idxStable; } else { data.idxStable = false; } delete data.__seq; if (!data.time) delete data.time; if (!data.messageId) delete data.messageId; if (!data.identitySource) delete data.identitySource; return data; }); } function downloadText(filename, text) { const blob = new Blob([\"\\ufeff\", text], { type: \"text/plain;charset=utf-8\" }); const url = URL.createObjectURL(blob); const anchor = document.createElement(\"a\"); anchor.href = url; anchor.download = filename; anchor.style.display = \"none\"; document.body.appendChild(anchor); anchor.click(); setTimeout(function () { URL.revokeObjectURL(url); anchor.remove(); }, 1000); } function showResult(data) { const json = JSON.stringify({ kind: \"messages\", collectorVersion: \"6.96\", schemaVersion: 2, capturedAt: new Date().toISOString(), data: data }); const overlay = document.createElement(\"div\"); overlay.style.cssText = \"position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:\" + FONT + \";\"; const card = document.createElement(\"div\"); card.style.cssText = \"background:#fff;padding:22px 22px 18px;border-radius:12px;max-width:640px;width:90%;color:\" + TEXT + \";box-shadow:0 20px 60px rgba(0,0,0,.3);\"; const heading = document.createElement(\"div\"); heading.style.cssText = \"font-size:15px;font-weight:700;margin-bottom:10px;\"; const tabCount = new Set(data.map(function (item) { return item.tab || \"main\"; })).size; heading.textContent = \"완료 - \" + tabCount + \"개 탭 · 총 \" + data.length + \"개\"; const textarea = document.createElement(\"textarea\"); textarea.value = json; textarea.readOnly = true; textarea.style.cssText = \"width:100%;height:140px;font-family:monospace;font-size:11px;box-sizing:border-box;border:1px solid \" + BORDER + \";border-radius:8px;padding:8px;background:#f8fafc;color:\" + TEXT + \";resize:none;\"; const status = document.createElement(\"div\"); status.style.cssText = \"margin-top:10px;font-size:13px;min-height:20px;color:\" + MUTED + \";\"; status.textContent = \"TXT 다운로드를 누르면 룸 이름으로 바로 저장됩니다.\"; const buttons = document.createElement(\"div\"); buttons.style.cssText = \"display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;\"; const downloadButton = document.createElement(\"button\"); downloadButton.textContent = \"TXT 다운로드\"; downloadButton.style.cssText = \"flex:1 1 150px;padding:10px;cursor:pointer;font-size:14px;background:\" + BLUE + \";color:#fff;border:none;border-radius:8px;font-weight:700;font-family:\" + FONT + \";\"; const copyButton = document.createElement(\"button\"); copyButton.textContent = \"복사하기\"; copyButton.style.cssText = \"flex:1 1 120px;padding:10px;cursor:pointer;font-size:14px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:8px;font-weight:700;font-family:\" + FONT + \";\"; const dismissButton = document.createElement(\"button\"); dismissButton.textContent = \"닫기\"; dismissButton.style.cssText = \"padding:10px 18px;cursor:pointer;font-size:14px;background:#fff;color:\" + TEXT + \";border:1px solid \" + BORDER + \";border-radius:8px;font-family:\" + FONT + \";\"; downloadButton.onclick = function () { const filename = safeFilename(roomName()); downloadText(filename, json); status.textContent = filename + \" 저장을 시작했습니다.\"; status.style.color = \"#16a34a\"; downloadButton.textContent = \"저장됨\"; }; function copySuccess() { status.textContent = \"복사 완료!\"; status.style.color = \"#16a34a\"; copyButton.textContent = \"복사됨\"; } function copyFallback() { textarea.focus(); textarea.select(); textarea.setSelectionRange(0, json.length); try { if (!document.execCommand(\"copy\")) throw new Error(\"copy failed\"); copySuccess(); } catch (error) { status.textContent = \"복사 실패. Ctrl+A → Ctrl+C로 직접 복사해 주세요.\"; status.style.color = \"#dc2626\"; } } copyButton.onclick = function () { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json).then(copySuccess).catch(copyFallback); } else copyFallback(); }; dismissButton.onclick = function () { overlay.remove(); }; buttons.appendChild(downloadButton); buttons.appendChild(copyButton); buttons.appendChild(dismissButton); card.appendChild(heading); card.appendChild(textarea); card.appendChild(status); card.appendChild(buttons); overlay.appendChild(card); document.body.appendChild(overlay); } finishButton.onclick = function () { scan(); const data = exportData(); stop(); if (panel.parentNode) panel.remove(); if (data.length) showResult(data); else alert(\"메시지를 찾지 못했습니다.\\n채팅 패널을 열고 메시지가 보이는 상태에서 다시 실행해 주세요.\"); }; closeButton.onclick = function () { stop(); panel.remove(); }; })();";
 
 function escapeHtml(value) {
   return String(value)
@@ -3608,6 +4148,10 @@ function updateUploadCard(input, nameId) {
 
 function updateWorkflowUi(analyzed = Boolean(state.messages.length)) {
   syncStickyActions(analyzed);
+  if (!analyzed) {
+    if (el("analysisActions")) el("analysisActions").hidden = true;
+    if (el("analysisDiagnostics")) el("analysisDiagnostics").hidden = true;
+  }
 }
 
 function assignFileToInput(input, file) {
@@ -4068,6 +4612,17 @@ function applySavedConverterSettings(settings) {
     state.manualDaySplits = normalizeManualDaySplitEntries(settings.manualDaySplits);
     if (state.manualDaySplits.length) restored.push("수동 일차 경계");
   }
+  if (settings.portraitOverrides) {
+    state.manualPortraitOverrides = normalizePortraitOverrideEntries(settings.portraitOverrides);
+    if (state.manualPortraitOverrides.size) restored.push("수동 표정");
+  }
+  if (settings.textOverrides) {
+    state.manualTextOverrides = normalizeTextOverrideEntries(settings.textOverrides);
+    if (state.manualTextOverrides.size) restored.push("대사 수정");
+  }
+  if (Array.isArray(settings.expressionLibrary)) {
+    mergeSavedExpressionLibrary(settings.expressionLibrary);
+  }
   if (typeof settings.splitAsPages === "boolean") el("splitAsPages").checked = settings.splitAsPages;
   if (typeof settings.splitOtherAsPages === "boolean") el("splitOtherAsPages").checked = settings.splitOtherAsPages;
   if (typeof settings.sideOther === "boolean") el("sideOther").checked = settings.sideOther;
@@ -4233,7 +4788,7 @@ function registerUrl(tab, name, text, url, metadata = {}) {
   expressions.set(url, (expressions.get(url) || 0) + 1);
 }
 
-function parseImageJson(source) {
+function clearImageMatchState({ clearExpressions = true } = {}) {
   state.exactMap = new Map();
   state.exactOffsets = new Map();
   state.tabExactMap = new Map();
@@ -4248,8 +4803,102 @@ function parseImageJson(source) {
   state.tabIndexTimeMap = new Map();
   state.defaultByName = new Map();
   state.tabDefaultByName = new Map();
-  state.expressionsByName = new Map();
   state.collectedSequenceRows = [];
+  if (clearExpressions) {
+    state.expressionsByName = new Map();
+    state.expressionLabels = new Map();
+  }
+}
+
+function addExpressionCandidate(name, url, count = 1) {
+  const displayName = stripCollectedNameMetadata(name);
+  const sourceUrl = String(url || "").trim();
+  const amount = Math.max(1, Number(count) || 1);
+  if (!displayName || !sourceUrl || normalizedCharacterName(displayName) === "system") return false;
+  let expressions = state.expressionsByName.get(displayName);
+  if (!(expressions instanceof Map)) {
+    const normalized = normalizedCharacterName(displayName);
+    for (const [savedName, savedMap] of state.expressionsByName.entries()) {
+      if (normalizedCharacterName(savedName) === normalized) {
+        expressions = savedMap;
+        break;
+      }
+    }
+  }
+  if (!(expressions instanceof Map)) {
+    expressions = new Map();
+    state.expressionsByName.set(displayName, expressions);
+  }
+  expressions.set(sourceUrl, (expressions.get(sourceUrl) || 0) + amount);
+  return true;
+}
+
+function refreshExpressionLabels() {
+  for (const [name, urlMap] of state.expressionsByName.entries()) {
+    let index = 1;
+    const ordered = [...urlMap.entries()]
+      .filter(([url]) => String(url || "").trim())
+      .sort((left, right) => Number(right[1] || 0) - Number(left[1] || 0) || String(left[0]).localeCompare(String(right[0])));
+    for (const [url] of ordered) {
+      const labelKey = `${name}\u001f${url}`;
+      if (!state.expressionLabels.has(labelKey)) state.expressionLabels.set(labelKey, `표정 ${index}`);
+      index += 1;
+    }
+  }
+}
+
+function mergeSavedExpressionLibrary(value) {
+  if (!Array.isArray(value)) return 0;
+  let added = 0;
+  value.forEach(entry => {
+    if (!Array.isArray(entry) || entry.length < 2) return;
+    const name = String(entry[0] || "").trim();
+    const portraits = Array.isArray(entry[1]) ? entry[1] : [];
+    portraits.forEach(portrait => {
+      if (Array.isArray(portrait)) {
+        if (addExpressionCandidate(name, portrait[0], portrait[1])) added += 1;
+      } else if (addExpressionCandidate(name, portrait, 1)) {
+        added += 1;
+      }
+    });
+  });
+  refreshExpressionLabels();
+  return added;
+}
+
+function mergeExpressionLibraryFromRows(rows) {
+  if (!Array.isArray(rows)) return 0;
+  let added = 0;
+  rows.forEach(row => {
+    if (!row || normalizedCharacterName(row.name || "") === "system") return;
+    if (addExpressionCandidate(row.name, row.imgUrl, 1)) added += 1;
+  });
+  refreshExpressionLabels();
+  return added;
+}
+
+function savedExpressionLibraryPayload() {
+  // 저장 HTML의 각 메시지에 이미 들어 있는 표정 URL은 재입력 시 로그에서 복원할 수 있다.
+  // 설정에는 로그에서 한 번도 쓰이지 않은 추가 후보만 남겨 중복 용량을 줄인다.
+  const usedByCharacter = new Map();
+  state.messages.forEach(message => {
+    const nameKey = normalizedCharacterName(message?.name || "");
+    const url = String(message?.imgUrl || "").trim();
+    if (!nameKey || nameKey === "system" || !url) return;
+    if (!usedByCharacter.has(nameKey)) usedByCharacter.set(nameKey, new Set());
+    usedByCharacter.get(nameKey).add(url);
+  });
+  return [...state.expressionsByName.entries()].map(([name, expressions]) => {
+    const used = usedByCharacter.get(normalizedCharacterName(name)) || new Set();
+    const unused = [...(expressions instanceof Map ? expressions.entries() : [])]
+      .filter(([url]) => String(url || "").trim() && !used.has(String(url)))
+      .map(([url]) => String(url));
+    return [name, unused];
+  }).filter(([, portraits]) => portraits.length);
+}
+
+function parseImageJson(source) {
+  clearImageMatchState({ clearExpressions: true });
   const cleanedSource = String(source || "").replace(/^\uFEFF/, "").trim();
   const payload = JSON.parse(cleanedSource);
   const data = Array.isArray(payload) ? payload : payload?.data;
@@ -4315,14 +4964,7 @@ function parseImageJson(source) {
     const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
     state.tabDefaultByName.set(key, sorted[0]?.[0] || "");
   }
-  for (const [name, urlMap] of state.expressionsByName.entries()) {
-    let index = 1;
-    for (const url of [...urlMap.keys()].sort()) {
-      const labelKey = `${name}\u001f${url}`;
-      if (!state.expressionLabels.has(labelKey)) state.expressionLabels.set(labelKey, `표정 ${index}`);
-      index += 1;
-    }
-  }
+  refreshExpressionLabels();
   if (!validRows && data.length) throw new Error("이미지 정보 파일에서 유효한 name/imgUrl 행을 찾지 못했습니다.");
   return validRows;
 }
@@ -4520,7 +5162,7 @@ function batchPlacementAgainstOriginal(originalRows, batch, positions) {
   }
   if (!votes.size) return null;
 
-  let best = null;
+  const candidates = [];
   for (const [start, vote] of votes.entries()) {
     let exact = 0;
     let weighted = 0;
@@ -4540,18 +5182,25 @@ function batchPlacementAgainstOriginal(originalRows, batch, positions) {
       context += collectedRowContextMatches(originalRows, originalIndex, row);
     }
     const score = weighted + vote * 0.35 + context * 7 + exact * exact * 0.08;
-    const candidate = { start, score, exact, uniqueExact, context, batchLength: batch.length };
-    if (!best || candidate.score > best.score || (candidate.score === best.score && candidate.exact > best.exact)) best = candidate;
+    candidates.push({ start, score, exact, uniqueExact, context, batchLength: batch.length });
   }
+  candidates.sort((left, right) => right.score - left.score || right.exact - left.exact || right.context - left.context || left.start - right.start);
+  const best = candidates[0];
+  const second = candidates[1] || null;
   if (!best) return null;
   const full = best.exact === batch.length;
+  const fullCandidateCount = candidates.filter(candidate => candidate.exact === batch.length).length;
+  const scoreGap = second ? best.score - second.score : Infinity;
+  const clearLead = !second || scoreGap >= Math.max(2.5, Math.abs(best.score) * 0.12);
+  const uniqueFull = full && fullCandidateCount === 1;
   const reliable =
-    (batch.length >= 2 && full) ||
-    best.exact >= 3 ||
-    (best.exact >= 2 && (best.uniqueExact >= 1 || best.context >= 1)) ||
+    (batch.length >= 2 && uniqueFull) ||
+    (batch.length >= 2 && full && (best.uniqueExact >= 1 || best.context >= 1) && clearLead) ||
+    (best.exact >= 3 && clearLead) ||
+    (best.exact >= 2 && (best.uniqueExact >= 1 || best.context >= 1) && clearLead) ||
     (batch.length === 1 && best.uniqueExact === 1) ||
-    (best.exact >= 1 && best.context >= 1);
-  return { ...best, reliable };
+    (best.exact >= 1 && best.context >= 1 && clearLead);
+  return { ...best, reliable, fullCandidateCount, scoreGap, clearLead };
 }
 
 function batchStrongOverlap(left, right, positions) {
@@ -4569,7 +5218,7 @@ function batchStrongOverlap(left, right, positions) {
       if (frequency <= 2 || textLength >= 10) informative += 1;
     }
     if (!same) continue;
-    if (size >= 4 || (size >= 3 && informative >= 1) || (size >= 2 && informative >= 2)) return size;
+    if (size >= 6 || (size >= 3 && informative >= 1) || (size >= 2 && informative >= 2)) return size;
   }
   return 0;
 }
@@ -4942,8 +5591,8 @@ function buildContextSequenceMatchMap(messages) {
   return result;
 }
 
-function takeUniqueExactMedia(urlMap, timeMap, key) {
-  if (!key) return { url: "", time: "" };
+function takeUniqueExactMedia(urlMap, timeMap, key, originalOccurrences = 1) {
+  if (!key || Number(originalOccurrences) !== 1) return { url: "", time: "" };
   const urls = urlMap.get(key) || [];
   if (urls.length !== 1) return { url: "", time: "" };
   const times = timeMap.get(key) || [];
@@ -4953,10 +5602,11 @@ function takeUniqueExactMedia(urlMap, timeMap, key) {
   };
 }
 
-function takeSharedExactMedia(urlMap, timeMap, key) {
-  if (!key) return { url: "", time: "" };
+function takeSharedExactMedia(urlMap, timeMap, key, originalOccurrences = 0) {
+  if (!key || Number(originalOccurrences) < 2) return { url: "", time: "" };
   const urls = (urlMap.get(key) || []).map(value => String(value || "").trim()).filter(Boolean);
-  if (urls.length < 2) return { url: "", time: "" };
+  // 부분 수집에서 우연히 한 표정만 보였다고 전체 반복 대사를 같은 표정으로 덮지 않는다.
+  if (urls.length < Number(originalOccurrences)) return { url: "", time: "" };
   const uniqueUrls = [...new Set(urls)];
   if (uniqueUrls.length !== 1) return { url: "", time: "" };
   const times = timeMap.get(key) || [];
@@ -4981,6 +5631,14 @@ function applyMatches(messages) {
   state.tabMessageIdOffsets = new Map();
   state.tabIndexOffsets = new Map();
   const contextMatches = buildContextSequenceMatchMap(messages);
+  const originalGlobalCounts = new Map();
+  const originalScopedCounts = new Map();
+  messages.forEach(message => {
+    const key = messageKey(message?.name || "system", message?.text || "");
+    const scopedKey = tabMessageKey(message?.tab || "main", message?.name || "system", message?.text || "");
+    if (key) originalGlobalCounts.set(key, (originalGlobalCounts.get(key) || 0) + 1);
+    if (scopedKey) originalScopedCounts.set(scopedKey, (originalScopedCounts.get(scopedKey) || 0) + 1);
+  });
   const stats = { messageId: 0, index: 0, exact: 0, shared: 0, context: 0, fallback: 0, system: 0 };
   const matched = messages.map((message, index) => {
     const tab = message.tab || "main";
@@ -5005,15 +5663,15 @@ function applyMatches(messages) {
       if (imgUrl) { stats.index += 1; match = "index"; }
     }
     if (!imgUrl) {
-      let media = takeUniqueExactMedia(state.tabExactMap, state.tabExactTimeMap, scopedKey);
-      if (!media.url) media = takeUniqueExactMedia(state.exactMap, state.exactTimeMap, key);
+      let media = takeUniqueExactMedia(state.tabExactMap, state.tabExactTimeMap, scopedKey, originalScopedCounts.get(scopedKey) || 0);
+      if (!media.url) media = takeUniqueExactMedia(state.exactMap, state.exactTimeMap, key, originalGlobalCounts.get(key) || 0);
       imgUrl = media.url;
       if (!time && media.time) time = media.time;
       if (imgUrl) { stats.exact += 1; match = "exact"; }
     }
     if (!imgUrl) {
-      let media = takeSharedExactMedia(state.tabExactMap, state.tabExactTimeMap, scopedKey);
-      if (!media.url) media = takeSharedExactMedia(state.exactMap, state.exactTimeMap, key);
+      let media = takeSharedExactMedia(state.tabExactMap, state.tabExactTimeMap, scopedKey, originalScopedCounts.get(scopedKey) || 0);
+      if (!media.url) media = takeSharedExactMedia(state.exactMap, state.exactTimeMap, key, originalGlobalCounts.get(key) || 0);
       if (media.url) {
         imgUrl = media.url;
         if (!time && media.time) time = media.time;
@@ -6218,6 +6876,9 @@ function converterSettingsPayload() {
     manualSplits: el("manualSplits").value,
     manualOtherSplits: el("manualOtherSplits").value,
     manualDaySplits: state.manualDaySplits.map(entry => ({ ...entry })),
+    portraitOverrides: [...state.manualPortraitOverrides.entries()],
+    textOverrides: [...state.manualTextOverrides.entries()],
+    expressionLibrary: savedExpressionLibraryPayload(),
     splitAsPages: el("splitAsPages").checked,
     splitOtherAsPages: el("splitOtherAsPages").checked,
     sideOther: el("sideOther").checked,
@@ -9131,10 +9792,17 @@ function daySplitButton(message) {
   return `<button type="button" class="split-button day-split-button${isSet ? " is-set" : ""}" data-day-split-id="${message.id}" data-day-split-uid="${escapeHtml(message.uid || "")}" data-day-split-order="${Number.isFinite(order) ? order : ""}" title="${label}" aria-label="${label}" aria-pressed="${isSet ? "true" : "false"}">${label}</button>`;
 }
 
+function messageEditButton(message) {
+  const edited = messageHasManualEdit(message);
+  const label = edited ? "메시지 수정 · 수정됨" : "메시지 수정";
+  return `<button type="button" class="split-button message-edit-button${edited ? " is-set" : ""}" data-edit-id="${message.id}" data-edit-uid="${escapeHtml(message.uid || "")}" data-edit-order="${messageOrder(message) ?? ""}" title="${label}" aria-label="${label}">${label}</button>`;
+}
+
 function rowActionButtons(message, target = "main") {
   const hasSplit = hasManualSplit(message.id, target, message.uid);
   const hasDaySplit = hasManualDaySplit(message);
-  return `<div class="row-actions${hasSplit ? " has-split" : ""}${hasDaySplit ? " has-day-split" : ""}">${splitButton(message, target)}${daySplitButton(message)}${bgmButton(message, true)}</div>`;
+  const hasEdit = messageHasManualEdit(message);
+  return `<div class="row-actions${hasSplit ? " has-split" : ""}${hasDaySplit ? " has-day-split" : ""}${hasEdit ? " has-edit" : ""}">${messageEditButton(message)}${splitButton(message, target)}${daySplitButton(message)}${bgmButton(message, true)}</div>`;
 }
 
 function bgmButton(message, wide = false) {
@@ -9164,7 +9832,7 @@ function renderOtherRow(message, interactive = false) {
   return `<${rowTag} role="article" class="other-row" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
     <strong class="other-name" style="${nameColorStyle(message.color)}">${escapeHtml(message.name)}</strong>
     ${bgmLink(bgmTrigger)}
-    ${interactive ? `<div class="other-actions${hasManualSplit(message.id, "other", message.uid) ? " has-split" : ""}${hasManualDaySplit(message) ? " has-day-split" : ""}">${splitButton(message, "other")}${daySplitButton(message)}${bgmButton(message)}</div>` : ""}
+    ${interactive ? `<div class="other-actions${hasManualSplit(message.id, "other", message.uid) ? " has-split" : ""}${hasManualDaySplit(message) ? " has-day-split" : ""}${messageHasManualEdit(message) ? " has-edit" : ""}">${messageEditButton(message)}${splitButton(message, "other")}${daySplitButton(message)}${bgmButton(message)}</div>` : ""}
     <div class="other-text">${escapeHtml(compactOtherText(message.text)).replace(/\n/g, "<br>")}</div>
   </${rowTag}>`;
 }
@@ -9214,6 +9882,7 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
         <strong class="name" style="${nameColorStyle(message.color)}">${escapeHtml(message.name)}</strong>
         ${tabTag}
         ${label ? `<span class="expr-tag">${escapeHtml(label)}</span>` : ""}
+        ${interactive && messageHasManualEdit(message) ? `<span class="expr-tag preview-edit-tag">수정됨</span>` : ""}
         ${bgmLink(bgmTrigger)}
       </div>
       <div class="text">${escapeHtml(message.text).replace(/\n/g, "<br>")}</div>`;
@@ -10090,6 +10759,11 @@ function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, s
   scope.addEventListener("scroll", requestGlobalFrame, { passive: true });
 
   const clickHandler = event => {
+    const editButtonElement = event.target.closest?.(".message-edit-button[data-edit-id]");
+    if (editButtonElement && scope.contains(editButtonElement)) {
+      openMessageEditor({ id: Number(editButtonElement.dataset.editId), uid: editButtonElement.dataset.editUid || "", order: Number(editButtonElement.dataset.editOrder) });
+      return;
+    }
     const daySplitButtonElement = event.target.closest?.(".day-split-button[data-day-split-id]");
     if (daySplitButtonElement && scope.contains(daySplitButtonElement)) {
       toggleManualDaySplit(daySplitButtonElement);
@@ -10293,6 +10967,9 @@ function renderPreview(options = {}) {
       root.innerHTML = `<div class="ccfolia-wrap">${html || '<div class="empty-state"><h2>표시할 메시지가 없습니다</h2><p>필터를 조정해보세요.</p></div>'}</div>`;
     }
     restorePreviewScroll(root, scrollSnapshot);
+    root.querySelectorAll(".message-edit-button[data-edit-id]").forEach(button => {
+      button.addEventListener("click", () => openMessageEditor({ id: Number(button.dataset.editId), uid: button.dataset.editUid || "", order: Number(button.dataset.editOrder) }));
+    });
     root.querySelectorAll(".split-button[data-split-id]").forEach(button => {
       button.addEventListener("click", () => toggleManualSplit(Number(button.dataset.splitId), button.dataset.splitTarget, button));
     });
@@ -14207,7 +14884,7 @@ function downloadBlob(filename, blob) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-const JUKEBOX_PLAYLIST_BOOKMARKLET = "javascript:(function jukeboxTodayPlaylistHelperV3GroupedCrossPlaylistDuplicates(){if(window.__trpgJukeboxHelperActive){alert('이미 Jukebox 재생목록 도우미가 실행 중입니다.');return;}window.__trpgJukeboxHelperActive=true;var seen=new Map(),byTitle=new Map(),titleSeen=new Set(),orphans=new Set();var playlistGroups=[],playlistGroupMap=new Map(),processedBatchFingerprints=new Set(),activeCaptureBatch=null;var round=0,stableCount=0,lastCount=0,maxRounds=32;var FONT=\"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif\";function cleanText(t){return String(t||'').replace(/\\s+/g,' ').replace(/\\s+-\\s+YouTube$/i,'').replace(/^\\s*(?:Now Playing|Currently Playing|Queue|Playlist|Song Title|Added By)\\s*[:：-]?\\s*/i,'').trim();}function normTitle(t){return cleanText(t).toLowerCase().replace(/[［\\[\\(（].*?[］\\]\\)）]/g,'').replace(/\\s+/g,' ').trim();}function cleanLines(t){return String(t||'').split(/\\n+/).map(cleanText).filter(Boolean);}function isYtId(id){return /^[A-Za-z0-9_-]{11}$/.test(String(id||''));}function deescape(s){s=String(s||'');var out=s;try{out=decodeURIComponent(out);}catch(e){}return out.replace(/\\\\u0026/g,'&').replace(/\\\\\\//g,'/').replace(/&amp;/g,'&').replace(/&quot;/g,'\"').replace(/&#39;/g,\"'\").replace(/&lt;/g,'<').replace(/&gt;/g,'>');}function ytIdsFromText(v){v=deescape(v);var ids=[],m,re;function add(x){if(isYtId(x)&&ids.indexOf(x)<0)ids.push(x);}if(isYtId(v))add(v);re=/(?:youtu\\.be\\/|youtube(?:-nocookie)?\\.com\\/(?:watch\\?[^\"'<>]*?(?:[?&])?v=|embed\\/|shorts\\/|v\\/)|i\\.ytimg\\.com\\/(?:vi|vi_webp)\\/)([A-Za-z0-9_-]{11})/ig;while((m=re.exec(v)))add(m[1]);re=/[?&](?:v|video_id|videoId)=([A-Za-z0-9_-]{11})/ig;while((m=re.exec(v)))add(m[1]);re=/(?:videoId|video_id|youtubeId|youtube_id|ytid|ytId|id)[\"'\\s:=]+[\"']?([A-Za-z0-9_-]{11})/ig;while((m=re.exec(v)))add(m[1]);re=/(?:youtube:video:|youtube#video:|yt:video:|video\\/)([A-Za-z0-9_-]{11})/ig;while((m=re.exec(v)))add(m[1]);return ids;}function firstYtId(v){var a=ytIdsFromText(v);return a[0]||'';}function badTitle(t){t=cleanText(t);if(!t||t.length<2||t.length>180)return true;if(/^https?:\\/\\//i.test(t))return true;if(/^[\\d\\s:/.~-]+$/.test(t))return true;if(/^(play|pause|skip|mute|unmute|volume|share|copy|save|delete|remove|add|search|send|chat|users|login|signup|reload|oops|back|queue|playlist|playlists|history|room|rooms|settings|close|cancel|confirm|재생|일시정지|닫기|복사|검색|접기|펼치기)$/i.test(t))return true;if(/^(\\d+\\s*)?(songs?|videos?|users?)$/i.test(t))return true;if(/^added by\\b/i.test(t))return true;if(/^\\d{1,2}:\\d{2}(?:\\s*\\/\\s*\\d{1,2}:\\d{2})?$/.test(t))return true;return false;}function beginCaptureBatch(label){var batch={label:label||'',entries:[],parent:activeCaptureBatch};activeCaptureBatch=batch;return batch;}function endCaptureBatch(batch){if(!batch)return;activeCaptureBatch=batch.parent||null;if(batch.entries.length)processCapturedBatch(batch.entries);}function runCaptureBatch(label,fn){var batch=beginCaptureBatch(label);try{return fn();}finally{endCaptureBatch(batch);}}function recordOccurrence(id,title,source){if(!activeCaptureBatch)return;title=cleanText(title);id=isYtId(id)?id:'';if(!title&&!id)return;activeCaptureBatch.entries.push({id:id,title:title,source:source||'unknown'});}function batchFingerprint(entries){var h1=2166136261>>>0,h2=0x9e3779b9>>>0;entries.forEach(function(entry){var value=(entry.id||'')+'\\x1f'+normTitle(entry.title||'')+'\\x1e';for(var i=0;i<value.length;i++){var c=value.charCodeAt(i);h1^=c;h1=Math.imul(h1,16777619)>>>0;h2=(Math.imul(h2^c,2246822519)+3266489917)>>>0;}});return entries.length+':'+h1.toString(36)+':'+h2.toString(36);}function updateTitleMap(title,id){title=cleanText(title);id=isYtId(id)?id:'';if(!title||!id||badTitle(title))return;var nt=normTitle(title);if(!nt)return;byTitle.set(nt,id);var tk='title:'+nt;if(seen.has(tk)){var s=seen.get(tk);s.id=id;seen.delete(tk);seen.set(id,s);}}function addSong(id,title,source){id=isYtId(id)?id:'';title=cleanText(title);if(!id&&title){var known=byTitle.get(normTitle(title));if(known)id=known;}if(!title&&id)title='BGM '+(seen.size+1);if(badTitle(title)&&!id)return;if(badTitle(title)&&id)title='BGM '+(seen.size+1);recordOccurrence(id,title,source);if(id&&title)updateTitleMap(title,id);var key=id||('title:'+normTitle(title));if(seen.has(key)){var old=seen.get(key);if((!old.title||/^BGM \\d+$/.test(old.title))&&title)old.title=title;if(!old.id&&id)old.id=id;return;}if(id){var tk='title:'+normTitle(title);if(title&&seen.has(tk)){var old2=seen.get(tk);old2.id=id;old2.source=source||old2.source;seen.delete(tk);seen.set(id,old2);return;}}else{var nt=normTitle(title);if(titleSeen.has(nt))return;titleSeen.add(nt);}seen.set(key,{id:id,title:title,source:source||'unknown'});}function titlesFromObject(obj){var titles=[];if(!obj||typeof obj!=='object')return titles;Object.keys(obj).forEach(function(k){var v;try{v=obj[k];}catch(e){return;}var lk=String(k).toLowerCase();if(typeof v==='string'||typeof v==='number'){var s=cleanText(v);if((/title|name|song|track|label|text|video/i.test(lk))&&!badTitle(s))titles.push(s);}});return titles;}function idsFromObject(obj,pathKey){var ids=[];function addMany(a){a.forEach(function(id){if(ids.indexOf(id)<0)ids.push(id);});}if(pathKey)addMany(ytIdsFromText(pathKey));if(!obj||typeof obj!=='object')return ids;Object.keys(obj).forEach(function(k){var v;try{v=obj[k];}catch(e){return;}addMany(ytIdsFromText(k));if(typeof v==='string'||typeof v==='number')addMany(ytIdsFromText(v));});return ids;}function extractSongObject(obj,pathKey){if(!obj||typeof obj!=='object')return;var ids=idsFromObject(obj,pathKey);var titles=titlesFromObject(obj);if(!titles.length){try{if(obj.videoDetails&&typeof obj.videoDetails.title==='string'&&!badTitle(obj.videoDetails.title))titles.push(obj.videoDetails.title);}catch(e){}try{if(obj.snippet&&typeof obj.snippet.title==='string'&&!badTitle(obj.snippet.title))titles.push(obj.snippet.title);}catch(e){}}if(ids.length&&titles.length){ids.forEach(function(id){titles.forEach(function(t){addSong(id,t,'object-pair');});});}else if(ids.length){ids.forEach(function(id){orphans.add(id);});}else if(titles.length){titles.forEach(function(t){addSong('',t,'object-title');});}}function scanTextBlob(text,label){text=deescape(text);var ids=ytIdsFromText(text);ids.forEach(function(id){orphans.add(id);});var titleRe=/\"(?:title|name|songTitle|videoTitle|trackTitle)\"\\s*:\\s*\"([^\"]{2,180})\"/ig,m;var titles=[];while((m=titleRe.exec(text))){var t=cleanText(deescape(m[1]));if(!badTitle(t))titles.push(t);}if(ids.length&&titles.length&&ids.length===titles.length){for(var i=0;i<ids.length;i++)addSong(ids[i],titles[i],label+'-parallel');}}function scanAny(root,label,maxDepth,maxObjects){var ws=typeof WeakSet!=='undefined'?new WeakSet():null,count=0;function rec(v,depth,pathKey){if(!v||depth>maxDepth||count>maxObjects)return;var type=typeof v;if(type==='string'){scanTextBlob(v,label+'-string');return;}if(type!=='object'&&type!=='function')return;if(v===window||v===document||v===location||v===navigator)return;if(ws){if(ws.has(v))return;try{ws.add(v);}catch(e){}}count++;try{extractSongObject(v,pathKey);}catch(e){}var keys=[];try{keys=Object.keys(v);}catch(e){return;}for(var i=0;i<keys.length;i++){var k=keys[i];if(/^(parent|ownerDocument|document|window|global|self|top|frames|children|childNodes|nextSibling|previousSibling)$/i.test(k))continue;if(depth>1&&/^(return|alternate|stateNode|_debugOwner|_debugSource|sibling|child)$/i.test(k))continue;try{rec(v[k],depth+1,k);}catch(e){}}}rec(root,0,'');}function titleNear(el){if(!el)return'';var direct=cleanText(el.getAttribute&&(el.getAttribute('title')||el.getAttribute('aria-label')||el.getAttribute('alt')));if(!badTitle(direct))return direct;var box=el.closest&&el.closest('li,article,section,tr,[role=\"listitem\"],[class*=\"song\" i],[class*=\"track\" i],[class*=\"queue\" i],[class*=\"playlist\" i],div');if(box){var foundLines=cleanLines(box.innerText||box.textContent||'').filter(function(line){return!badTitle(line);});if(foundLines.length)return foundLines[0];}return'';}function collectDom(){return runCaptureBatch('dom',function(){document.querySelectorAll('a[href],iframe[src],embed[src],img[src],source[src],[style*=\"ytimg\"],[style*=\"youtube\"]').forEach(function(el){var vals=[];['href','src','data-src','style','title','aria-label','alt'].forEach(function(a){var v=el.getAttribute&&el.getAttribute(a);if(v)vals.push(v);});var id='';vals.some(function(v){id=firstYtId(v);return!!id;});if(id)addSong(id,titleNear(el),'dom-media');});var selector=['li','tr','article','section','[role=\"listitem\"]','[class*=\"song\" i]','[class*=\"track\" i]','[class*=\"queue\" i]','[class*=\"playlist\" i]','[class*=\"video\" i]','[class*=\"request\" i]'].join(',');document.querySelectorAll(selector).forEach(function(el){var text=el.innerText||el.textContent||'',html=el.outerHTML||'';if(!text||text.length>800)return;var foundLines=cleanLines(text).filter(function(line){return!badTitle(line);});if(!foundLines.length)return;var id=firstYtId(html);var songish=!!id||/\\b(added by|duration|requested|queued|song|track|video|youtube|up next)\\b/i.test(text+' '+(el.className||''))||/\\b\\d{1,2}:\\d{2}\\b/.test(text);if(!songish)return;var child=false;Array.from(el.children||[]).forEach(function(ch){var ct=ch.innerText||ch.textContent||'';if(ct&&ct!==text&&ct.length<text.length&&(/\\b(added by|duration|requested|queued|song|track|video|youtube|up next)\\b/i.test(ct+' '+(ch.className||''))||firstYtId(ch.outerHTML||'')))child=true;});if(child)return;addSong(id,foundLines[0],'visible-row');});});}function collectFramework(){return runCaptureBatch('framework',function(){var roots=[];document.querySelectorAll('*').forEach(function(el){Object.keys(el).forEach(function(k){if(/^__react(Fiber|InternalInstance|Props)\\$/.test(k)||k==='__vue__'||k==='__svelte_meta')roots.push(el[k]);});});var picked=[];roots.forEach(function(r){if(r&&picked.indexOf(r)<0)picked.push(r);});picked.slice(0,80).forEach(function(r){scanAny(r,'framework',8,30000);});['__NEXT_DATA__','__NUXT__','__APOLLO_STATE__','__INITIAL_STATE__','__REDUX_STATE__','store','app','App','jukebox','Jukebox'].forEach(function(k){try{if(window[k])scanAny(window[k],'window-'+k,9,35000);}catch(e){}});try{document.querySelectorAll('script').forEach(function(s){var t=s.textContent||'';if(t&&/(youtube|videoId|ytid|song|playlist|queue)/i.test(t))scanTextBlob(t,'script');});}catch(e){}});}function collectStorage(){return runCaptureBatch('storage',function(){[localStorage,sessionStorage].forEach(function(store){if(!store)return;for(var i=0;i<store.length;i++){var key=store.key(i),value=store.getItem(key)||'';if(!value)continue;try{scanAny(JSON.parse(value),'storage-json',9,40000);}catch(e){}scanTextBlob(value,'storage-text');}});});}function collectIndexedDB(done){var indexedCaptureBatch=beginCaptureBatch('indexeddb');var originalIndexedDone=done;var indexedCaptureFinished=false;done=function(){if(indexedCaptureFinished)return;indexedCaptureFinished=true;endCaptureBatch(indexedCaptureBatch);if(originalIndexedDone)originalIndexedDone();};if(!window.indexedDB||!indexedDB.databases){done&&done();return;}indexedDB.databases().then(function(dbs){var left=dbs.length;if(!left){done&&done();return;}dbs.forEach(function(info){if(!info||!info.name){if(--left===0&&done)done();return;}var req=indexedDB.open(info.name);req.onerror=function(){if(--left===0&&done)done();};req.onsuccess=function(){var db=req.result,stores=Array.from(db.objectStoreNames||[]),leftStores=stores.length;if(!leftStores){try{db.close();}catch(e){}if(--left===0&&done)done();return;}stores.forEach(function(sname){try{var tx=db.transaction(sname,'readonly'),st=tx.objectStore(sname),n=0,cur=st.openCursor();cur.onsuccess=function(ev){var c=ev.target.result;if(c&&n<400){n++;try{scanAny(c.value,'indexeddb',8,25000);}catch(e){}c.continue();}};tx.oncomplete=tx.onerror=tx.onabort=function(){if(--leftStores===0){try{db.close();}catch(e){}if(--left===0&&done)done();}};}catch(e){if(--leftStores===0){try{db.close();}catch(e2){}if(--left===0&&done)done();}}});};});},function(){done&&done();});}function scrollLikelyContainers(){try{window.scrollTo(0,document.documentElement.scrollHeight||document.body.scrollHeight);}catch(e){}document.querySelectorAll('main,section,div,ul,ol,[role=\"list\"],[class*=\"queue\" i],[class*=\"playlist\" i]').forEach(function(el){try{if(el.scrollHeight>el.clientHeight+60){var t=(el.innerText||el.textContent||'')+' '+(el.className||'');if(/queue|playlist|song|track|video|added|재생|목록/i.test(t))el.scrollTop=el.scrollHeight;}}catch(e){}});}function resolveKnownTitles(){Array.from(seen.entries()).forEach(function(ent){var key=ent[0],s=ent[1];if(!s.id&&s.title){var id=byTitle.get(normTitle(s.title));if(id){s.id=id;seen.delete(key);seen.set(id,s);}}});}var TECHNICAL_VIDEO_IDS=new Set(['_setElement','currentSong','currentHost','currentTime','localVolume','assetPrefix','displayName']);function compactSongKey(value){return cleanText(value).replace(/[^A-Za-z0-9_-]/g,'').toLowerCase();}function isResetMarker(title){title=cleanText(title);return /^(?:New Playlist|video player)$/i.test(title)||/^\\d+\\s+Songs?\\s*-\\s*\\d{1,2}:\\d{2}$/i.test(title);}function isTechnicalMarker(value){value=cleanText(value);return /^(?:delegateEvents|setElement|current|local|asset|display)[A-Za-z0-9_]*$/i.test(value);}function isTechnicalSongTitle(title){return /^(?:div|video player|jukebox\\.today|neonyonio)$/i.test(cleanText(title));}function isUsablePlaylistSong(song){if(!song)return false;var title=cleanText(song.title);var id=isYtId(song.id)?song.id:'';if(!title||!id)return false;if(TECHNICAL_VIDEO_IDS.has(id))return false;if(isTechnicalMarker(id))return false;if(isTechnicalSongTitle(title))return false;if(compactSongKey(title)===id.toLowerCase())return false;return true;}function isPlaylistFooter(song,pendingCount){if(!song||song.id||pendingCount<1)return false;var title=cleanText(song.title);if(!title||title.length>80)return false;if(isResetMarker(title))return false;if(isTechnicalMarker(title))return false;if(badTitle(title))return false;return true;}function getOrCreatePlaylistGroup(name){name=cleanText(name);var key=normTitle(name);var group=playlistGroupMap.get(key);if(!group){group={name:name,songs:[],songIds:new Set()};playlistGroupMap.set(key,group);playlistGroups.push(group);}return group;}function mergePlaylistSongs(name,pendingSongs){var group=getOrCreatePlaylistGroup(name);pendingSongs.forEach(function(song){/* 같은 플레이리스트 안에서만 영상 ID 중복을 제거한다. */if(group.songIds.has(song.id))return;group.songIds.add(song.id);group.songs.push({title:song.title,id:song.id});});}function processEntrySequence(entries){var pendingSongs=[];entries.forEach(function(song){if(!song)return;var title=cleanText(song.title);var id=isYtId(song.id)?song.id:'';if(!id){if(isResetMarker(title)){pendingSongs=[];return;}if(isPlaylistFooter({id:'',title:title},pendingSongs.length)){mergePlaylistSongs(title,pendingSongs);pendingSongs=[];}return;}if(!isUsablePlaylistSong({id:id,title:title}))return;pendingSongs.push({title:title,id:id});});}function processCapturedBatch(entries){var compact=[];var lastKey='';entries.forEach(function(entry){var title=cleanText(entry.title);var id=isYtId(entry.id)?entry.id:'';if(!title&&!id)return;var key=id+'\\x1f'+normTitle(title);/* 한 소스 안에서 연속으로 반복된 동일 방출만 압축한다. */if(key===lastKey)return;lastKey=key;compact.push({id:id,title:title});});if(!compact.length)return;var fingerprint=batchFingerprint(compact);if(processedBatchFingerprints.has(fingerprint))return;processedBatchFingerprints.add(fingerprint);processEntrySequence(compact);}function classifyPlaylists(){resolveKnownTitles();/* 기존 v3의 전역 결과도 안전망으로 병합한다. */processEntrySequence(Array.from(seen.values()));var groups=playlistGroups.filter(function(group){return group.songs.length>0;});var songCount=groups.reduce(function(total,group){return total+group.songs.length;},0);var text=groups.map(function(group){var songLines=group.songs.map(function(song){return song.title+' https://youtu.be/'+song.id;});return '['+group.name+']\\n'+songLines.join('\\n');}).join('\\n\\n');return {groups:groups,songCount:songCount,text:text};}function outputText(){return classifyPlaylists().text;}function copyText(text){if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(text);area.value=text;area.focus();area.select();var ok=false;try{ok=document.execCommand('copy');}catch(e){}return ok?Promise.resolve():Promise.reject(new Error('copy failed'));}function buttonFeedback(button,message,success){var defaultText=button.getAttribute('data-default-text')||button.textContent,defaultBg=button.getAttribute('data-default-bg')||button.style.background;button.setAttribute('data-default-text',defaultText);button.setAttribute('data-default-bg',defaultBg);if(button.__feedbackTimer)clearTimeout(button.__feedbackTimer);button.textContent=message;button.style.background=success?'#15803d':'#b91c1c';button.disabled=true;button.style.cursor='default';button.__feedbackTimer=setTimeout(function(){button.textContent=button.getAttribute('data-default-text')||defaultText;button.style.background=button.getAttribute('data-default-bg')||defaultBg;button.disabled=false;button.style.cursor='pointer';},1700);}function txtFileName(){var d=new Date(),pad=function(n){return String(n).padStart(2,'0');};return 'jukebox_playlists_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.txt';}function saveTextFile(text){var content='\\ufeff'+String(text||'').replace(/\\r?\\n/g,'\\r\\n'),blob=new Blob([content],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=txtFileName();a.style.display='none';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);try{a.remove();}catch(e){if(a.parentNode)a.parentNode.removeChild(a);}},500);}var panel=document.createElement('div');panel.style.cssText=['position:fixed','left:16px','top:16px','right:auto','bottom:auto','z-index:2147483647','width:min(410px,calc(100vw - 32px))','max-height:72vh','overflow:auto','box-sizing:border-box','background:#181818','color:#f4f4f4','border:1px solid #444','border-radius:10px','box-shadow:0 18px 48px rgba(0,0,0,.38)','font:13px/1.45 '+FONT].join(';');var titleBar=document.createElement('div');titleBar.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #333;cursor:move;user-select:none';var title=document.createElement('div');title.textContent='TRPG BGM Jukebox 재생목록 분류 v3.1';title.style.cssText='font-weight:700;flex:1';var foldButton=document.createElement('button');foldButton.type='button';foldButton.textContent='접기';foldButton.style.cssText='padding:4px 8px;border:1px solid #555;border-radius:6px;background:#242424;color:#fff;cursor:pointer;font-size:12px';titleBar.append(title,foldButton);var body=document.createElement('div');body.style.cssText='padding:12px';var status=document.createElement('div');status.textContent='전체 데이터를 읽고 있습니다. 같은 곡도 다른 재생목록이면 각각 유지합니다.';status.style.cssText='color:#d8d8d8;margin-bottom:8px';var area=document.createElement('textarea');area.readOnly=true;area.style.cssText=['width:100%','height:220px','box-sizing:border-box','resize:vertical','background:#101010','color:#f6f6f6','border:1px solid #555','border-radius:8px','padding:8px','font:12px/1.45 Consolas,monospace'].join(';');var buttonRow=document.createElement('div');buttonRow.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';var rescanButton=document.createElement('button');rescanButton.type='button';rescanButton.textContent='다시 읽기';rescanButton.style.cssText='padding:8px 10px;border:1px solid #555;border-radius:8px;background:#242424;color:#fff;cursor:pointer';var copyButton=document.createElement('button');copyButton.type='button';copyButton.textContent='복사';copyButton.style.cssText='flex:1;padding:8px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer';var saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='TXT 저장';saveButton.style.cssText='padding:8px 10px;border:1px solid #555;border-radius:8px;background:#242424;color:#fff;font-weight:700;cursor:pointer';var closeButton=document.createElement('button');closeButton.type='button';closeButton.textContent='닫기';closeButton.style.cssText='padding:8px 12px;border:1px solid #555;border-radius:8px;background:#242424;color:#fff;cursor:pointer';buttonRow.append(rescanButton,copyButton,saveButton,closeButton);body.append(status,area,buttonRow);panel.append(titleBar,body);document.body.append(panel);var collapsed=false;foldButton.onclick=function(e){e.stopPropagation();collapsed=!collapsed;body.style.display=collapsed?'none':'block';foldButton.textContent=collapsed?'펼치기':'접기';};(function(){var dragging=false,dx=0,dy=0;titleBar.addEventListener('mousedown',function(e){if(e.target===foldButton)return;dragging=true;var r=panel.getBoundingClientRect();dx=e.clientX-r.left;dy=e.clientY-r.top;e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;panel.style.left=Math.max(4,Math.min(innerWidth-80,e.clientX-dx))+'px';panel.style.top=Math.max(4,Math.min(innerHeight-40,e.clientY-dy))+'px';panel.style.right='auto';panel.style.bottom='auto';});document.addEventListener('mouseup',function(){dragging=false;});})();function refresh(done){collectDom();collectFramework();collectStorage();collectIndexedDB(function(){var result=classifyPlaylists();area.value=result.text;status.textContent=result.groups.length+'개 재생목록 / '+result.songCount+'곡으로 분류했습니다. 플레이리스트 간 중복은 유지하고, 같은 플레이리스트 안의 중복만 제거했습니다.'+(orphans.size?' 숨은 ID 후보 '+orphans.size+'개를 확인했습니다.':'');if(done)done();});}function finish(){refresh(function(){var result=classifyPlaylists();if(!result.text){status.textContent='분류할 재생목록을 찾지 못했습니다. Jukebox의 재생목록 정보가 모두 로드되었는지 확인해 주세요.';return;}copyText(result.text).then(function(){status.textContent=result.groups.length+'개 재생목록, '+result.songCount+'곡을 복사했습니다.';},function(){area.focus();area.select();status.textContent=result.groups.length+'개 재생목록, '+result.songCount+'곡을 분류했습니다. 자동 복사가 막히면 아래 내용을 직접 복사해 주세요.';});});}function tick(){refresh(function(){if(seen.size===lastCount)stableCount+=1;else stableCount=0;lastCount=seen.size;round+=1;if(stableCount>=4||round>=maxRounds){finish();return;}scrollLikelyContainers();setTimeout(tick,650);});}rescanButton.addEventListener('click',function(){stableCount=0;round=0;refresh(scrollLikelyContainers);});copyButton.addEventListener('click',function(){var result=classifyPlaylists();if(!result.text){status.textContent='아직 분류된 재생목록이 없습니다. 다시 읽기를 눌러 주세요.';buttonFeedback(copyButton,'복사 실패',false);return;}copyText(result.text).then(function(){status.textContent='✓ '+result.groups.length+'개 재생목록, '+result.songCount+'곡을 클립보드에 복사했습니다.';buttonFeedback(copyButton,'복사됨 ✓',true);},function(){area.focus();area.select();status.textContent='복사를 완료하지 못했습니다. 아래 내용을 직접 복사해 주세요.';buttonFeedback(copyButton,'복사 실패',false);});});saveButton.addEventListener('click',function(){var result=classifyPlaylists();if(!result.text){status.textContent='아직 저장할 재생목록이 없습니다. 다시 읽기를 눌러 주세요.';buttonFeedback(saveButton,'저장 실패',false);return;}try{saveTextFile(result.text);status.textContent='✓ '+result.groups.length+'개 재생목록, '+result.songCount+'곡을 TXT로 저장했습니다.';buttonFeedback(saveButton,'저장됨 ✓',true);}catch(e){status.textContent='TXT 저장에 실패했습니다.';buttonFeedback(saveButton,'저장 실패',false);}});closeButton.addEventListener('click',function(){window.__trpgJukeboxHelperActive=false;try{panel.remove();}catch(e){if(panel.parentNode)panel.parentNode.removeChild(panel);}});tick();})();";
+const JUKEBOX_PLAYLIST_BOOKMARKLET = "javascript:(function jukeboxTodayPlaylistHelperV3GroupedCrossPlaylistDuplicates(){if(window.__trpgJukeboxHelperActive){alert('이미 Jukebox 재생목록 도우미가 실행 중입니다.');return;}window.__trpgJukeboxHelperActive=true;var seen=new Map(),byTitle=new Map(),titleSeen=new Set(),orphans=new Set();var playlistGroups=[],playlistGroupMap=new Map(),processedBatchFingerprints=new Set(),activeCaptureBatch=null;var round=0,stableCount=0,lastCount=0,maxRounds=32;var FONT=\"system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif\";function cleanText(t){return String(t||'').replace(/\\s+/g,' ').replace(/\\s+-\\s+YouTube$/i,'').replace(/^\\s*(?:Now Playing|Currently Playing|Queue|Playlist|Song Title|Added By)\\s*[:：-]?\\s*/i,'').trim();}function normTitle(t){return cleanText(t).toLowerCase().replace(/[［\\[\\(（].*?[］\\]\\)）]/g,'').replace(/\\s+/g,' ').trim();}function cleanLines(t){return String(t||'').split(/\\n+/).map(cleanText).filter(Boolean);}function isYtId(id){return /^[A-Za-z0-9_-]{11}$/.test(String(id||''));}function deescape(s){s=String(s||'');var out=s;try{out=decodeURIComponent(out);}catch(e){}return out.replace(/\\\\u0026/g,'&').replace(/\\\\\\//g,'/').replace(/&amp;/g,'&').replace(/&quot;/g,'\"').replace(/&#39;/g,\"'\").replace(/&lt;/g,'<').replace(/&gt;/g,'>');}function ytIdsFromText(v){v=deescape(v);var ids=[],m,re;function add(x){if(isYtId(x)&&ids.indexOf(x)<0)ids.push(x);}if(isYtId(v))add(v);re=/(?:youtu\\.be\\/|youtube(?:-nocookie)?\\.com\\/(?:watch\\?[^\"'<>]*?(?:[?&])?v=|embed\\/|shorts\\/|v\\/)|i\\.ytimg\\.com\\/(?:vi|vi_webp)\\/)([A-Za-z0-9_-]{11})/ig;while((m=re.exec(v)))add(m[1]);re=/[?&](?:v|video_id|videoId)=([A-Za-z0-9_-]{11})/ig;while((m=re.exec(v)))add(m[1]);re=/(?:videoId|video_id|youtubeId|youtube_id|ytid|ytId|id)[\"'\\s:=]+[\"']?([A-Za-z0-9_-]{11})/ig;while((m=re.exec(v)))add(m[1]);re=/(?:youtube:video:|youtube#video:|yt:video:|video\\/)([A-Za-z0-9_-]{11})/ig;while((m=re.exec(v)))add(m[1]);return ids;}function firstYtId(v){var a=ytIdsFromText(v);return a[0]||'';}function badTitle(t){t=cleanText(t);if(!t||t.length<2||t.length>180)return true;if(/^https?:\\/\\//i.test(t))return true;if(/^[\\d\\s:/.~-]+$/.test(t))return true;if(/^(play|pause|skip|mute|unmute|volume|share|copy|save|delete|remove|add|search|send|chat|users|login|signup|reload|oops|back|queue|playlist|playlists|history|room|rooms|settings|close|cancel|confirm|재생|일시정지|닫기|복사|검색|접기|펼치기)$/i.test(t))return true;if(/^(\\d+\\s*)?(songs?|videos?|users?)$/i.test(t))return true;if(/^added by\\b/i.test(t))return true;if(/^\\d{1,2}:\\d{2}(?:\\s*\\/\\s*\\d{1,2}:\\d{2})?$/.test(t))return true;return false;}function beginCaptureBatch(label){var batch={label:label||'',entries:[],parent:activeCaptureBatch};activeCaptureBatch=batch;return batch;}function endCaptureBatch(batch){if(!batch)return;activeCaptureBatch=batch.parent||null;if(batch.entries.length)processCapturedBatch(batch.entries);}function runCaptureBatch(label,fn){var batch=beginCaptureBatch(label);try{return fn();}finally{endCaptureBatch(batch);}}function recordOccurrence(id,title,source){if(!activeCaptureBatch)return;title=cleanText(title);id=isYtId(id)?id:'';if(!title&&!id)return;activeCaptureBatch.entries.push({id:id,title:title,source:source||'unknown'});}function batchFingerprint(entries){var h1=2166136261>>>0,h2=0x9e3779b9>>>0;entries.forEach(function(entry){var value=(entry.id||'')+'\\x1f'+normTitle(entry.title||'')+'\\x1e';for(var i=0;i<value.length;i++){var c=value.charCodeAt(i);h1^=c;h1=Math.imul(h1,16777619)>>>0;h2=(Math.imul(h2^c,2246822519)+3266489917)>>>0;}});return entries.length+':'+h1.toString(36)+':'+h2.toString(36);}function updateTitleMap(title,id){title=cleanText(title);id=isYtId(id)?id:'';if(!title||!id||badTitle(title))return;var nt=normTitle(title);if(!nt)return;byTitle.set(nt,id);var tk='title:'+nt;if(seen.has(tk)){var s=seen.get(tk);s.id=id;seen.delete(tk);seen.set(id,s);}}function addSong(id,title,source){id=isYtId(id)?id:'';title=cleanText(title);if(!id&&title){var known=byTitle.get(normTitle(title));if(known)id=known;}if(!title&&id)title='BGM '+(seen.size+1);if(badTitle(title)&&!id)return;if(badTitle(title)&&id)title='BGM '+(seen.size+1);recordOccurrence(id,title,source);if(id&&title)updateTitleMap(title,id);var key=id||('title:'+normTitle(title));if(seen.has(key)){var old=seen.get(key);if((!old.title||/^BGM \\d+$/.test(old.title))&&title)old.title=title;if(!old.id&&id)old.id=id;return;}if(id){var tk='title:'+normTitle(title);if(title&&seen.has(tk)){var old2=seen.get(tk);old2.id=id;old2.source=source||old2.source;seen.delete(tk);seen.set(id,old2);return;}}else{var nt=normTitle(title);if(titleSeen.has(nt))return;titleSeen.add(nt);}seen.set(key,{id:id,title:title,source:source||'unknown'});}function titlesFromObject(obj){var titles=[];if(!obj||typeof obj!=='object')return titles;Object.keys(obj).forEach(function(k){var v;try{v=obj[k];}catch(e){return;}var lk=String(k).toLowerCase();if(typeof v==='string'||typeof v==='number'){var s=cleanText(v);if((/title|name|song|track|label|text|video/i.test(lk))&&!badTitle(s))titles.push(s);}});return titles;}function idsFromObject(obj,pathKey){var ids=[];function addMany(a){a.forEach(function(id){if(ids.indexOf(id)<0)ids.push(id);});}if(pathKey)addMany(ytIdsFromText(pathKey));if(!obj||typeof obj!=='object')return ids;Object.keys(obj).forEach(function(k){var v;try{v=obj[k];}catch(e){return;}addMany(ytIdsFromText(k));if(typeof v==='string'||typeof v==='number')addMany(ytIdsFromText(v));});return ids;}function extractSongObject(obj,pathKey){if(!obj||typeof obj!=='object')return;var ids=idsFromObject(obj,pathKey);var titles=titlesFromObject(obj);if(!titles.length){try{if(obj.videoDetails&&typeof obj.videoDetails.title==='string'&&!badTitle(obj.videoDetails.title))titles.push(obj.videoDetails.title);}catch(e){}try{if(obj.snippet&&typeof obj.snippet.title==='string'&&!badTitle(obj.snippet.title))titles.push(obj.snippet.title);}catch(e){}}if(ids.length&&titles.length){ids.forEach(function(id){titles.forEach(function(t){addSong(id,t,'object-pair');});});}else if(ids.length){ids.forEach(function(id){orphans.add(id);});}else if(titles.length){titles.forEach(function(t){addSong('',t,'object-title');});}}function scanTextBlob(text,label){text=deescape(text);var ids=ytIdsFromText(text);ids.forEach(function(id){orphans.add(id);});var titleRe=/\"(?:title|name|songTitle|videoTitle|trackTitle)\"\\s*:\\s*\"([^\"]{2,180})\"/ig,m;var titles=[];while((m=titleRe.exec(text))){var t=cleanText(deescape(m[1]));if(!badTitle(t))titles.push(t);}if(ids.length&&titles.length&&ids.length===titles.length){for(var i=0;i<ids.length;i++)addSong(ids[i],titles[i],label+'-parallel');}}function scanAny(root,label,maxDepth,maxObjects){var ws=typeof WeakSet!=='undefined'?new WeakSet():null,count=0;function rec(v,depth,pathKey){if(!v||depth>maxDepth||count>maxObjects)return;var type=typeof v;if(type==='string'){scanTextBlob(v,label+'-string');return;}if(type!=='object'&&type!=='function')return;if(v===window||v===document||v===location||v===navigator)return;if(ws){if(ws.has(v))return;try{ws.add(v);}catch(e){}}count++;try{extractSongObject(v,pathKey);}catch(e){}var keys=[];try{keys=Object.keys(v);}catch(e){return;}for(var i=0;i<keys.length;i++){var k=keys[i];if(/^(parent|ownerDocument|document|window|global|self|top|frames|children|childNodes|nextSibling|previousSibling)$/i.test(k))continue;if(depth>1&&/^(return|alternate|stateNode|_debugOwner|_debugSource|sibling|child)$/i.test(k))continue;try{rec(v[k],depth+1,k);}catch(e){}}}rec(root,0,'');}function titleNear(el){if(!el)return'';var direct=cleanText(el.getAttribute&&(el.getAttribute('title')||el.getAttribute('aria-label')||el.getAttribute('alt')));if(!badTitle(direct))return direct;var box=el.closest&&el.closest('li,article,section,tr,[role=\"listitem\"],[class*=\"song\" i],[class*=\"track\" i],[class*=\"queue\" i],[class*=\"playlist\" i],div');if(box){var foundLines=cleanLines(box.innerText||box.textContent||'').filter(function(line){return!badTitle(line);});if(foundLines.length)return foundLines[0];}return'';}function collectDom(){return runCaptureBatch('dom',function(){document.querySelectorAll('a[href],iframe[src],embed[src],img[src],source[src],[style*=\"ytimg\"],[style*=\"youtube\"]').forEach(function(el){var vals=[];['href','src','data-src','style','title','aria-label','alt'].forEach(function(a){var v=el.getAttribute&&el.getAttribute(a);if(v)vals.push(v);});var id='';vals.some(function(v){id=firstYtId(v);return!!id;});if(id)addSong(id,titleNear(el),'dom-media');});var selector=['li','tr','article','section','[role=\"listitem\"]','[class*=\"song\" i]','[class*=\"track\" i]','[class*=\"queue\" i]','[class*=\"playlist\" i]','[class*=\"video\" i]','[class*=\"request\" i]'].join(',');document.querySelectorAll(selector).forEach(function(el){var text=el.innerText||el.textContent||'',html=el.outerHTML||'';if(!text||text.length>800)return;var foundLines=cleanLines(text).filter(function(line){return!badTitle(line);});if(!foundLines.length)return;var id=firstYtId(html);var songish=!!id||/\\b(added by|duration|requested|queued|song|track|video|youtube|up next)\\b/i.test(text+' '+(el.className||''))||/\\b\\d{1,2}:\\d{2}\\b/.test(text);if(!songish)return;var child=false;Array.from(el.children||[]).forEach(function(ch){var ct=ch.innerText||ch.textContent||'';if(ct&&ct!==text&&ct.length<text.length&&(/\\b(added by|duration|requested|queued|song|track|video|youtube|up next)\\b/i.test(ct+' '+(ch.className||''))||firstYtId(ch.outerHTML||'')))child=true;});if(child)return;addSong(id,foundLines[0],'visible-row');});});}function collectFramework(){return runCaptureBatch('framework',function(){var roots=[];document.querySelectorAll('*').forEach(function(el){Object.keys(el).forEach(function(k){if(/^__react(Fiber|InternalInstance|Props)\\$/.test(k)||k==='__vue__'||k==='__svelte_meta')roots.push(el[k]);});});var picked=[];roots.forEach(function(r){if(r&&picked.indexOf(r)<0)picked.push(r);});picked.slice(0,80).forEach(function(r){scanAny(r,'framework',8,30000);});['__NEXT_DATA__','__NUXT__','__APOLLO_STATE__','__INITIAL_STATE__','__REDUX_STATE__','store','app','App','jukebox','Jukebox'].forEach(function(k){try{if(window[k])scanAny(window[k],'window-'+k,9,35000);}catch(e){}});try{document.querySelectorAll('script').forEach(function(s){var t=s.textContent||'';if(t&&/(youtube|videoId|ytid|song|playlist|queue)/i.test(t))scanTextBlob(t,'script');});}catch(e){}});}function collectStorage(){return runCaptureBatch('storage',function(){var stores=[];try{stores.push(localStorage);}catch(e){}try{stores.push(sessionStorage);}catch(e){}stores.forEach(function(store){if(!store)return;for(var i=0;i<store.length;i++){var key=store.key(i),value='';try{value=store.getItem(key)||'';}catch(e){continue;}if(!value)continue;try{scanAny(JSON.parse(value),'storage-json',9,40000);}catch(e){}scanTextBlob(value,'storage-text');}});});}function collectIndexedDB(done){var indexedCaptureBatch=beginCaptureBatch('indexeddb');var originalIndexedDone=done;var indexedCaptureFinished=false;done=function(){if(indexedCaptureFinished)return;indexedCaptureFinished=true;endCaptureBatch(indexedCaptureBatch);if(originalIndexedDone)originalIndexedDone();};if(!window.indexedDB||!indexedDB.databases){done&&done();return;}indexedDB.databases().then(function(dbs){var left=dbs.length;if(!left){done&&done();return;}dbs.forEach(function(info){if(!info||!info.name){if(--left===0&&done)done();return;}var req=indexedDB.open(info.name);req.onerror=function(){if(--left===0&&done)done();};req.onsuccess=function(){var db=req.result,stores=Array.from(db.objectStoreNames||[]),leftStores=stores.length;if(!leftStores){try{db.close();}catch(e){}if(--left===0&&done)done();return;}stores.forEach(function(sname){try{var tx=db.transaction(sname,'readonly'),st=tx.objectStore(sname),n=0,cur=st.openCursor();cur.onsuccess=function(ev){var c=ev.target.result;if(c&&n<400){n++;try{scanAny(c.value,'indexeddb',8,25000);}catch(e){}c.continue();}};tx.oncomplete=tx.onerror=tx.onabort=function(){if(--leftStores===0){try{db.close();}catch(e){}if(--left===0&&done)done();}};}catch(e){if(--leftStores===0){try{db.close();}catch(e2){}if(--left===0&&done)done();}}});};});},function(){done&&done();});}function scrollLikelyContainers(){try{window.scrollTo(0,document.documentElement.scrollHeight||document.body.scrollHeight);}catch(e){}document.querySelectorAll('main,section,div,ul,ol,[role=\"list\"],[class*=\"queue\" i],[class*=\"playlist\" i]').forEach(function(el){try{if(el.scrollHeight>el.clientHeight+60){var t=(el.innerText||el.textContent||'')+' '+(el.className||'');if(/queue|playlist|song|track|video|added|재생|목록/i.test(t))el.scrollTop=el.scrollHeight;}}catch(e){}});}function resolveKnownTitles(){Array.from(seen.entries()).forEach(function(ent){var key=ent[0],s=ent[1];if(!s.id&&s.title){var id=byTitle.get(normTitle(s.title));if(id){s.id=id;seen.delete(key);seen.set(id,s);}}});}var TECHNICAL_VIDEO_IDS=new Set(['_setElement','currentSong','currentHost','currentTime','localVolume','assetPrefix','displayName']);function compactSongKey(value){return cleanText(value).replace(/[^A-Za-z0-9_-]/g,'').toLowerCase();}function isResetMarker(title){title=cleanText(title);return /^(?:New Playlist|video player)$/i.test(title)||/^\\d+\\s+Songs?\\s*-\\s*\\d{1,2}:\\d{2}$/i.test(title);}function isTechnicalMarker(value){value=cleanText(value);return /^(?:delegateEvents|setElement|current|local|asset|display)[A-Za-z0-9_]*$/i.test(value);}function isTechnicalSongTitle(title){return /^(?:div|video player|jukebox\\.today|neonyonio)$/i.test(cleanText(title));}function isUsablePlaylistSong(song){if(!song)return false;var title=cleanText(song.title);var id=isYtId(song.id)?song.id:'';if(!title||!id)return false;if(TECHNICAL_VIDEO_IDS.has(id))return false;if(isTechnicalMarker(id))return false;if(isTechnicalSongTitle(title))return false;if(compactSongKey(title)===id.toLowerCase())return false;return true;}function isPlaylistFooter(song,pendingCount){if(!song||song.id||pendingCount<1)return false;var title=cleanText(song.title);if(!title||title.length>80)return false;if(isResetMarker(title))return false;if(isTechnicalMarker(title))return false;if(badTitle(title))return false;return true;}function getOrCreatePlaylistGroup(name){name=cleanText(name);var key=normTitle(name);var group=playlistGroupMap.get(key);if(!group){group={name:name,songs:[],songIds:new Set()};playlistGroupMap.set(key,group);playlistGroups.push(group);}return group;}function mergePlaylistSongs(name,pendingSongs){var group=getOrCreatePlaylistGroup(name);pendingSongs.forEach(function(song){/* 같은 플레이리스트 안에서만 영상 ID 중복을 제거한다. */if(group.songIds.has(song.id))return;group.songIds.add(song.id);group.songs.push({title:song.title,id:song.id});});}function processEntrySequence(entries){var pendingSongs=[];entries.forEach(function(song){if(!song)return;var title=cleanText(song.title);var id=isYtId(song.id)?song.id:'';if(!id){if(isResetMarker(title)){pendingSongs=[];return;}if(isPlaylistFooter({id:'',title:title},pendingSongs.length)){mergePlaylistSongs(title,pendingSongs);pendingSongs=[];}return;}if(!isUsablePlaylistSong({id:id,title:title}))return;pendingSongs.push({title:title,id:id});});}function processCapturedBatch(entries){var compact=[];var lastKey='';entries.forEach(function(entry){var title=cleanText(entry.title);var id=isYtId(entry.id)?entry.id:'';if(!title&&!id)return;var key=id+'\\x1f'+normTitle(title);/* 한 소스 안에서 연속으로 반복된 동일 방출만 압축한다. */if(key===lastKey)return;lastKey=key;compact.push({id:id,title:title});});if(!compact.length)return;var fingerprint=batchFingerprint(compact);if(processedBatchFingerprints.has(fingerprint))return;processedBatchFingerprints.add(fingerprint);processEntrySequence(compact);}function classifyPlaylists(){resolveKnownTitles();/* 기존 v3의 전역 결과도 안전망으로 병합한다. */processEntrySequence(Array.from(seen.values()));var groups=playlistGroups.filter(function(group){return group.songs.length>0;});var songCount=groups.reduce(function(total,group){return total+group.songs.length;},0);var text=groups.map(function(group){var songLines=group.songs.map(function(song){return song.title+' https://youtu.be/'+song.id;});return '['+group.name+']\\n'+songLines.join('\\n');}).join('\\n\\n');return {groups:groups,songCount:songCount,text:text};}function outputText(){return classifyPlaylists().text;}function copyText(text){if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(text);area.value=text;area.focus();area.select();var ok=false;try{ok=document.execCommand('copy');}catch(e){}return ok?Promise.resolve():Promise.reject(new Error('copy failed'));}function buttonFeedback(button,message,success){var defaultText=button.getAttribute('data-default-text')||button.textContent,defaultBg=button.getAttribute('data-default-bg')||button.style.background;button.setAttribute('data-default-text',defaultText);button.setAttribute('data-default-bg',defaultBg);if(button.__feedbackTimer)clearTimeout(button.__feedbackTimer);button.textContent=message;button.style.background=success?'#15803d':'#b91c1c';button.disabled=true;button.style.cursor='default';button.__feedbackTimer=setTimeout(function(){button.textContent=button.getAttribute('data-default-text')||defaultText;button.style.background=button.getAttribute('data-default-bg')||defaultBg;button.disabled=false;button.style.cursor='pointer';},1700);}function txtFileName(){var d=new Date(),pad=function(n){return String(n).padStart(2,'0');};return 'jukebox_playlists_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.txt';}function saveTextFile(text){var content='\\ufeff'+String(text||'').replace(/\\r?\\n/g,'\\r\\n'),blob=new Blob([content],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=txtFileName();a.style.display='none';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);try{a.remove();}catch(e){if(a.parentNode)a.parentNode.removeChild(a);}},500);}var panel=document.createElement('div');panel.style.cssText=['position:fixed','left:16px','top:16px','right:auto','bottom:auto','z-index:2147483647','width:min(410px,calc(100vw - 32px))','max-height:72vh','overflow:auto','box-sizing:border-box','background:#181818','color:#f4f4f4','border:1px solid #444','border-radius:10px','box-shadow:0 18px 48px rgba(0,0,0,.38)','font:13px/1.45 '+FONT].join(';');var titleBar=document.createElement('div');titleBar.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #333;cursor:move;user-select:none';var title=document.createElement('div');title.textContent='TRPG BGM Jukebox 재생목록 분류 v3.2';title.style.cssText='font-weight:700;flex:1';var foldButton=document.createElement('button');foldButton.type='button';foldButton.textContent='접기';foldButton.style.cssText='padding:4px 8px;border:1px solid #555;border-radius:6px;background:#242424;color:#fff;cursor:pointer;font-size:12px';titleBar.append(title,foldButton);var body=document.createElement('div');body.style.cssText='padding:12px';var status=document.createElement('div');status.textContent='전체 데이터를 읽고 있습니다. 같은 곡도 다른 재생목록이면 각각 유지합니다.';status.style.cssText='color:#d8d8d8;margin-bottom:8px';var area=document.createElement('textarea');area.readOnly=true;area.style.cssText=['width:100%','height:220px','box-sizing:border-box','resize:vertical','background:#101010','color:#f6f6f6','border:1px solid #555','border-radius:8px','padding:8px','font:12px/1.45 Consolas,monospace'].join(';');var buttonRow=document.createElement('div');buttonRow.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';var rescanButton=document.createElement('button');rescanButton.type='button';rescanButton.textContent='다시 읽기';rescanButton.style.cssText='padding:8px 10px;border:1px solid #555;border-radius:8px;background:#242424;color:#fff;cursor:pointer';var copyButton=document.createElement('button');copyButton.type='button';copyButton.textContent='복사';copyButton.style.cssText='flex:1;padding:8px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer';var saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='TXT 저장';saveButton.style.cssText='padding:8px 10px;border:1px solid #555;border-radius:8px;background:#242424;color:#fff;font-weight:700;cursor:pointer';var closeButton=document.createElement('button');closeButton.type='button';closeButton.textContent='닫기';closeButton.style.cssText='padding:8px 12px;border:1px solid #555;border-radius:8px;background:#242424;color:#fff;cursor:pointer';buttonRow.append(rescanButton,copyButton,saveButton,closeButton);body.append(status,area,buttonRow);panel.append(titleBar,body);document.body.append(panel);var collapsed=false;foldButton.onclick=function(e){e.stopPropagation();collapsed=!collapsed;body.style.display=collapsed?'none':'block';foldButton.textContent=collapsed?'펼치기':'접기';};(function(){var dragging=false,dx=0,dy=0;titleBar.addEventListener('mousedown',function(e){if(e.target===foldButton)return;dragging=true;var r=panel.getBoundingClientRect();dx=e.clientX-r.left;dy=e.clientY-r.top;e.preventDefault();});document.addEventListener('mousemove',function(e){if(!dragging)return;panel.style.left=Math.max(4,Math.min(innerWidth-80,e.clientX-dx))+'px';panel.style.top=Math.max(4,Math.min(innerHeight-40,e.clientY-dy))+'px';panel.style.right='auto';panel.style.bottom='auto';});document.addEventListener('mouseup',function(){dragging=false;});})();function renderResult(done){var result=classifyPlaylists();area.value=result.text;status.textContent=result.groups.length+'개 재생목록 / '+result.songCount+'곡으로 분류했습니다. 플레이리스트 간 중복은 유지하고, 같은 플레이리스트 안의 중복만 제거했습니다.'+(orphans.size?' 숨은 ID 후보 '+orphans.size+'개를 확인했습니다.':'');if(done)done();}function refreshLight(done){collectDom();renderResult(done);}function refreshDeep(done){collectDom();collectFramework();collectStorage();collectIndexedDB(function(){renderResult(done);});}function finish(){refreshDeep(function(){var result=classifyPlaylists();if(!result.text){status.textContent='분류할 재생목록을 찾지 못했습니다. Jukebox의 재생목록 정보가 모두 로드되었는지 확인해 주세요.';return;}copyText(result.text).then(function(){status.textContent=result.groups.length+'개 재생목록, '+result.songCount+'곡을 복사했습니다.';},function(){area.focus();area.select();status.textContent=result.groups.length+'개 재생목록, '+result.songCount+'곡을 분류했습니다. 자동 복사가 막히면 아래 내용을 직접 복사해 주세요.';});});}function tick(){var runner=(round===0||round===8)?refreshDeep:refreshLight;runner(function(){if(seen.size===lastCount)stableCount+=1;else stableCount=0;lastCount=seen.size;round+=1;if(stableCount>=4||round>=maxRounds){finish();return;}scrollLikelyContainers();setTimeout(tick,650);});}rescanButton.addEventListener('click',function(){stableCount=0;round=0;refreshDeep(scrollLikelyContainers);});copyButton.addEventListener('click',function(){var result=classifyPlaylists();if(!result.text){status.textContent='아직 분류된 재생목록이 없습니다. 다시 읽기를 눌러 주세요.';buttonFeedback(copyButton,'복사 실패',false);return;}copyText(result.text).then(function(){status.textContent='✓ '+result.groups.length+'개 재생목록, '+result.songCount+'곡을 클립보드에 복사했습니다.';buttonFeedback(copyButton,'복사됨 ✓',true);},function(){area.focus();area.select();status.textContent='복사를 완료하지 못했습니다. 아래 내용을 직접 복사해 주세요.';buttonFeedback(copyButton,'복사 실패',false);});});saveButton.addEventListener('click',function(){var result=classifyPlaylists();if(!result.text){status.textContent='아직 저장할 재생목록이 없습니다. 다시 읽기를 눌러 주세요.';buttonFeedback(saveButton,'저장 실패',false);return;}try{saveTextFile(result.text);status.textContent='✓ '+result.groups.length+'개 재생목록, '+result.songCount+'곡을 TXT로 저장했습니다.';buttonFeedback(saveButton,'저장됨 ✓',true);}catch(e){status.textContent='TXT 저장에 실패했습니다.';buttonFeedback(saveButton,'저장 실패',false);}});closeButton.addEventListener('click',function(){window.__trpgJukeboxHelperActive=false;try{panel.remove();}catch(e){if(panel.parentNode)panel.parentNode.removeChild(panel);}});tick();})();";
 
 function youtubePlaylistHelperSource() {
   if (window.__trpgPlaylistHelperActive) {
@@ -14427,8 +15104,32 @@ function youtubePlaylistHelperSource() {
   tick();
 }
 
+function compactBookmarkletFunctionSource(fn) {
+  return fn.toString().replace(/\s*\n\s*/g, " ");
+}
+
 function buildYoutubePlaylistBookmarklet() {
-  return `javascript:(${youtubePlaylistHelperSource.toString()})();`;
+  return `javascript:(${compactBookmarkletFunctionSource(youtubePlaylistHelperSource)})();`;
+}
+
+function buildUnifiedBgmPlaylistBookmarklet() {
+  const youtubeCode = `(${compactBookmarkletFunctionSource(youtubePlaylistHelperSource)})();`;
+  const jukeboxCode = JUKEBOX_PLAYLIST_BOOKMARKLET.replace(/^javascript:/i, "");
+  return `javascript:(function(){var h=String(location.hostname||"").toLowerCase();if(h==="youtu.be"||h==="www.youtube.com"||h.endsWith(".youtube.com")){${youtubeCode}return;}if(h==="jukebox.today"||h.endsWith(".jukebox.today")){${jukeboxCode}return;}alert("이 북마크릿은 YouTube 재생목록 또는 Jukebox.today에서 실행해 주세요.");})();`;
+}
+
+async function copyUnifiedBgmPlaylistBookmarklet(event) {
+  const button = event?.currentTarget || el("playlistHelperBtn");
+  const code = buildUnifiedBgmPlaylistBookmarklet();
+  const copied = await copyTextRobust(code);
+  if (copied) {
+    flashButtonText(button, "✓ 북마크릿 복사 완료");
+    setStatus("BGM 목록 북마크릿을 복사했습니다. 같은 북마크를 YouTube 재생목록과 Jukebox.today에서 사용할 수 있습니다.");
+    return;
+  }
+  downloadText("trpg_bgm_playlist_bookmarklet.txt", code, "text/plain;charset=utf-8");
+  flashButtonText(button, "복사 실패 · TXT 저장", "is-copy-error", 2800);
+  setStatus("클립보드 복사가 막혀 통합 BGM 북마크릿 TXT를 저장했습니다. 파일 내용을 북마크 URL 칸에 붙여넣어 주세요.");
 }
 
 async function copyPlaylistHelperBookmarklet(event) {
@@ -14453,7 +15154,7 @@ async function copyJukeboxPlaylistHelperBookmarklet(event) {
     setStatus("Jukebox 목록 북마크릿을 복사했습니다. 새 북마크 등록 창의 URL 칸에 붙여넣고 Jukebox.today 룸에서 실행하세요.");
     return;
   }
-  downloadText("jukebox_playlist_grouped_v3_1_bookmarklet.txt", JUKEBOX_PLAYLIST_BOOKMARKLET, "text/plain;charset=utf-8");
+  downloadText("jukebox_playlist_grouped_v3_2_bookmarklet.txt", JUKEBOX_PLAYLIST_BOOKMARKLET, "text/plain;charset=utf-8");
   flashButtonText(button, "복사 실패 · TXT 저장", "is-copy-error", 2800);
   setStatus("클립보드 복사가 막혀 Jukebox 북마크릿 TXT를 저장했습니다. 파일 내용을 새 북마크 등록 창의 URL 칸에 붙여넣어 주세요.");
 }
@@ -14585,10 +15286,15 @@ async function analyze() {
         .concat(otherRows);
     }
     state.title = orderResult.title;
-    const jsonRows = state.jsonText ? parseImageJson(state.jsonText) : 0;
+    const jsonRows = state.jsonText ? parseImageJson(state.jsonText) : (clearImageMatchState({ clearExpressions: true }), 0);
+    const savedExpressionRows = mergeSavedExpressionLibrary(state.importedConverterSettings?.expressionLibrary);
+    const importedExpressionRows = mergeExpressionLibraryFromRows(combinedRows);
     state.messages = applyMatches(combinedRows);
+    captureAutoPortraits();
+    captureOriginalTexts();
     state.hasOtherMessages = state.messages.some(message => normalizedTab(message?.tab || "main") === "other");
     rebuildMessageIdentityIndex(state.messages);
+    applyManualMessageEdits();
     rebuildSessionPageRanges();
     const importedBgmRestore = reconcileImportedBgmAfterAnalysis(state.importedConverterSettings);
     state.page = 1;
@@ -14603,21 +15309,24 @@ async function analyze() {
       jsonRows,
       otherRows: otherRows.length,
       portraitMatches,
+      savedExpressionRows,
+      importedExpressionRows,
       matchDetails: { ...state.stats }
     };
     if (jsonRows && !portraitMatches) {
       setStatus(`${combinedRows.length.toLocaleString()}개 메시지와 ${jsonRows.toLocaleString()}개 이미지 행을 읽었지만 포트레이트가 매칭되지 않았습니다. 탭·캐릭터명·대사 형식을 확인해 주세요.`);
     } else {
-      const detail = jsonRows
-        ? ` ID ${(state.stats.messageId || 0).toLocaleString()} · 인덱스 ${(state.stats.index || 0).toLocaleString()} · 고유대사 ${state.stats.exact.toLocaleString()} · 동일표정 ${(state.stats.shared || 0).toLocaleString()} · 문맥 ${(state.stats.context || 0).toLocaleString()} · 대표표정 ${state.stats.fallback.toLocaleString()}`
-        : "";
       const bgmNote = importedBgmRestore.restored
-        ? ` 기존 HTML의 BGM ${importedBgmRestore.restored.toLocaleString()}개를 복구했습니다.${importedBgmRestore.unresolved ? ` 위치를 찾지 못한 항목 ${importedBgmRestore.unresolved.toLocaleString()}개.` : ""}`
+        ? `BGM ${importedBgmRestore.restored.toLocaleString()}개 복구${importedBgmRestore.unresolved ? ` · 미해결 ${importedBgmRestore.unresolved.toLocaleString()}개` : ""}`
         : "";
-      setStatus(`${combinedRows.length.toLocaleString()}개 메시지${otherNote}와 ${jsonRows.toLocaleString()}개 이미지 행을 분석했습니다.${jsonRows ? ` 포트레이트 ${portraitMatches.toLocaleString()}개 적용. (${detail.trim()})` : ""}${bgmNote}`);
+      updateAnalysisSummaryUi(bgmNote);
     }
     updateFileUploadSummary("analyzed");
     if (el("fileUploadDetails")) el("fileUploadDetails").open = false;
+    if (window.__trpgOpenSidebarSection) {
+      const preferredSection = appStorage()?.getItem("trpg-log-converter:sidebar-section");
+      window.__trpgOpenSidebarSection(["section-style", "section-filter", "section-bgm", "section-export"].includes(preferredSection) ? preferredSection : "section-style");
+    }
     updateWorkflowUi(true);
     offerWorkDraftRecovery();
     updateFilterAndExportSummary();
@@ -14632,6 +15341,7 @@ orderFile.addEventListener("change", async () => {
   state.inlineImageCache.clear();
   state.lastCompactStats = null;
   state.lastAnalysis = null;
+  clearImageMatchState({ clearExpressions: true });
   state.messages = [];
   state.sessionPageRanges = [];
   state.collectedSequenceRows = [];
@@ -14644,6 +15354,15 @@ orderFile.addEventListener("change", async () => {
   state.selectedChars = new Set();
   state.avatarHiddenTabs = new Set();
   state.manualDaySplits = [];
+  state.manualPortraitOverrides = new Map();
+  state.autoPortraits = new Map();
+  state.manualTextOverrides = new Map();
+  state.originalTexts = new Map();
+  state.portraitReviewQueue = [];
+  state.messageEditUid = "";
+  state.messageEditPortraitDraft = "";
+  state.messageEditPortraitTouched = false;
+  state.messageEditPortraitResetRequested = false;
   state.bgmTriggerByUid = new Map();
   state.importedConverterSettings = null;
   state.lastImportedBgmRestore = null;
@@ -14732,11 +15451,63 @@ document.addEventListener("keydown", event => {
   }
 });
 el("themeToggleBtn")?.addEventListener("click", toggleAppTheme);
+el("portraitReviewBtn")?.addEventListener("click", openPortraitReview);
+el("analysisDiagBtn")?.addEventListener("click", () => {
+  const box = el("analysisDiagnostics");
+  if (!box) return;
+  box.hidden = !box.hidden;
+  el("analysisDiagBtn").textContent = box.hidden ? "진단 보기" : "진단 닫기";
+  el("analysisDiagBtn").setAttribute("aria-expanded", String(!box.hidden));
+});
+el("portraitReviewPrev")?.addEventListener("click", () => { state.portraitReviewIndex -= 1; renderPortraitReview(); });
+el("portraitReviewNext")?.addEventListener("click", () => { state.portraitReviewIndex += 1; renderPortraitReview(); });
+el("portraitReviewReset")?.addEventListener("click", () => {
+  const uid = state.portraitReviewQueue?.[state.portraitReviewIndex];
+  if (!uid) return;
+  state.manualPortraitOverrides.delete(uid);
+  applyManualMessageEdits();
+  renderPreview({ preserveScroll: true });
+  updateAnalysisSummaryUi();
+  scheduleWorkDraftSave();
+  renderPortraitReview();
+});
+el("portraitReviewAccept")?.addEventListener("click", () => {
+  const uid = state.portraitReviewQueue?.[state.portraitReviewIndex];
+  const message = messageByUid(uid);
+  if (!message) return;
+  const current = String(message.imgUrl || state.autoPortraits.get(uid)?.imgUrl || "");
+  if (!current) return;
+  state.manualPortraitOverrides.set(uid, current);
+  applyManualMessageEdits();
+  renderPreview({ preserveScroll: true });
+  updateAnalysisSummaryUi();
+  scheduleWorkDraftSave();
+  renderPortraitReview();
+});
+el("portraitReviewEditMessage")?.addEventListener("click", () => {
+  const uid = state.portraitReviewQueue?.[state.portraitReviewIndex];
+  if (uid) openMessageEditor({ uid });
+});
+el("messageEditResetText")?.addEventListener("click", () => {
+  const uid = state.messageEditUid;
+  if (uid) el("messageEditText").value = String(state.originalTexts.get(uid) ?? "");
+});
+el("messageEditResetPortrait")?.addEventListener("click", () => {
+  const message = messageByUid(state.messageEditUid);
+  if (!message) return;
+  state.messageEditPortraitDraft = String(state.autoPortraits.get(message.uid)?.imgUrl || "");
+  state.messageEditPortraitTouched = true;
+  state.messageEditPortraitResetRequested = true;
+  renderMessageEditorPortraitChoices(message);
+});
+el("messageEditCancel")?.addEventListener("click", () => closeAppDialog("messageEditDialog"));
+el("messageEditSave")?.addEventListener("click", saveMessageEditor);
 window.addEventListener("storage", event => {
   if (event.key === THEME_STORAGE_KEY && event.newValue) applyAppTheme(event.newValue);
 });
 applyAppTheme(loadAppTheme());
 applyAppVersion();
+setupCollapsibleSidebarSections();
 loadLastPreferences();
 applyStyleControls();
 rebuildBgmTriggerMap();
@@ -14749,10 +15520,27 @@ setupStickyExportObserver();
 const refreshStickyExportObserver = debounce(setupStickyExportObserver, 180);
 window.addEventListener("resize", refreshStickyExportObserver);
 
+function acknowledgeBookmarkletUpdateNotice() {
+  try { window.localStorage.setItem(BOOKMARKLET_NOTICE_STORAGE_KEY, BOOKMARKLET_RELEASE); } catch (error) {}
+  const notice = el("bookmarkletUpdateNotice");
+  if (notice) notice.hidden = true;
+}
+
+function initBookmarkletUpdateNotice() {
+  const notice = el("bookmarkletUpdateNotice");
+  if (!notice || APP_VERSION !== BOOKMARKLET_NOTICE_APP_VERSION) return;
+  let acknowledged = false;
+  try { acknowledged = window.localStorage.getItem(BOOKMARKLET_NOTICE_STORAGE_KEY) === BOOKMARKLET_RELEASE; } catch (error) {}
+  notice.hidden = acknowledged;
+  el("bookmarkletUpdateDismiss")?.addEventListener("click", acknowledgeBookmarkletUpdateNotice);
+}
+
 el("analyzeBtn").addEventListener("click", analyze);
 document.querySelectorAll("[data-copy-helper-bookmarklet]").forEach(button => button.addEventListener("click", copyHelperBookmarklet));
+document.querySelectorAll("[data-copy-bgm-playlist-bookmarklet]").forEach(button => button.addEventListener("click", copyUnifiedBgmPlaylistBookmarklet));
 document.querySelectorAll("[data-copy-youtube-playlist-bookmarklet]").forEach(button => button.addEventListener("click", copyPlaylistHelperBookmarklet));
 document.querySelectorAll("[data-copy-jukebox-playlist-bookmarklet]").forEach(button => button.addEventListener("click", copyJukeboxPlaylistHelperBookmarklet));
+initBookmarkletUpdateNotice();
 el("fontSize").addEventListener("input", updateStyleOnly);
 el("lineHeight").addEventListener("input", updateStyleOnly);
 el("avatarSize").addEventListener("input", updateStyleOnly);
@@ -14866,7 +15654,7 @@ el("restoreDraftBtn")?.addEventListener("click", () => {
   hideDraftRecovery();
   if (restored) {
     saveWorkDraftNow();
-    setStatus("이전 편집 작업을 복구했습니다. BGM·분할점·필터 상태를 확인해 주세요.");
+    updateAnalysisSummaryUi("이전 편집 작업을 복구했습니다.");
   }
 });
 
