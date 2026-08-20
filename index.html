@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.00">
+<meta name="trpg-app-version" content="7.01">
+<!-- v7.01: require an actual resolved result for dice highlighting; remove the repeated SYSTEM text badge. -->
 <!-- v7.00: keep grouped rows visually continuous in light mode and compact grouped spacing on mobile. -->
 <!-- v6.99: decouple side-OTHER export from session navigator state; make compact/static export grouping CSS match preview. -->
 <!-- v6.98: preview device modes, per-tab accent/labels, special log highlighting, narrator speakers. -->
@@ -4855,9 +4856,11 @@ function isNarratorMessage(message) {
 
 function looksLikeDiceMessage(message) {
   const text = String(message?.text || "");
-  return /(?:^|\s)\d+DX(?:\d+)?\b/i.test(text)
-    || /(?:^|\s)CC(?:<=|>=|<|>|＜|＞|≦|≧)/i.test(text)
-    || /(?:^|\s)\d+D\d+\s*(?:<=|>=|<|>|＜|＞|≦|≧)/i.test(text);
+  const hasDiceCommand = /(?:^|[\s([{])(?:(?:\d+(?:[+\-*/]\d+)*)|\([^\r\n)]+\))DX\d*\b/i.test(text)
+    || /(?:^|[\s([{])CC(?:<=|>=|<|>|＜|＞|≦|≧)\s*\d+/i.test(text)
+    || /(?:^|[\s([{])\d+D\d+(?:\s*[+\-*/]\s*\d+)*(?:\s*(?:<=|>=|<|>|＜|＞|≦|≧)\s*\d+)?\b/i.test(text);
+  if (!hasDiceCommand) return false;
+  return /(?:＞|(?:^|\s)>\s)(?=\s*(?:[-+]?\d+(?:\[[^\]\r\n]*\])?|대?성공|대?실패|성공|실패|critical|fumble|success|failure|成功|失敗))/i.test(text);
 }
 
 function specialMessageKind(message) {
@@ -4871,7 +4874,6 @@ function specialMessageKind(message) {
 function specialBadgeHtml(kind) {
   if (kind === "info") return '<span class="special-badge">INFO</span>';
   if (kind === "dice") return '<span class="special-badge">DICE</span>';
-  if (kind === "system") return '<span class="special-badge">SYSTEM</span>';
   return "";
 }
 
@@ -12468,9 +12470,14 @@ function compactExportRuntime(root) {
       tabStyleMap.set(normalizeTabKey(entry[0]), { color: String(entry[1] || "#8fc7ff"), enabled: !!entry[2], showLabel: !!entry[3] });
     });
     const tabStyleForKey = key => tabStyleMap.get(normalizeTabKey(key)) || { color: "#8fc7ff", enabled: false, showLabel: !["main", "other"].includes(normalizeTabKey(key)) };
-    const looksLikeDice = text => /(?:^|\s)\d+DX(?:\d+)?\b/i.test(String(text || ""))
-      || /(?:^|\s)CC(?:<=|>=|<|>|＜|＞|≦|≧)/i.test(String(text || ""))
-      || /(?:^|\s)\d+D\d+\s*(?:<=|>=|<|>|＜|＞|≦|≧)/i.test(String(text || ""));
+    const looksLikeDice = value => {
+      const text = String(value || "");
+      const hasDiceCommand = /(?:^|[\s([{])(?:(?:\d+(?:[+\-*/]\d+)*)|\([^\r\n)]+\))DX\d*\b/i.test(text)
+        || /(?:^|[\s([{])CC(?:<=|>=|<|>|＜|＞|≦|≧)\s*\d+/i.test(text)
+        || /(?:^|[\s([{])\d+D\d+(?:\s*[+\-*/]\s*\d+)*(?:\s*(?:<=|>=|<|>|＜|＞|≦|≧)\s*\d+)?\b/i.test(text);
+      if (!hasDiceCommand) return false;
+      return /(?:＞|(?:^|\s)>\s)(?=\s*(?:[-+]?\d+(?:\[[^\]\r\n]*\])?|대?성공|대?실패|성공|실패|critical|fumble|success|failure|成功|失敗))/i.test(text);
+    };
     const specialKindFor = (name, lowerTab, text) => {
       if (!specialHighlight) return "";
       if (String(name || "").toLowerCase() === "system") return "system";
@@ -12487,7 +12494,7 @@ function compactExportRuntime(root) {
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     })[char]);
     const withBreaks = value => esc(value).replace(/\n/g, "<br>");
-    const specialBadge = kind => kind === "info" ? '<span class="special-badge">INFO</span>' : kind === "dice" ? '<span class="special-badge">DICE</span>' : kind === "system" ? '<span class="special-badge">SYSTEM</span>' : "";
+    const specialBadge = kind => kind === "info" ? '<span class="special-badge">INFO</span>' : kind === "dice" ? '<span class="special-badge">DICE</span>' : "";
     const messageMarkup = (value, kind = "") => {
       const text = String(value || "");
       if (kind !== "dice") return withBreaks(text);
