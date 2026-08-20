@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="6.97">
+<meta name="trpg-app-version" content="6.99">
+<!-- v6.99: decouple side-OTHER export from session navigator state; make compact/static export grouping CSS match preview. -->
+<!-- v6.98: preview device modes, per-tab accent/labels, special log highlighting, narrator speakers. -->
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -582,6 +584,66 @@ label { color: var(--muted); font-size: 13px; }
   }
 }
 
+/* v6.98 — preview device switch, tab style controls, narrator/special rows */
+.preview-device-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(255,255,255,.025);
+}
+.preview-device-toggle button {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+}
+.preview-device-toggle button.is-active { background: var(--control-hover); color: var(--text); }
+.tab-filter-item { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 6px; }
+.tab-filter-main { min-width: 0; display: flex; align-items: center; gap: 6px; }
+.tab-filter-main > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab-filter-style { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; font-size: 10px; color: var(--muted); }
+.tab-filter-style label { display: inline-flex; align-items: center; gap: 2px; cursor: pointer; white-space: nowrap; }
+.tab-filter-color { width: 24px; height: 22px; min-width: 24px; padding: 1px; border: 1px solid var(--line); border-radius: 5px; background: transparent; cursor: pointer; }
+.preview-shell[data-preview-device="mobile"] > .preview-layout,
+.preview-shell[data-preview-device="mobile"] > .ccfolia-wrap,
+.preview-shell[data-preview-device="mobile"] > .empty-state { width: 390px; max-width: 390px; margin-left: auto; margin-right: auto; }
+.preview-shell[data-preview-device="mobile"] > .preview-layout { grid-template-columns: minmax(0,1fr); height: auto; min-height: 620px; }
+.preview-shell[data-preview-device="mobile"] .preview-layout .ccfolia-wrap { width: 100%; min-width: 0; }
+.preview-shell[data-preview-device="mobile"] .preview-layout .other-wrap { width: 100%; max-width: 100%; min-width: 0; position: static; opacity: 1; visibility: visible; transform: none; pointer-events: auto; max-height: 260px; }
+.preview-shell[data-preview-device="mobile"] .log-row { gap: 10px; padding: 12px 10px; }
+.preview-shell[data-preview-device="mobile"] .avatar { width: min(var(--avatar-size),42px); height: min(var(--avatar-size),42px); flex-basis: min(var(--avatar-size),42px); }
+.preview-shell[data-preview-device="pc"] > .preview-layout,
+.preview-shell[data-preview-device="pc"] > .ccfolia-wrap,
+.preview-shell[data-preview-device="pc"] > .empty-state { width: 1100px; max-width: none; margin-left: auto; margin-right: auto; }
+.preview-shell[data-preview-device="pc"] > .preview-layout { grid-template-columns: minmax(0,1fr) 6cm; }
+.log-row.has-tab-color, .system-line.has-tab-color, .other-row.has-tab-color { box-shadow: inset 3px 0 0 var(--tab-accent, var(--accent)); }
+.tag.tab-label-chip { color: var(--tab-accent, var(--accent)); border: 1px solid color-mix(in srgb, var(--tab-accent, var(--accent)) 38%, transparent); border-radius: 999px; padding: 0 5px; }
+.special-badge { display: inline-flex; align-items: center; min-height: 18px; padding: 1px 6px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.72); background: rgba(255,255,255,.055); font-size: 9px; font-weight: 800; letter-spacing: .06em; }
+.log-row.is-info-highlight { background: rgba(90,177,255,.075); box-shadow: inset 3px 0 0 #67c5ff; }
+.log-row.is-dice-highlight { background: rgba(166,128,255,.075); box-shadow: inset 3px 0 0 #b59cff; }
+.system-line.is-special-highlight { padding-top: 11px; padding-bottom: 11px; background: rgba(255,255,255,.045); }
+.system-line.is-special-highlight .system-text { max-width: min(760px,90%); padding: 7px 11px; border: 1px solid rgba(255,255,255,.08); border-radius: 7px; background: rgba(0,0,0,.14); }
+.system-line .special-badge { margin-right: 7px; vertical-align: 1px; }
+.dice-final { display: inline; padding: 0 3px; border-radius: 4px; font-weight: 800; color: #e8dcff; background: rgba(181,156,255,.14); }
+.dice-final.is-success { color: #c8f5cf; background: rgba(95,196,112,.14); }
+.dice-final.is-failure { color: #ffc8c8; background: rgba(234,96,96,.14); }
+.narrator-line { position: relative; margin: 0; padding: 15px 18px; border-bottom: 1px solid rgba(255,255,255,.06); text-align: center; background: rgba(255,255,255,.018); }
+.narrator-text { max-width: 820px; margin: 0 auto; color: rgba(255,255,255,.82); font-size: var(--font-size); line-height: var(--line-height); font-style: italic; overflow-wrap: anywhere; }
+.narrator-line .tag { margin-right: 6px; }
+.narrator-line .row-actions { right: 6px; top: 5px; }
+html[data-theme="light"] .special-badge { color: rgba(15,23,42,.7); background: rgba(15,23,42,.04); border-color: rgba(15,23,42,.12); }
+html[data-theme="light"] .log-row.is-info-highlight { background: rgba(37,99,166,.065); }
+html[data-theme="light"] .log-row.is-dice-highlight { background: rgba(98,71,180,.06); }
+html[data-theme="light"] .system-line.is-special-highlight .system-text { background: rgba(15,23,42,.025); border-color: rgba(15,23,42,.1); }
+html[data-theme="light"] .narrator-line { background: rgba(15,23,42,.018); border-bottom-color: rgba(15,23,42,.08); }
+html[data-theme="light"] .narrator-text { color: rgba(15,23,42,.8); }
+
 @media (max-width: 420px) {
   .bgm-playlist-item {
     grid-template-columns: 92px minmax(0, 1fr);
@@ -1045,6 +1107,8 @@ label { color: var(--muted); font-size: 13px; }
 
 .log-row:hover .row-actions,
 .log-row:focus-within .row-actions,
+.narrator-line:hover .row-actions,
+.narrator-line:focus-within .row-actions,
 .system-line:hover .row-actions,
 .system-line:focus-within .row-actions,
 .other-row:hover .other-actions,
@@ -2661,7 +2725,12 @@ html[data-theme="light"] .message-edit-portrait-choice, html[data-theme="light"]
           <div class="check-row"><input id="showExpression" type="checkbox"><label for="showExpression">표정 번호 표시</label></div>
           <div class="check-row"><input id="hideEmpty" type="checkbox" checked><label for="hideEmpty">빈 대사 숨기기</label></div>
           <div class="check-row"><input id="hideSystem" type="checkbox"><label for="hideSystem">시스템 행 숨기기</label></div>
+          <div class="check-row"><input id="highlightSpecialRows" type="checkbox" checked><label for="highlightSpecialRows">판정·정보·시스템 로그 강조</label></div>
         </div>
+        <label>나레이터 화자
+          <textarea id="narratorNames" rows="2" placeholder="GM, KP, 진행자"></textarea>
+        </label>
+        <div class="status">쉼표나 줄바꿈으로 이름을 구분합니다. 지정한 화자는 인장·이름 대신 가운데 나레이션으로 표시합니다.</div>
         <div class="subsection-title"><h3>인장 숨길 탭</h3><span class="status">선택한 탭만 제외</span></div>
         <div id="avatarHiddenTabs" class="avatar-hidden-tabs" aria-live="polite">
           <span class="avatar-hidden-tabs-empty">로그 분석 후 탭을 선택할 수 있습니다.</span>
@@ -2675,6 +2744,7 @@ html[data-theme="light"] .message-edit-portrait-choice, html[data-theme="light"]
         <label>검색</label>
         <input id="searchBox" type="search" placeholder="이름이나 대사 검색">
         <div class="subsection-title"><h3>탭 <span id="tabFilterCount" class="section-count">0/0</span></h3><button id="toggleTabs" type="button">모두 해제</button></div>
+        <div class="status">각 탭의 색상 강조와 라벨 표시 여부도 여기서 정할 수 있습니다.</div>
         <div id="tabFilters" class="filter-list"></div>
         <div class="subsection-title"><h3>캐릭터 <span id="charFilterCount" class="section-count">0/0</span></h3><button id="toggleChars" type="button">모두 해제</button></div>
         <div id="charFilters" class="filter-list"></div>
@@ -2768,6 +2838,11 @@ html[data-theme="light"] .message-edit-portrait-choice, html[data-theme="light"]
         <button id="nextBtn" disabled>다음</button>
       </div>
       <div class="pager toolbar-actions">
+        <div class="preview-device-toggle" aria-label="미리보기 화면 폭">
+          <button type="button" class="is-active" data-preview-device="auto" aria-pressed="true">자동</button>
+          <button type="button" data-preview-device="pc" aria-pressed="false">PC</button>
+          <button type="button" data-preview-device="mobile" aria-pressed="false">모바일</button>
+        </div>
         <button id="resetFiltersBtn" disabled>필터 초기화</button>
         <button id="themeToggleBtn" class="soft-button theme-toggle" type="button" aria-pressed="false" title="라이트 모드로 전환">
           <span class="theme-toggle-icon" aria-hidden="true">☀</span><span class="theme-toggle-label">라이트</span>
@@ -2775,7 +2850,7 @@ html[data-theme="light"] .message-edit-portrait-choice, html[data-theme="light"]
         <button id="toolbarHelpBtn" class="soft-button" type="button" aria-label="도움말">?</button>
       </div>
     </div>
-    <section id="preview" class="preview-shell">
+    <section id="preview" class="preview-shell" data-preview-device="auto">
       <div class="empty-state enhanced-empty">
         <span class="empty-icon">LOG</span>
         <h2>로그 파일을 선택해 주세요</h2>
@@ -3036,6 +3111,8 @@ const state = {
   selectedTabs: new Set(),
   selectedChars: new Set(),
   avatarHiddenTabs: new Set(),
+  tabStyles: new Map(),
+  previewDevice: "auto",
   tabs: [],
   chars: [],
   page: 1,
@@ -3087,7 +3164,7 @@ const WORK_DRAFT_SCHEMA_VERSION = 1;
 const WORK_DRAFT_PREFIX = "trpg-log-converter:work-draft:";
 const PREFERENCE_FIELDS = [
   "fontSize", "lineHeight", "avatarSize", "pageSize",
-  "groupRows", "sideOther", "showExpression", "hideEmpty", "hideSystem",
+  "groupRows", "sideOther", "showExpression", "hideEmpty", "hideSystem", "highlightSpecialRows", "narratorNames",
   "bgmAutoplay", "bgmScenePages", "splitSize", "splitAsPages", "splitOtherAsPages",
   "inlineImages", "sessionNavigator", "notionStatic", "tistoryFallback", "inlineImageSize", "inlineImageQuality"
 ];
@@ -3388,6 +3465,8 @@ function workDraftPayload() {
     selectedTabs: [...state.selectedTabs],
     selectedChars: [...state.selectedChars],
     avatarHiddenTabs: [...state.avatarHiddenTabs],
+    tabStyles: [...state.tabStyles.entries()],
+    previewDevice: state.previewDevice,
     search: el("searchBox")?.value || "",
     page: state.page,
     exportFilteredOnly: !!el("exportFilteredOnly")?.checked,
@@ -3461,13 +3540,16 @@ function applyWorkDraft(draft) {
   state.selectedTabs = new Set((draft.selectedTabs || []).filter(value => validTabs.has(value)));
   state.selectedChars = new Set((draft.selectedChars || []).filter(value => validChars.has(value)));
   state.avatarHiddenTabs = new Set((draft.avatarHiddenTabs || []).map(normalizedTab).filter(value => state.tabs.some(tab => normalizedTab(tab) === value)));
+  state.tabStyles = normalizeTabStyleEntries(draft.tabStyles, state.tabs);
+  state.previewDevice = normalizePreviewDevice(draft.previewDevice || state.previewDevice);
+  applyPreviewDeviceMode();
   if (!state.selectedTabs.size && state.tabs.length) state.selectedTabs = new Set(state.tabs);
   if (!state.selectedChars.size && state.chars.length) state.selectedChars = new Set(state.chars);
   el("searchBox").value = String(draft.search || "");
   state.page = Math.max(1, Number(draft.page) || 1);
   applyStyleControls();
   rebuildBgmTriggerMap();
-  renderFilterList("tabFilters", state.tabs, state.selectedTabs, updateView);
+  renderTabFilterList();
   renderFilterList("charFilters", state.chars, state.selectedChars, updateView);
   renderAvatarHiddenTabList();
   el("clearSplitsBtn").disabled = !el("manualSplits").value.trim() && !el("manualOtherSplits").value.trim();
@@ -4623,6 +4705,9 @@ function applySavedConverterSettings(settings) {
   if (Array.isArray(settings.expressionLibrary)) {
     mergeSavedExpressionLibrary(settings.expressionLibrary);
   }
+  if (settings.tabStyles) state.tabStyles = normalizeTabStyleEntries(settings.tabStyles, state.tabs);
+  if (typeof settings.narratorNames === "string" && el("narratorNames")) el("narratorNames").value = settings.narratorNames;
+  if (typeof settings.highlightSpecialRows === "boolean" && el("highlightSpecialRows")) el("highlightSpecialRows").checked = settings.highlightSpecialRows;
   if (typeof settings.splitAsPages === "boolean") el("splitAsPages").checked = settings.splitAsPages;
   if (typeof settings.splitOtherAsPages === "boolean") el("splitOtherAsPages").checked = settings.splitOtherAsPages;
   if (typeof settings.sideOther === "boolean") el("sideOther").checked = settings.sideOther;
@@ -4637,6 +4722,7 @@ function applySavedConverterSettings(settings) {
   updateManualDaySplitUi();
   rebuildBgmTriggerMap();
   saveLastPreferences();
+  renderTabFilterList();
   return [...new Set(restored)];
 }
 
@@ -4654,6 +4740,140 @@ function normalizedTab(value) {
   if (/^(?:info|정보|情報)\d*$/.test(compact)) return "info";
   if (OTHER_TAB_PATTERN.test(compact)) return "other";
   return tab;
+}
+
+function normalizePreviewDevice(value) {
+  const next = String(value || "auto").toLowerCase();
+  return ["auto", "pc", "mobile"].includes(next) ? next : "auto";
+}
+
+function applyPreviewDeviceMode(value = state.previewDevice) {
+  state.previewDevice = normalizePreviewDevice(value);
+  const root = el("preview");
+  if (root) root.dataset.previewDevice = state.previewDevice;
+  document.querySelectorAll("[data-preview-device]").forEach(button => {
+    if (button === root) return;
+    const active = button.dataset.previewDevice === state.previewDevice;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
+function defaultTabAccent(value) {
+  const key = normalizedTab(value);
+  if (key === "info") return "#67c5ff";
+  if (key === "other") return "#b59cff";
+  if (key === "main") return "#8fc7ff";
+  let hash = 0;
+  for (const char of key) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) >>> 0;
+  const palette = ["#8fc7ff", "#9ed89e", "#e5b978", "#d7a2e8", "#82d4ca", "#e99aa8"];
+  return palette[hash % palette.length];
+}
+
+function defaultTabStyle(value) {
+  const key = normalizedTab(value);
+  return { color: defaultTabAccent(key), enabled: false, showLabel: key !== "main" && key !== "other" };
+}
+
+function colorInputHex(value, fallback = "#8fc7ff") {
+  const raw = String(value || "").trim();
+  const long = raw.match(/^#([0-9a-f]{6})$/i);
+  if (long) return `#${long[1].toLowerCase()}`;
+  const short = raw.match(/^#([0-9a-f]{3})$/i);
+  if (short) return `#${short[1].split("").map(char => char + char).join("").toLowerCase()}`;
+  const rgb = cssColorToRgb(raw);
+  return rgb ? `#${rgb.map(channel => channel.toString(16).padStart(2, "0")).join("")}` : fallback;
+}
+
+function normalizeTabStyleEntries(value, knownTabs = state.tabs) {
+  const result = new Map();
+  const entries = value instanceof Map ? [...value.entries()] : (Array.isArray(value) ? value : Object.entries(value || {}));
+  entries.forEach(entry => {
+    if (!Array.isArray(entry) || entry.length < 2) return;
+    const key = normalizedTab(entry[0]);
+    const raw = entry[1] && typeof entry[1] === "object" ? entry[1] : {};
+    const fallback = defaultTabStyle(key);
+    result.set(key, {
+      color: colorInputHex(raw.color, fallback.color),
+      enabled: !!raw.enabled,
+      showLabel: typeof raw.showLabel === "boolean" ? raw.showLabel : fallback.showLabel
+    });
+  });
+  (knownTabs || []).forEach(tab => {
+    const key = normalizedTab(tab);
+    if (!result.has(key)) result.set(key, defaultTabStyle(key));
+  });
+  return result;
+}
+
+function tabStyleFor(value) {
+  const key = normalizedTab(value);
+  if (!state.tabStyles.has(key)) state.tabStyles.set(key, defaultTabStyle(key));
+  return state.tabStyles.get(key);
+}
+
+function tabRowDecor(value) {
+  const style = tabStyleFor(value);
+  const color = safeCssColor(style.color) || defaultTabAccent(value);
+  return {
+    className: style.enabled ? " has-tab-color" : "",
+    style: `--tab-accent:${color}`,
+    showLabel: !!style.showLabel
+  };
+}
+
+function narratorNameSet() {
+  return new Set(String(el("narratorNames")?.value || "")
+    .split(/[\n,]+/)
+    .map(value => normalizedCharacterName(value))
+    .filter(Boolean));
+}
+
+function isNarratorMessage(message) {
+  if (!message || String(message.name || "").toLowerCase() === "system") return false;
+  const names = narratorNameSet();
+  return names.size > 0 && names.has(normalizedCharacterName(message.name));
+}
+
+function looksLikeDiceMessage(message) {
+  const text = String(message?.text || "");
+  return /(?:^|\s)\d+DX(?:\d+)?\b/i.test(text)
+    || /(?:^|\s)CC(?:<=|>=|<|>|＜|＞|≦|≧)/i.test(text)
+    || /(?:^|\s)\d+D\d+\s*(?:<=|>=|<|>|＜|＞|≦|≧)/i.test(text);
+}
+
+function specialMessageKind(message) {
+  if (!el("highlightSpecialRows")?.checked || !message) return "";
+  if (String(message.name || "").toLowerCase() === "system") return "system";
+  if (normalizedTab(message.tab || "main") === "info") return "info";
+  if (looksLikeDiceMessage(message)) return "dice";
+  return "";
+}
+
+function specialBadgeHtml(kind) {
+  if (kind === "info") return '<span class="special-badge">INFO</span>';
+  if (kind === "dice") return '<span class="special-badge">DICE</span>';
+  if (kind === "system") return '<span class="special-badge">SYSTEM</span>';
+  return "";
+}
+
+function messageTextMarkup(value, kind = "") {
+  const text = String(value || "");
+  if (kind !== "dice") return escapeHtml(text).replace(/\n/g, "<br>");
+  const full = text;
+  let splitAt = full.lastIndexOf("＞");
+  let delimiterLength = 1;
+  if (splitAt < 0) {
+    const match = [...full.matchAll(/\s>\s/g)].pop();
+    if (match) { splitAt = match.index + 1; delimiterLength = 1; }
+  }
+  if (splitAt < 0) return escapeHtml(full).replace(/\n/g, "<br>");
+  const head = full.slice(0, splitAt + delimiterLength);
+  const tail = full.slice(splitAt + delimiterLength);
+  let stateClass = "";
+  if (/(?:실패|失敗|failure|fumble)/i.test(tail)) stateClass = " is-failure";
+  else if (/(?:성공|成功|success|critical)/i.test(tail)) stateClass = " is-success";
+  return `${escapeHtml(head).replace(/\n/g, "<br>")}<span class="dice-final${stateClass}">${escapeHtml(tail).replace(/\n/g, "<br>")}</span>`;
 }
 
 function tabMessageKey(tab, name, text) {
@@ -5734,7 +5954,8 @@ function rebuildFilters() {
   state.chars = [...new Set(state.messages.map(m => m.name || "system"))].sort();
   state.selectedTabs = new Set(state.tabs);
   state.selectedChars = new Set(state.chars);
-  renderFilterList("tabFilters", state.tabs, state.selectedTabs, updateView);
+  state.tabStyles = normalizeTabStyleEntries(state.tabStyles, state.tabs);
+  renderTabFilterList();
   renderFilterList("charFilters", state.chars, state.selectedChars, updateView);
   renderAvatarHiddenTabList();
 }
@@ -5774,6 +5995,73 @@ function renderAvatarHiddenTabList() {
     });
     label.append(input, document.createTextNode(tabName));
     fragment.append(label);
+  });
+  root.append(fragment);
+}
+
+function renderTabFilterList() {
+  const root = el("tabFilters");
+  if (!root) return;
+  root.replaceChildren();
+  const fragment = document.createDocumentFragment();
+  state.tabs.forEach(item => {
+    const key = normalizedTab(item);
+    const style = tabStyleFor(key);
+    const row = document.createElement("div");
+    row.className = "filter-item tab-filter-item";
+
+    const main = document.createElement("label");
+    main.className = "tab-filter-main";
+    const visible = document.createElement("input");
+    visible.type = "checkbox";
+    visible.checked = state.selectedTabs.has(item);
+    visible.addEventListener("change", () => {
+      if (visible.checked) state.selectedTabs.add(item);
+      else state.selectedTabs.delete(item);
+      state.page = 1;
+      updateView();
+    });
+    const name = document.createElement("span");
+    name.textContent = item;
+    main.append(visible, name);
+
+    const tools = document.createElement("div");
+    tools.className = "tab-filter-style";
+    const color = document.createElement("input");
+    color.type = "color";
+    color.className = "tab-filter-color";
+    color.value = colorInputHex(style.color, defaultTabAccent(key));
+    color.title = `${item} 강조 색상`;
+    color.addEventListener("input", () => {
+      style.color = color.value;
+      style.enabled = true;
+      colorToggle.checked = true;
+      renderPreview({ preserveScroll: true });
+      scheduleWorkDraftSave();
+    });
+    const colorLabel = document.createElement("label");
+    const colorToggle = document.createElement("input");
+    colorToggle.type = "checkbox";
+    colorToggle.checked = !!style.enabled;
+    colorToggle.addEventListener("change", () => {
+      style.enabled = colorToggle.checked;
+      renderPreview({ preserveScroll: true });
+      scheduleWorkDraftSave();
+    });
+    colorLabel.append(colorToggle, document.createTextNode("색"));
+    const labelLabel = document.createElement("label");
+    const labelToggle = document.createElement("input");
+    labelToggle.type = "checkbox";
+    labelToggle.checked = !!style.showLabel;
+    labelToggle.addEventListener("change", () => {
+      style.showLabel = labelToggle.checked;
+      renderPreview({ preserveScroll: true });
+      scheduleWorkDraftSave();
+    });
+    labelLabel.append(labelToggle, document.createTextNode("라벨"));
+    tools.append(color, colorLabel, labelLabel);
+    row.append(main, tools);
+    fragment.append(row);
   });
   root.append(fragment);
 }
@@ -6651,7 +6939,7 @@ function jumpToBgmChat(identity) {
     filterChanged = true;
   }
   if (filterChanged) {
-    renderFilterList("tabFilters", state.tabs, state.selectedTabs, updateView);
+    renderTabFilterList();
     renderFilterList("charFilters", state.chars, state.selectedChars, updateView);
   }
 
@@ -6879,6 +7167,9 @@ function converterSettingsPayload() {
     portraitOverrides: [...state.manualPortraitOverrides.entries()],
     textOverrides: [...state.manualTextOverrides.entries()],
     expressionLibrary: savedExpressionLibraryPayload(),
+    tabStyles: [...state.tabStyles.entries()],
+    narratorNames: el("narratorNames")?.value || "",
+    highlightSpecialRows: !!el("highlightSpecialRows")?.checked,
     splitAsPages: el("splitAsPages").checked,
     splitOtherAsPages: el("splitOtherAsPages").checked,
     sideOther: el("sideOther").checked,
@@ -9441,8 +9732,11 @@ function rebuildVisiblePartitions(rows = state.visible) {
   return { nonOther, other };
 }
 
-function sideOtherEnabled() {
-  return el("sideOther").checked && state.hasOtherMessages;
+function sideOtherEnabled(rows = null) {
+  const hasOther = Array.isArray(rows)
+    ? rows.some(message => normalizedTab(message?.tab || "main") === "other")
+    : state.hasOtherMessages;
+  return !!el("sideOther")?.checked && hasOther;
 }
 
 function mainVisibleRows() {
@@ -9829,8 +10123,18 @@ function compactOtherText(value) {
 function renderOtherRow(message, interactive = false) {
   const bgmTrigger = bgmTriggerForMessage(message);
   const rowTag = interactive ? "article" : "div";
-  return `<${rowTag} role="article" class="other-row" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+  const tabDecor = tabRowDecor(message.tab || "other");
+  const narrator = isNarratorMessage(message);
+  const tabLabel = tabDecor.showLabel ? `<span class="tag tab-label-chip">${escapeHtml(message.tab || "other")}</span>` : "";
+  if (narrator) {
+    return `<${rowTag} role="article" class="other-row narrator-line${tabDecor.className}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+      ${interactive ? `<div class="other-actions${hasManualSplit(message.id, "other", message.uid) ? " has-split" : ""}${hasManualDaySplit(message) ? " has-day-split" : ""}${messageHasManualEdit(message) ? " has-edit" : ""}">${messageEditButton(message)}${splitButton(message, "other")}${daySplitButton(message)}${bgmButton(message)}</div>` : ""}
+      <div class="narrator-text">${tabLabel}${messageTextMarkup(compactOtherText(message.text))}${bgmTrigger ? ` ${bgmLink(bgmTrigger)}` : ""}</div>
+    </${rowTag}>`;
+  }
+  return `<${rowTag} role="article" class="other-row${tabDecor.className}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
     <strong class="other-name" style="${nameColorStyle(message.color)}">${escapeHtml(message.name)}</strong>
+    ${tabLabel}
     ${bgmLink(bgmTrigger)}
     ${interactive ? `<div class="other-actions${hasManualSplit(message.id, "other", message.uid) ? " has-split" : ""}${hasManualDaySplit(message) ? " has-day-split" : ""}${messageHasManualEdit(message) ? " has-edit" : ""}">${messageEditButton(message)}${splitButton(message, "other")}${daySplitButton(message)}${bgmButton(message)}</div>` : ""}
     <div class="other-text">${escapeHtml(compactOtherText(message.text)).replace(/\n/g, "<br>")}</div>
@@ -9846,6 +10150,7 @@ function groupingExpressionKey(message) {
 
 function canGroupConsecutiveRows(previous, message) {
   if (!el("groupRows").checked || !previous || !message) return false;
+  if (isNarratorMessage(previous) || isNarratorMessage(message) || specialMessageKind(previous) || specialMessageKind(message)) return false;
   const previousTab = normalizedTab(previous.tab || "main");
   const currentTab = normalizedTab(message.tab || "main");
   if (previousTab !== currentTab || !["main", "other"].includes(currentTab)) return false;
@@ -9856,11 +10161,22 @@ function canGroupConsecutiveRows(previous, message) {
 function renderRow(message, previous, next, interactive = false, imageAssetIds = null, groupTone = 0) {
   const tab = normalizedTab(message.tab || "main");
   const rowTag = interactive ? "article" : "div";
+  const tabDecor = tabRowDecor(message.tab || "main");
+  const specialKind = specialMessageKind(message);
+  const tabTag = tabDecor.showLabel ? `<span class="tag tab-label-chip">${escapeHtml(message.tab || "main")}</span>` : "";
   if ((message.name || "").toLowerCase() === "system") {
     const bgmTrigger = bgmTriggerForMessage(message);
-    return `<${rowTag} role="article" class="system-line" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
-      <div class="system-text">${escapeHtml(message.text).replace(/\n/g, "<br>")}${bgmTrigger ? `<br>${bgmLink(bgmTrigger)}` : ""}</div>
+    const highlighted = specialKind === "system";
+    return `<${rowTag} role="article" class="system-line${highlighted ? " is-special-highlight" : ""}${tabDecor.className}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+      <div class="system-text">${highlighted ? specialBadgeHtml("system") : ""}${messageTextMarkup(message.text)}${bgmTrigger ? `<br>${bgmLink(bgmTrigger)}` : ""}</div>
       ${interactive ? rowActionButtons(message, "main") : ""}
+    </${rowTag}>`;
+  }
+  const bgmTrigger = bgmTriggerForMessage(message);
+  if (isNarratorMessage(message)) {
+    return `<${rowTag} role="article" class="narrator-line${tabDecor.className}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+      ${interactive ? rowActionButtons(message, "main") : ""}
+      <div class="narrator-text">${tabTag}${messageTextMarkup(message.text)}${bgmTrigger ? `<br>${bgmLink(bgmTrigger)}` : ""}</div>
     </${rowTag}>`;
   }
   const isExtraTab = tab !== "main" && tab !== "other";
@@ -9868,31 +10184,30 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
   const hasContinuation = !isExtraTab && canGroupConsecutiveRows(message, next);
   const isSystem = !isExtraTab && (!message.imgUrl || message.name.toLowerCase() === "system");
   const label = !isExtraTab && el("showExpression").checked ? expressionLabel(message) : "";
-  const bgmTrigger = bgmTriggerForMessage(message);
-  const tabTag = tab === "main" ? "" : `<span class="tag">- ${escapeHtml(message.tab || "main")}</span>`;
   const avatarIsHidden = avatarHiddenForTab(tab);
   const avatarHtml = avatarIsHidden
     ? ""
     : (grouped ? `<div class="avatar avatar-spacer" aria-hidden="true"></div>` : renderAvatar(message, imageAssetIds));
-  const toneClass = isExtraTab || isSystem ? "" : (groupTone % 2 ? " group-tone-b" : " group-tone-a");
+  const toneClass = isExtraTab || isSystem || specialKind ? "" : (groupTone % 2 ? " group-tone-b" : " group-tone-a");
+  const specialClass = specialKind === "info" ? " is-info-highlight" : (specialKind === "dice" ? " is-dice-highlight" : "");
   const groupedLink = bgmLink(bgmTrigger);
   const contentHtml = grouped
-    ? `<div class="grouped-line"><div class="text">${escapeHtml(message.text).replace(/\n/g, "<br>")}</div>${groupedLink ? `<div class="grouped-line-tools">${groupedLink}</div>` : ""}</div>`
+    ? `<div class="grouped-line"><div class="text">${messageTextMarkup(message.text)}</div>${groupedLink ? `<div class="grouped-line-tools">${groupedLink}</div>` : ""}</div>`
     : `<div class="meta">
         <strong class="name" style="${nameColorStyle(message.color)}">${escapeHtml(message.name)}</strong>
         ${tabTag}
+        ${specialBadgeHtml(specialKind)}
         ${label ? `<span class="expr-tag">${escapeHtml(label)}</span>` : ""}
         ${interactive && messageHasManualEdit(message) ? `<span class="expr-tag preview-edit-tag">수정됨</span>` : ""}
         ${bgmLink(bgmTrigger)}
       </div>
-      <div class="text">${escapeHtml(message.text).replace(/\n/g, "<br>")}</div>`;
-  return `<${rowTag} role="article" class="log-row${avatarIsHidden ? " is-avatar-hidden" : ""}${isSystem ? " is-system" : ""}${isExtraTab ? " is-extra-tab" : ""}${grouped ? " is-continuation" : ""}${hasContinuation ? " has-continuation" : ""}${toneClass}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+      <div class="text">${messageTextMarkup(message.text, specialKind)}</div>`;
+  return `<${rowTag} role="article" class="log-row${avatarIsHidden ? " is-avatar-hidden" : ""}${isSystem ? " is-system" : ""}${isExtraTab ? " is-extra-tab" : ""}${grouped ? " is-continuation" : ""}${hasContinuation ? " has-continuation" : ""}${specialClass}${tabDecor.className}${toneClass}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
     ${interactive ? rowActionButtons(message, "main") : ""}
     ${avatarHtml}
     <div class="message">${contentHtml}</div>
   </${rowTag}>`;
 }
-
 
 const PREVIEW_VIRTUAL_SOURCE_THRESHOLD = 3000;
 const PREVIEW_VIRTUAL_DOM_THRESHOLD = 1400;
@@ -11951,6 +12266,9 @@ function decodeSparseTimeline(values, dateLabelValues = []) {
 }
 
 function createCompactLogPayload(rows, useSide, includeSessionNavigator = sessionNavigatorExportEnabled()) {
+  // OTHER 패널 여부는 일차 목차 데이터와 완전히 독립적이어야 한다.
+  // 호출부 상태가 어긋나도 실제 출력 rows에 other가 없으면 끄고, 있으면 전달받은 side 설정을 유지한다.
+  useSide = !!useSide && rows.some(row => normalizedTab(row?.tab || "main") === "other");
   const names = [];
   const colors = [];
   const lightColors = [];
@@ -12033,7 +12351,12 @@ function createCompactLogPayload(rows, useSide, includeSessionNavigator = sessio
     r: rowData,
     q: rowUids,
     j: includeSessionNavigator ? 1 : 0,
-    u: triggerData
+    u: triggerData,
+    e: {
+      s: el("highlightSpecialRows")?.checked ? 1 : 0,
+      n: [...narratorNameSet()],
+      t: [...state.tabStyles.entries()].map(([key, style]) => [key, colorInputHex(style.color, defaultTabAccent(key)), style.enabled ? 1 : 0, style.showLabel ? 1 : 0])
+    }
   };
   if (includeSessionNavigator) {
     payload.k = sparseTimeline.values;
@@ -12117,6 +12440,26 @@ function compactExportRuntime(root) {
       return lower || "main";
     };
     const hiddenAvatarTabs = new Set((Array.isArray(data.a) ? data.a : []).map(normalizeTabKey));
+    const extras = data.e && typeof data.e === "object" ? data.e : {};
+    const specialHighlight = extras.s === 1;
+    const normalizeNameKey = value => String(value || "").normalize?.("NFKC").toLocaleLowerCase?.().trim() || String(value || "").toLowerCase().trim();
+    const narratorNames = new Set((Array.isArray(extras.n) ? extras.n : []).map(normalizeNameKey).filter(Boolean));
+    const tabStyleMap = new Map();
+    (Array.isArray(extras.t) ? extras.t : []).forEach(entry => {
+      if (!Array.isArray(entry) || entry.length < 4) return;
+      tabStyleMap.set(normalizeTabKey(entry[0]), { color: String(entry[1] || "#8fc7ff"), enabled: !!entry[2], showLabel: !!entry[3] });
+    });
+    const tabStyleForKey = key => tabStyleMap.get(normalizeTabKey(key)) || { color: "#8fc7ff", enabled: false, showLabel: !["main", "other"].includes(normalizeTabKey(key)) };
+    const looksLikeDice = text => /(?:^|\s)\d+DX(?:\d+)?\b/i.test(String(text || ""))
+      || /(?:^|\s)CC(?:<=|>=|<|>|＜|＞|≦|≧)/i.test(String(text || ""))
+      || /(?:^|\s)\d+D\d+\s*(?:<=|>=|<|>|＜|＞|≦|≧)/i.test(String(text || ""));
+    const specialKindFor = (name, lowerTab, text) => {
+      if (!specialHighlight) return "";
+      if (String(name || "").toLowerCase() === "system") return "system";
+      if (lowerTab === "info") return "info";
+      if (looksLikeDice(text)) return "dice";
+      return "";
+    };
     const triggerMap = new Map();
     for (let i = 0; i + 1 < triggerValues.length; i += 2) {
       triggerMap.set(Number(triggerValues[i]) || 0, String(triggerValues[i + 1] || ""));
@@ -12126,6 +12469,18 @@ function compactExportRuntime(root) {
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     })[char]);
     const withBreaks = value => esc(value).replace(/\n/g, "<br>");
+    const specialBadge = kind => kind === "info" ? '<span class="special-badge">INFO</span>' : kind === "dice" ? '<span class="special-badge">DICE</span>' : kind === "system" ? '<span class="special-badge">SYSTEM</span>' : "";
+    const messageMarkup = (value, kind = "") => {
+      const text = String(value || "");
+      if (kind !== "dice") return withBreaks(text);
+      let at = text.lastIndexOf("＞");
+      if (at < 0) { const matches = [...text.matchAll(/\s>\s/g)]; if (matches.length) at = matches[matches.length - 1].index + 1; }
+      if (at < 0) return withBreaks(text);
+      const head = text.slice(0, at + 1);
+      const tail = text.slice(at + 1);
+      const resultClass = /(?:실패|失敗|failure|fumble)/i.test(tail) ? " is-failure" : /(?:성공|成功|success|critical)/i.test(tail) ? " is-success" : "";
+      return `${withBreaks(head)}<span class="dice-final${resultClass}">${withBreaks(tail)}</span>`;
+    };
     const normalizeSearch = value => String(value || "").normalize?.("NFKC").toLocaleLowerCase?.() || String(value || "").toLowerCase();
     const initials = value => {
       const cleaned = String(value || "").replace(/["'˝“”‘’]/g, "").trim();
@@ -12169,7 +12524,11 @@ function compactExportRuntime(root) {
       const isExtraTab = !isOther && lowerTab !== "main" && lowerTab !== "other";
       const isSystemLine = !isOther && name.toLowerCase() === "system";
       const expressionKey = image ? `image:${image}` : `label:${label}`;
-      const grouped = !isOther && !isSystemLine && !isExtraTab && !!data.g && previousMain
+      const specialKind = specialKindFor(name, lowerTab, text);
+      const isNarrator = name.toLowerCase() !== "system" && narratorNames.has(normalizeNameKey(name));
+      const tabStyle = tabStyleForKey(lowerTab);
+      const grouped = !isOther && !isSystemLine && !isExtraTab && !isNarrator && !specialKind && !!data.g && previousMain
+        && !previousMain.noGroup
         && previousMain.name === name
         && previousMain.lowerTab === lowerTab
         && previousMain.expressionKey === expressionKey;
@@ -12179,7 +12538,8 @@ function compactExportRuntime(root) {
       const record = {
         id, uid, order: rowOrder, recordKey, time, tab, lowerTab, name, color, lightColor, imageIndex, image, label, text,
         kind: isOther ? "other" : "main",
-        isOther, isExtraTab, isSystemLine, isSystem, grouped,
+        isOther, isExtraTab, isSystemLine, isSystem, grouped, isNarrator, specialKind,
+        tabColor: tabStyle.color, tabColorEnabled: tabStyle.enabled, tabLabelVisible: tabStyle.showLabel,
         avatarHidden: hiddenAvatarTabs.has(lowerTab),
         groupTone: Math.max(0, mainGroupOrdinal) % 2,
         hasContinuation: false,
@@ -12190,7 +12550,7 @@ function compactExportRuntime(root) {
       else {
         record.mainOrdinal = mainRecords.length;
         mainRecords.push(record);
-        previousMain = { name, lowerTab, expressionKey };
+        previousMain = { name, lowerTab, expressionKey, noGroup: isNarrator || !!specialKind };
       }
     }
 
@@ -12209,22 +12569,35 @@ function compactExportRuntime(root) {
     }
 
     function renderMainRecord(record, logicalIndex, isLast, highlighted) {
+      const tabClass = record.tabColorEnabled ? " has-tab-color" : "";
+      const tabStyle = `--tab-accent:${esc(record.tabColor || "#8fc7ff")}`;
+      const tabTag = record.tabLabelVisible ? `<span class="tag tab-label-chip">${esc(record.tab || "main")}</span>` : "";
       if (record.isSystemLine) {
         const link = bgmLink(record.order + 1);
-        return `<div role="article" class="system-line${highlighted ? " is-search-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="system-text">${withBreaks(record.text)}${link ? `<br>${link}` : ""}</div></div>`;
+        const specialClass = record.specialKind === "system" ? " is-special-highlight" : "";
+        return `<div role="article" class="system-line${specialClass}${tabClass}${highlighted ? " is-search-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="system-text">${specialBadge(record.specialKind)}${messageMarkup(record.text)}${link ? `<br>${link}` : ""}</div></div>`;
       }
-      const tabTag = record.lowerTab === "main" ? "" : `<span class="tag">- ${esc(record.tab || "main")}</span>`;
-      const expressionTag = !record.isExtraTab && record.label ? `<span class="expr-tag">${esc(record.label)}</span>` : "";
-      const tone = record.isSystem || record.isExtraTab ? "" : (record.groupTone ? " group-tone-b" : " group-tone-a");
       const link = bgmLink(record.order + 1);
+      if (record.isNarrator) {
+        return `<div role="article" class="narrator-line${tabClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="narrator-text">${tabTag}${messageMarkup(record.text)}${link ? `<br>${link}` : ""}</div></div>`;
+      }
+      const expressionTag = !record.isExtraTab && record.label ? `<span class="expr-tag">${esc(record.label)}</span>` : "";
+      const tone = record.isSystem || record.isExtraTab || record.specialKind ? "" : (record.groupTone ? " group-tone-b" : " group-tone-a");
+      const specialClass = record.specialKind === "info" ? " is-info-highlight" : record.specialKind === "dice" ? " is-dice-highlight" : "";
       const content = record.grouped
-        ? `<div class="grouped-line"><div class="text">${withBreaks(record.text)}</div>${link ? `<div class="grouped-line-tools">${link}</div>` : ""}</div>`
-        : `<div class="meta"><strong class="name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${expressionTag}${link}</div><div class="text">${withBreaks(record.text)}</div>`;
-      return `<div role="article" class="log-row${record.isSystem ? " is-system" : ""}${record.isExtraTab ? " is-extra-tab" : ""}${record.grouped ? " is-continuation" : ""}${record.hasContinuation ? " has-continuation" : ""}${record.avatarHidden ? " is-avatar-hidden" : ""}${tone}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}">${renderAvatar(record)}<div class="message">${content}</div></div>`;
+        ? `<div class="grouped-line"><div class="text">${messageMarkup(record.text)}</div>${link ? `<div class="grouped-line-tools">${link}</div>` : ""}</div>`
+        : `<div class="meta"><strong class="name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${specialBadge(record.specialKind)}${expressionTag}${link}</div><div class="text">${messageMarkup(record.text, record.specialKind)}</div>`;
+      return `<div role="article" class="log-row${record.isSystem ? " is-system" : ""}${record.isExtraTab ? " is-extra-tab" : ""}${record.grouped ? " is-continuation" : ""}${record.hasContinuation ? " has-continuation" : ""}${record.avatarHidden ? " is-avatar-hidden" : ""}${specialClass}${tabClass}${tone}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}">${renderAvatar(record)}<div class="message">${content}</div></div>`;
     }
 
     function renderOtherRecord(record, logicalIndex, isLast, highlighted, synced) {
-      return `<div role="article" class="other-row${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${bgmLink(record.order + 1)}<div class="other-text">${withBreaks(record.text)}</div></div>`;
+      const tabClass = record.tabColorEnabled ? " has-tab-color" : "";
+      const tabStyle = `--tab-accent:${esc(record.tabColor || "#8fc7ff")}`;
+      const tabTag = record.tabLabelVisible ? `<span class="tag tab-label-chip">${esc(record.tab || "other")}</span>` : "";
+      if (record.isNarrator) {
+        return `<div role="article" class="other-row narrator-line${tabClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="narrator-text">${tabTag}${messageMarkup(record.text)}${bgmLink(record.order + 1)}</div></div>`;
+      }
+      return `<div role="article" class="other-row${tabClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${bgmLink(record.order + 1)}<div class="other-text">${withBreaks(record.text)}</div></div>`;
     }
 
     class HeightTree {
@@ -14153,8 +14526,10 @@ body{background:#edf1f5;color:#172033}
 .other-row.is-sync-target{background:rgba(37,99,166,.09)}
 .other-name{color:var(--light-name-color,var(--name-color,#334155))}
 .other-text{color:rgba(15,23,42,.78)}
-.log-row,.log-row.is-odd{background:#fff;border-bottom-color:rgba(15,23,42,.1)}
-.log-row:nth-child(even),.log-row.is-even{background:#f4f7f9}
+.log-row,.log-row.is-odd,.log-row.group-tone-a{background:#fff;border-bottom-color:rgba(15,23,42,.1)}
+.log-row:nth-child(even),.log-row.is-even,.log-row.group-tone-b{background:#f4f7f9}
+.log-row.group-tone-a.has-continuation:hover,.log-row.group-tone-a.is-continuation:hover{background:#fff}
+.log-row.group-tone-b.has-continuation:hover,.log-row.group-tone-b.is-continuation:hover{background:#f4f7f9}
 .log-row.is-system{background:rgba(15,23,42,.035)}
 .system-line{background:rgba(15,23,42,.03);border-bottom-color:rgba(15,23,42,.08)}
 .system-text{color:rgba(15,23,42,.6)}
@@ -14190,6 +14565,12 @@ body{background:#edf1f5;color:#172033}
 .trpg-session-nav button.is-current .trpg-session-nav-dot{background:#2563eb;border-color:#2563eb}
 .trpg-virtual-window .log-row:last-child{border-bottom-color:rgba(15,23,42,.1)}
 .log-row.is-search-target,.system-line.is-search-target,.other-row.is-search-target{outline-color:rgba(37,99,166,.92);background:rgba(37,99,166,.12)!important}
+.special-badge{color:rgba(15,23,42,.7);background:rgba(15,23,42,.04);border-color:rgba(15,23,42,.12)}
+.log-row.is-info-highlight{background:rgba(37,99,166,.065)}
+.log-row.is-dice-highlight{background:rgba(98,71,180,.06)}
+.system-line.is-special-highlight .system-text{background:rgba(15,23,42,.025);border-color:rgba(15,23,42,.1)}
+.narrator-line{background:rgba(15,23,42,.018);border-bottom-color:rgba(15,23,42,.08)}
+.narrator-text{color:rgba(15,23,42,.8)}
 @media(max-width:700px){.scene-pager{background:rgba(237,241,245,.94)}}`;
 }
 
@@ -14205,14 +14586,14 @@ html,body{max-width:100%;overscroll-behavior-x:none}
 .trpg-log-app>.page{display:block!important;position:relative!important;float:none!important;clear:both!important;width:100%!important;min-width:0!important;max-width:100%!important;height:auto!important;max-height:none!important;overflow:visible!important;clip:auto!important;clip-path:none!important;content-visibility:visible!important;contain:none!important}
 .trpg-static-fallback{display:block;position:relative;width:100%;min-width:0;max-width:100%}
 .trpg-log-app[data-trpg-boot-state="ready"] .trpg-static-fallback{display:none!important}
-.title,.log-row,.system-line,.other-row,.message,.meta,.text,.system-text,.other-text{max-height:none!important;clip:auto!important;clip-path:none!important;content-visibility:visible!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;text-overflow:clip!important}
-.log-row,.system-line,.other-row{position:relative!important;float:none!important;clear:none!important;height:auto!important;overflow:visible!important;contain:none!important}
-.message,.text,.system-text,.other-text{overflow:visible!important}
+.title,.log-row,.system-line,.other-row,.narrator-line,.message,.meta,.text,.system-text,.other-text,.narrator-text{max-height:none!important;clip:auto!important;clip-path:none!important;content-visibility:visible!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;text-overflow:clip!important}
+.log-row,.system-line,.other-row,.narrator-line{position:relative!important;float:none!important;clear:none!important;height:auto!important;overflow:visible!important;contain:none!important}
+.message,.text,.system-text,.other-text,.narrator-text{overflow:visible!important}
 body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
 .trpg-log-app img,.trpg-log-app svg,.trpg-log-app iframe,.trpg-log-app video,.trpg-log-app audio{max-width:100%}
-.page,.layout,.ccfolia-wrap,.other-wrap,.trpg-search-shell,.trpg-search,.trpg-virtual-body,.trpg-virtual-window,.log-row,.system-line,.other-row,.message,.meta,.text,.system-text,.other-text,.bgm-panel,.bgm-frame{min-width:0!important;max-width:100%}
-.title,.name,.other-name,.tag,.expr-tag,.text,.system-text,.other-text,.scene-pager-label,.bgm-note{overflow-wrap:anywhere;word-break:break-word}
-.text,.system-text,.other-text,.name,.other-name,.tag,.expr-tag{white-space:normal!important}
+.page,.layout,.ccfolia-wrap,.other-wrap,.trpg-search-shell,.trpg-search,.trpg-virtual-body,.trpg-virtual-window,.log-row,.system-line,.other-row,.narrator-line,.message,.meta,.text,.system-text,.other-text,.narrator-text,.bgm-panel,.bgm-frame{min-width:0!important;max-width:100%}
+.title,.name,.other-name,.tag,.expr-tag,.text,.system-text,.other-text,.narrator-text,.scene-pager-label,.bgm-note{overflow-wrap:anywhere;word-break:break-word}
+.text,.system-text,.other-text,.narrator-text,.name,.other-name,.tag,.expr-tag{white-space:normal!important}
 .page button{border:1px solid var(--line);background:#343434;color:#f1f1f1;border-radius:6px;min-height:32px;padding:6px 10px;cursor:pointer}
 .page button:hover{background:#414141}
 .page{width:100%;max-width:1240px;margin:0 auto;padding:24px 12px 44px}
@@ -14235,19 +14616,30 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .other-text{margin:3px 0 0!important;padding:0!important;color:rgba(255,255,255,.78);font-size:12px;line-height:1.55;word-break:keep-all;overflow-wrap:anywhere}
 .log-row{display:flex;gap:13px;align-items:flex-start;width:100%;margin:0!important;padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.065);background:#313131}
 .log-row:nth-child(even){background:#383838}
+.log-row.group-tone-a{background:#313131}
+.log-row.group-tone-b{background:#383838}
+.log-row.group-tone-a.has-continuation:hover,.log-row.group-tone-a.is-continuation:hover{background:#313131}
+.log-row.group-tone-b.has-continuation:hover,.log-row.group-tone-b.is-continuation:hover{background:#383838}
 .log-row:last-child{border-bottom:0}
 .log-row.is-system{background:rgba(255,255,255,.035)}
 .system-line{display:flex;justify-content:center;margin:0!important;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.025)}
 .system-text{max-width:76%;color:rgba(255,255,255,.58);font-size:13px;line-height:1.55;text-align:center;word-break:break-word;overflow-wrap:anywhere}
 .log-row.is-extra-tab{background:rgba(143,199,255,.055);border-left:3px solid rgba(143,199,255,.34)}
 .log-row.is-extra-tab:hover{background:rgba(143,199,255,.09)}
-.log-row.is-continuation{padding-top:7px}
+.log-row.has-continuation{padding-bottom:0;border-bottom:0}
+.log-row.is-continuation{position:relative;padding-top:0;padding-bottom:0;border-bottom:0}
+.log-row.is-continuation:not(.has-continuation){padding-bottom:13px}
+.log-row.is-continuation:not(.has-continuation):not(:last-child){border-bottom:1px solid rgba(255,255,255,.065)}
 .avatar{width:var(--avatar-size);height:var(--avatar-size);flex:0 0 var(--avatar-size);border-radius:6px;overflow:hidden;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.34);font-size:11px;font-weight:700}
 .avatar img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
 .avatar-use{width:100%;height:100%;display:block}
 .trpg-image-assets{position:absolute!important;left:-99999px!important;top:-99999px!important;width:0!important;height:0!important;overflow:hidden!important;pointer-events:none!important}
 .tab-avatar{height:auto;min-height:32px;align-self:center;padding:5px 6px;color:rgba(255,255,255,.72);background:rgba(143,199,255,.12);border-color:rgba(143,199,255,.25);line-height:1.2;word-break:keep-all}
 .is-continuation .avatar{visibility:hidden}
+.avatar.avatar-spacer{height:0!important;min-height:0!important;align-self:flex-start;border:0;background:transparent}
+.grouped-line{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:7px}
+.grouped-line-tools{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
+.grouped-line-tools:empty{display:none}
 .message{min-width:0;flex:1 1 auto;margin:0!important}
 .meta{display:flex;align-items:baseline;flex-wrap:wrap;gap:7px;min-width:0;max-width:100%;margin:0 0 4px}
 .meta>*{min-width:0;max-width:100%}
@@ -14274,7 +14666,7 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .bgm-note{margin:0;color:var(--muted);font-size:11px;line-height:1.35;max-height:32px;overflow:hidden}
 .bgm-tag{color:rgba(143,199,255,.9);border-color:rgba(143,199,255,.28)}
 @media(min-width:1960px){.layout.has-bgm-panel{grid-template-rows:1fr}.layout.has-bgm-panel .ccfolia-wrap,.layout.has-bgm-panel .other-wrap{grid-row:auto}.layout > .bgm-panel{position:fixed;top:auto;right:calc((100vw - 1240px) / 2 - 360px);bottom:24px;width:340px}.layout > .bgm-panel .bgm-frame{height:188px}}
-@media(max-width:700px){.page{padding:16px 8px 80px}.title{font-size:22px;margin-bottom:10px}.scene-pager{position:sticky;top:0;z-index:20;margin:0 -2px 8px;padding:6px 0;background:rgba(24,24,24,.92);backdrop-filter:blur(6px)}.scene-pager button{min-height:26px;padding:3px 7px;font-size:11px}.scene-pager-label{min-width:0;max-width:34vw;font-size:11px}.layout{position:relative;grid-template-columns:minmax(0,1fr) minmax(0,0);height:auto;min-height:0;gap:0;max-width:100%;touch-action:pan-y}.layout.has-bgm-panel{grid-template-rows:auto}.layout.has-bgm-panel .ccfolia-wrap,.layout.has-bgm-panel .other-wrap{grid-row:auto}.ccfolia-wrap{min-width:0;overflow:visible;border-radius:6px}.other-wrap{position:fixed;top:8px;right:var(--trpg-other-right,6px);bottom:8px;z-index:40;min-width:92px;width:32vw;max-width:150px;height:auto;max-height:calc(100vh - 16px);overflow:auto;border-radius:6px;box-shadow:none;opacity:0;transform:translateX(24px) scale(.9,.98);transform-origin:right center;transition:opacity .22s ease,transform .28s cubic-bezier(.16,1.28,.28,1);visibility:hidden;pointer-events:none}.layout.is-other-split{grid-template-columns:minmax(0,1fr);padding-right:calc(min(32vw,150px) + 4px);gap:0;align-items:start}.layout.is-other-split.is-other-left{padding-right:0;padding-left:calc(min(32vw,150px) + 4px)}.layout.is-other-left .other-wrap{right:auto;left:var(--trpg-other-left,6px);transform:translateX(-24px) scale(.9,.98);transform-origin:left center}.layout.is-other-split .other-wrap{opacity:1;transform:translateX(0) scale(1);visibility:visible;pointer-events:auto}.layout.is-other-leaving .other-wrap{opacity:0;transform:translateX(20px) scale(.92,.98)}.layout.is-other-left.is-other-leaving .other-wrap{transform:translateX(-20px) scale(.92,.98)}.layout.is-other-split .log-row{gap:6px;padding:7px 5px}.layout.is-other-split .avatar{width:26px;height:26px;flex-basis:26px;border-radius:5px}.layout.is-other-split .tab-avatar{padding:3px 2px;font-size:clamp(5px,1.75vw,7px);line-height:1.05;white-space:nowrap;word-break:normal;overflow:hidden;text-overflow:clip;letter-spacing:-.03em}.layout.is-other-split .name{font-size:11px}.layout.is-other-split .tag,.layout.is-other-split .expr-tag{font-size:9px}.layout.is-other-split .text{font-size:min(var(--font-size),11px);line-height:1.4}.layout.is-other-split .system-text{max-width:100%;font-size:10px}.layout.is-other-split .other-title{padding:6px 7px;font-size:11px}.layout.is-other-split .other-row{padding:6px 7px}.layout.is-other-split .other-name,.layout.is-other-split .other-text{font-size:10px}.log-row{gap:9px;padding:11px 9px}.system-text{max-width:100%}.avatar{width:min(var(--avatar-size),42px);height:min(var(--avatar-size),42px);flex-basis:min(var(--avatar-size),42px)}.is-continuation .avatar{display:none}.bgm-panel{display:none}html.trpg-host-web .bgm-panel.is-mobile-bgm-panel{display:grid;position:static;width:auto;max-width:none;margin:0 0 10px;opacity:1;z-index:auto}html.trpg-host-web .bgm-panel.is-mobile-bgm-panel .bgm-frame{height:160px}.bgm-now{left:8px;bottom:8px;max-width:120px;min-height:22px;padding:2px 7px;font-size:10px}.other-title{padding:8px 10px}html.trpg-host-tistory .other-wrap{top:var(--trpg-other-top,0px);bottom:var(--trpg-other-bottom,0px);max-height:calc(100vh - var(--trpg-other-top,0px) - var(--trpg-other-bottom,0px))}html.trpg-host-tistory .bgm-now{bottom:74px}}
+@media(max-width:700px){.page{padding:16px 8px 80px}.title{font-size:22px;margin-bottom:10px}.scene-pager{position:sticky;top:0;z-index:20;margin:0 -2px 8px;padding:6px 0;background:rgba(24,24,24,.92);backdrop-filter:blur(6px)}.scene-pager button{min-height:26px;padding:3px 7px;font-size:11px}.scene-pager-label{min-width:0;max-width:34vw;font-size:11px}.layout{position:relative;grid-template-columns:minmax(0,1fr) minmax(0,0);height:auto;min-height:0;gap:0;max-width:100%;touch-action:pan-y}.layout.has-bgm-panel{grid-template-rows:auto}.layout.has-bgm-panel .ccfolia-wrap,.layout.has-bgm-panel .other-wrap{grid-row:auto}.ccfolia-wrap{min-width:0;overflow:visible;border-radius:6px}.other-wrap{position:fixed;top:8px;right:var(--trpg-other-right,6px);bottom:8px;z-index:40;min-width:92px;width:32vw;max-width:150px;height:auto;max-height:calc(100vh - 16px);overflow:auto;border-radius:6px;box-shadow:none;opacity:0;transform:translateX(24px) scale(.9,.98);transform-origin:right center;transition:opacity .22s ease,transform .28s cubic-bezier(.16,1.28,.28,1);visibility:hidden;pointer-events:none}.layout.is-other-split{grid-template-columns:minmax(0,1fr);padding-right:calc(min(32vw,150px) + 4px);gap:0;align-items:start}.layout.is-other-split.is-other-left{padding-right:0;padding-left:calc(min(32vw,150px) + 4px)}.layout.is-other-left .other-wrap{right:auto;left:var(--trpg-other-left,6px);transform:translateX(-24px) scale(.9,.98);transform-origin:left center}.layout.is-other-split .other-wrap{opacity:1;transform:translateX(0) scale(1);visibility:visible;pointer-events:auto}.layout.is-other-leaving .other-wrap{opacity:0;transform:translateX(20px) scale(.92,.98)}.layout.is-other-left.is-other-leaving .other-wrap{transform:translateX(-20px) scale(.92,.98)}.layout.is-other-split .log-row{gap:6px;padding:7px 5px}.layout.is-other-split .avatar{width:26px;height:26px;flex-basis:26px;border-radius:5px}.layout.is-other-split .tab-avatar{padding:3px 2px;font-size:clamp(5px,1.75vw,7px);line-height:1.05;white-space:nowrap;word-break:normal;overflow:hidden;text-overflow:clip;letter-spacing:-.03em}.layout.is-other-split .name{font-size:11px}.layout.is-other-split .tag,.layout.is-other-split .expr-tag{font-size:9px}.layout.is-other-split .text{font-size:min(var(--font-size),11px);line-height:1.4}.layout.is-other-split .system-text{max-width:100%;font-size:10px}.layout.is-other-split .other-title{padding:6px 7px;font-size:11px}.layout.is-other-split .other-row{padding:6px 7px}.layout.is-other-split .other-name,.layout.is-other-split .other-text{font-size:10px}.log-row{gap:9px;padding:11px 9px}.log-row.has-continuation{padding-bottom:0}.log-row.is-continuation{padding-top:0;padding-bottom:0}.log-row.is-continuation:not(.has-continuation){padding-bottom:11px}.system-text{max-width:100%}.avatar{width:min(var(--avatar-size),42px);height:min(var(--avatar-size),42px);flex-basis:min(var(--avatar-size),42px)}.is-continuation .avatar{display:none}.bgm-panel{display:none}html.trpg-host-web .bgm-panel.is-mobile-bgm-panel{display:grid;position:static;width:auto;max-width:none;margin:0 0 10px;opacity:1;z-index:auto}html.trpg-host-web .bgm-panel.is-mobile-bgm-panel .bgm-frame{height:160px}.bgm-now{left:8px;bottom:8px;max-width:120px;min-height:22px;padding:2px 7px;font-size:10px}.other-title{padding:8px 10px}html.trpg-host-tistory .other-wrap{top:var(--trpg-other-top,0px);bottom:var(--trpg-other-bottom,0px);max-height:calc(100vh - var(--trpg-other-top,0px) - var(--trpg-other-bottom,0px))}html.trpg-host-tistory .bgm-now{bottom:74px}}
 .trpg-search-shell{position:sticky;top:8px;z-index:44;height:0;display:flex;justify-content:flex-end;pointer-events:none}
 .trpg-search{pointer-events:auto;display:grid;grid-template-columns:minmax(180px,1fr) auto auto minmax(64px,auto) auto;gap:6px;align-items:center;width:min(580px,100%);max-width:100%;padding:7px;border:1px solid var(--line);border-radius:8px;background:rgba(32,32,32,.96);box-shadow:0 8px 28px rgba(0,0,0,.34);backdrop-filter:blur(7px)}
 .trpg-search.is-hidden{display:none}
@@ -14315,6 +14707,20 @@ html.trpg-host-tistory .trpg-virtual-body,html.trpg-host-tistory .trpg-virtual-w
 .log-row.is-odd{background:#313131}
 .log-row.is-even{background:#383838}
 .log-row.is-search-target,.system-line.is-search-target,.other-row.is-search-target{position:relative;z-index:1;outline:2px solid rgba(143,199,255,.92);outline-offset:-2px;background:rgba(143,199,255,.15)!important}
+.log-row.has-tab-color,.system-line.has-tab-color,.other-row.has-tab-color{box-shadow:inset 3px 0 0 var(--tab-accent,#8fc7ff)}
+.tag.tab-label-chip{color:var(--tab-accent,#8fc7ff);border:1px solid rgba(143,199,255,.24);border-radius:999px;padding:0 5px}
+.special-badge{display:inline-flex;align-items:center;min-height:18px;padding:1px 6px;border:1px solid rgba(255,255,255,.12);border-radius:999px;color:rgba(255,255,255,.72);background:rgba(255,255,255,.055);font-size:9px;font-weight:800;letter-spacing:.06em}
+.log-row.is-info-highlight{background:rgba(90,177,255,.075);box-shadow:inset 3px 0 0 #67c5ff}
+.log-row.is-dice-highlight{background:rgba(166,128,255,.075);box-shadow:inset 3px 0 0 #b59cff}
+.system-line.is-special-highlight{padding-top:11px;padding-bottom:11px;background:rgba(255,255,255,.045)}
+.system-line.is-special-highlight .system-text{max-width:min(760px,90%);padding:7px 11px;border:1px solid rgba(255,255,255,.08);border-radius:7px;background:rgba(0,0,0,.14)}
+.system-line .special-badge{margin-right:7px;vertical-align:1px}
+.dice-final{padding:0 3px;border-radius:4px;font-weight:800;color:#e8dcff;background:rgba(181,156,255,.14)}
+.dice-final.is-success{color:#c8f5cf;background:rgba(95,196,112,.14)}
+.dice-final.is-failure{color:#ffc8c8;background:rgba(234,96,96,.14)}
+.narrator-line{position:relative;margin:0!important;padding:15px 18px;border-bottom:1px solid rgba(255,255,255,.06);text-align:center;background:rgba(255,255,255,.018)}
+.narrator-text{max-width:820px;margin:0 auto;color:rgba(255,255,255,.82);font-size:var(--font-size);line-height:var(--line-height);font-style:italic;overflow-wrap:anywhere}
+.narrator-line .tag{margin-right:6px}
 @media(max-width:700px){.trpg-search-shell{top:6px}.trpg-search{grid-template-columns:minmax(90px,1fr) auto auto auto;width:calc(100vw - 16px);padding:5px}.trpg-search-count{grid-column:1/3;min-height:15px;text-align:left}.trpg-search button{min-height:29px;padding:3px 7px}.trpg-search input{height:30px}.trpg-session-nav{right:8px;max-width:calc(100vw - 16px)}.trpg-session-nav.is-expanded{width:min(230px,calc(100vw - 16px))}.trpg-session-nav-summary{min-height:42px;padding:9px 11px}.trpg-session-nav-list{max-height:52vh}.trpg-session-nav button{min-height:44px;padding:7px 8px;touch-action:manipulation}.trpg-virtual-body{contain:layout style}}${normalizeAppTheme(theme) === "light" ? exportLightCssRaw() : ""}`;
 }
 
@@ -14456,7 +14862,7 @@ function createExportInstanceId() {
 }
 
 function exportEnhancementScript(rows, exportOptions = {}) {
-  const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
+  const useSide = sideOtherEnabled(rows);
   const rowLookup = buildRowIdentityLookup(rows);
   const triggers = bgmTriggersForRows(rows).map(trigger => {
     const index = rowIndexFromLookup(rowLookup, trigger);
@@ -14762,7 +15168,7 @@ function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
 
 function buildStaticExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment = false) {
   rows = normalizeRowsForExportRuntime(rows);
-  const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
+  const useSide = sideOtherEnabled(rows);
   const title = state.title + titleSuffix;
   const instanceId = createExportInstanceId();
   const scopeSelector = `#${instanceId}`;
@@ -14830,7 +15236,7 @@ function utf8ByteLength(value) {
 
 function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment = false) {
   rows = normalizeRowsForExportRuntime(rows);
-  const useSide = sideOtherEnabled() && rows.some(row => normalizedTab(row.tab) === "other");
+  const useSide = sideOtherEnabled(rows);
   const payload = createCompactLogPayload(rows, useSide, sessionNavigatorExportEnabled());
   const payloadJson = escapeScriptJson(payload);
   const includeFallback = tistoryFallbackExportEnabled();
@@ -15356,6 +15762,7 @@ orderFile.addEventListener("change", async () => {
   state.manualDaySplits = [];
   state.manualPortraitOverrides = new Map();
   state.autoPortraits = new Map();
+  state.tabStyles = new Map();
   state.manualTextOverrides = new Map();
   state.originalTexts = new Map();
   state.portraitReviewQueue = [];
@@ -15550,6 +15957,9 @@ el("sideOther").addEventListener("change", () => { state.page = 1; updateView();
 el("showExpression").addEventListener("change", updateView);
 el("hideEmpty").addEventListener("change", () => { state.page = 1; updateView(); });
 el("hideSystem").addEventListener("change", () => { state.page = 1; updateView(); });
+el("highlightSpecialRows")?.addEventListener("change", () => { if (state.messages.length) renderPreview({ preserveScroll: true }); });
+const debouncedNarratorPreview = debounce(() => { if (state.messages.length) renderPreview({ preserveScroll: true }); }, 180);
+el("narratorNames")?.addEventListener("input", debouncedNarratorPreview);
 const debouncedSearchUpdate = debounce(() => {
   state.page = 1;
   updateView();
@@ -15675,20 +16085,28 @@ window.addEventListener("pagehide", () => {
 }, { once: true });
 
 updateFilterAndExportSummary();
+applyPreviewDeviceMode(state.previewDevice);
+document.querySelectorAll(".preview-device-toggle [data-preview-device]").forEach(button => {
+  button.addEventListener("click", () => {
+    state.previewDevice = normalizePreviewDevice(button.dataset.previewDevice);
+    applyPreviewDeviceMode();
+    scheduleWorkDraftSave();
+  });
+});
 
 el("resetFiltersBtn").addEventListener("click", () => {
   debouncedSearchUpdate.cancel();
   state.selectedTabs = new Set(state.tabs);
   state.selectedChars = new Set(state.chars);
   el("searchBox").value = "";
-  renderFilterList("tabFilters", state.tabs, state.selectedTabs, updateView);
+  renderTabFilterList();
   renderFilterList("charFilters", state.chars, state.selectedChars, updateView);
   state.page = 1;
   updateView();
 });
 el("toggleTabs").addEventListener("click", () => {
   state.selectedTabs = state.selectedTabs.size === state.tabs.length ? new Set() : new Set(state.tabs);
-  renderFilterList("tabFilters", state.tabs, state.selectedTabs, updateView);
+  renderTabFilterList();
   state.page = 1;
   updateView();
 });
