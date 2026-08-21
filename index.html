@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.21">
+<meta name="trpg-app-version" content="7.24">
+<!-- v7.24: keep exported BGM controls visible on mobile hosts whose responsive viewport settles after runtime initialization, and rehome the panel whenever the mobile media state changes. -->
+<!-- v7.23: make virtual inline-other rail segments share one group-wide hover/focus state so the expanded rail behaves like a single control. -->
+<!-- v7.22: disabling default inline-other folding now omits every fold wrapper, rail, count, and chevron instead of merely starting groups open. -->
 <!-- v7.21: hard-lock virtual inline-other controls against host button styles so counts and collapse arrows cannot enter the message flex row. -->
 <!-- v7.20: recognize touch-first mobile devices even when a host reports a desktop-sized layout viewport, and lock the expanded fold control to the bar center. -->
 <!-- v7.19: always expose the mobile web BGM controls and use in-flow horizontal folding controls for inline other groups on narrow screens. -->
@@ -904,7 +907,7 @@ html[data-theme="light"] .narrator-text { color: rgba(15,23,42,.8); }
 .inline-other-details > summary::marker { content: ""; }
 .inline-other-summary:hover,
 .inline-other-details > summary:hover,
-.inline-other-rail-hit:hover { background: rgba(255,255,255,.095); color: #e7e7e7; }
+.inline-other-rail-hit.is-group-hover { background: rgba(255,255,255,.095); color: #e7e7e7; }
 .inline-other-summary strong,
 .inline-other-details > summary strong { color: inherit; font-weight: 700; }
 .inline-other-summary-label {
@@ -2700,7 +2703,7 @@ html[data-theme="light"] .inline-other-summary,
 html[data-theme="light"] .inline-other-details > summary { color: rgba(15,23,42,.62); background: rgba(15,23,42,.035); border-color: rgba(15,23,42,.065); }
 html[data-theme="light"] .inline-other-summary:hover,
 html[data-theme="light"] .inline-other-details > summary:hover,
-html[data-theme="light"] .inline-other-rail-hit:hover { background: rgba(15,23,42,.075); color: #334155; }
+html[data-theme="light"] .inline-other-rail-hit.is-group-hover { background: rgba(15,23,42,.075); color: #334155; }
 html[data-theme="light"] .inline-other-summary-label { color: inherit; background: transparent; border: 0; }
 html[data-theme="light"] .inline-other-rail-hit { color: rgba(15,23,42,.62); background: rgba(15,23,42,.035); border-left-color: rgba(15,23,42,.065); }
 html[data-theme="light"] .text { color: #273244; }
@@ -3065,7 +3068,7 @@ html[data-theme="light"] .message-edit-portrait-choice, html[data-theme="light"]
         <div class="option-grid">
           <div class="check-row"><input id="groupRows" type="checkbox"><label for="groupRows">같은 캐릭터·표정 연속 대사 묶기</label></div>
           <div class="check-row"><input id="sideOther" type="checkbox" checked><label for="sideOther">other 탭을 오른쪽 6cm 패널로 분리</label></div>
-          <div class="check-row"><input id="collapseInlineOther" type="checkbox" checked><label for="collapseInlineOther">other를 본문에 둘 때 잡담 묶음 기본 접기</label></div>
+          <div class="check-row"><input id="collapseInlineOther" type="checkbox" checked><label for="collapseInlineOther">other를 본문에 둘 때 잡담 묶음 접기 사용</label></div>
           <div class="check-row"><input id="showExpression" type="checkbox"><label for="showExpression">표정 번호 표시</label></div>
           <div class="check-row"><input id="hideEmpty" type="checkbox" checked><label for="hideEmpty">빈 대사 숨기기</label></div>
           <div class="check-row"><input id="hideSystem" type="checkbox"><label for="hideSystem">시스템 행 숨기기</label></div>
@@ -8674,21 +8677,16 @@ function enhancementRuntime(root, options = {}) {
 
   function appendBgmPanel() {
     if (externalBgmController) return null;
-    const mobileWebPanel = mobileWebBgmPanel();
-    const host = mobileWebPanel ? logPage : (sideLayout || floatingHost());
+    const host = sideLayout || floatingHost();
     [floatingHost(), sideLayout, logPage].filter(Boolean).forEach(item => {
       item.querySelectorAll(".bgm-panel[data-trpg-bgm-panel]").forEach(panel => panel.remove());
     });
-    if (!enableBgm || !host || (mobileViewport() && !mobileWebPanel) || (localFileMode() && !allowLocalBgmPanel)) return null;
+    if (!enableBgm || !host || (localFileMode() && !allowLocalBgmPanel)) return null;
     const panel = doc.createElement("div");
     panel.className = "bgm-panel";
     panel.dataset.trpgBgmPanel = "1";
     panel.innerHTML = `<button type="button" data-bgm-enable aria-pressed="${bgmUnlocked ? "true" : "false"}">${bgmUnlocked ? "BGM 활성화됨" : "BGM 활성화"}</button><p class="bgm-note" data-bgm-status>${bgmUnlocked ? "현재 위치의 BGM을 확인합니다." : "활성화 후 스크롤에 맞춰 전환됩니다."}</p><div class="bgm-frame" data-bgm-frame></div>`;
-    if (mobileWebPanel) {
-      panel.classList.add("is-mobile-bgm-panel");
-      if (sideLayout?.parentElement === host) host.insertBefore(panel, sideLayout);
-      else host.prepend(panel);
-    } else if (sideLayout) {
+    if (sideLayout) {
       sideLayout.classList.add("has-bgm-panel");
       cleanup.push(() => sideLayout.classList.remove("has-bgm-panel"));
       host.append(panel);
@@ -8700,6 +8698,43 @@ function enhancementRuntime(root, options = {}) {
   }
 
   const panel = appendBgmPanel();
+  const mobileBgmMedia = win.matchMedia?.("(max-width: 700px), (hover: none) and (pointer: coarse)") || null;
+  let bgmPanelMobileMode = null;
+  function syncBgmPanelPresentation(force = false) {
+    if (!panel) return;
+    const mobile = mobileWebBgmPanel();
+    if (!force && mobile === bgmPanelMobileMode && panel.isConnected) return;
+    bgmPanelMobileMode = mobile;
+    panel.classList.toggle("is-mobile-bgm-panel", mobile);
+    if (mobile) {
+      sideLayout?.classList.remove("has-bgm-panel");
+      if (sideLayout?.parentElement === logPage) logPage.insertBefore(panel, sideLayout);
+      else logPage.prepend(panel);
+      return;
+    }
+    if (sideLayout) {
+      sideLayout.classList.add("has-bgm-panel");
+      sideLayout.append(panel);
+    } else {
+      floatingHost()?.append(panel);
+    }
+  }
+  syncBgmPanelPresentation(true);
+  const handleMobileBgmMediaChange = () => syncBgmPanelPresentation(true);
+  if (mobileBgmMedia?.addEventListener) {
+    on(mobileBgmMedia, "change", handleMobileBgmMediaChange);
+  } else if (mobileBgmMedia?.addListener) {
+    mobileBgmMedia.addListener(handleMobileBgmMediaChange);
+    cleanup.push(() => mobileBgmMedia.removeListener?.(handleMobileBgmMediaChange));
+  }
+  if (panel) {
+    const bgmPanelSettleFrame = win.requestAnimationFrame(() => syncBgmPanelPresentation(true));
+    const bgmPanelSettleTimer = win.setTimeout(() => syncBgmPanelPresentation(true), 320);
+    cleanup.push(() => {
+      win.cancelAnimationFrame(bgmPanelSettleFrame);
+      win.clearTimeout(bgmPanelSettleTimer);
+    });
+  }
   const bgmStatus = panel?.querySelector("[data-bgm-status]");
   const bgmFrame = panel?.querySelector("[data-bgm-frame]");
   const bgmYoutubeLayer = bgmFrame ? doc.createElement("div") : null;
@@ -8923,7 +8958,10 @@ function enhancementRuntime(root, options = {}) {
   }
 
   function mobileViewport() {
-    return !!win.matchMedia?.("(max-width: 700px), (hover: none) and (pointer: coarse)").matches;
+    const responsiveMatch = win.matchMedia?.("(max-width: 700px), (hover: none) and (pointer: coarse)")?.matches;
+    const width = Number(win.visualViewport?.width || win.innerWidth || doc.documentElement.clientWidth || 0);
+    const touchPoints = Number(win.navigator?.maxTouchPoints || 0);
+    return !!responsiveMatch || (width > 0 && width <= 700) || (touchPoints > 0 && width > 0 && width <= 1024);
   }
 
   function viewportHeight() {
@@ -10161,6 +10199,7 @@ function enhancementRuntime(root, options = {}) {
   }
   if (win.visualViewport) on(win.visualViewport, "resize", schedule, { passive: true });
   function handleViewportResize() {
+    syncBgmPanelPresentation();
     const width = Math.round(viewportWidth());
     const height = Math.round(viewportHeight());
     const widthChanged = Math.abs(width - lastViewportWidth) > 2;
@@ -10687,8 +10726,10 @@ function renderMainRowsWithSplitBoundaries(pageRows, allMainRows) {
   let inlineOtherHtml = [];
   const flushInlineOther = () => {
     if (!inlineOtherHtml.length) return;
-    const open = collapseInlineOther ? "" : " open";
-    output.push(`<details class="inline-other-details"${open}><summary aria-label="잡담 ${inlineOtherHtml.length.toLocaleString("ko-KR")}개"><span class="inline-other-summary-label"><strong>${inlineOtherHtml.length.toLocaleString("ko-KR")}</strong></span><span class="inline-other-summary-chevron" aria-hidden="true">⌄</span></summary><div class="inline-other-details-body">${inlineOtherHtml.join("")}</div></details>`);
+    const body = inlineOtherHtml.join("");
+    output.push(collapseInlineOther
+      ? `<details class="inline-other-details"><summary aria-label="잡담 ${inlineOtherHtml.length.toLocaleString("ko-KR")}개"><span class="inline-other-summary-label"><strong>${inlineOtherHtml.length.toLocaleString("ko-KR")}</strong></span><span class="inline-other-summary-chevron" aria-hidden="true">⌄</span></summary><div class="inline-other-details-body">${body}</div></details>`
+      : body);
     inlineOtherHtml = [];
   };
   let previous = null;
@@ -11029,7 +11070,7 @@ function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, s
   const otherRecords = otherHost ? buildPreviewOtherVirtualRecords(sideRows) : [];
   const previewInlineOtherGroups = new Map();
   const collapsedPreviewInlineOtherGroups = new Set();
-  if (!sideOtherEnabled()) {
+  if (!sideOtherEnabled() && collapseInlineOtherEnabled()) {
     let groupSequence = 0;
     let activeGroupKey = "";
     for (const record of mainRecords) {
@@ -11833,12 +11874,34 @@ function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, s
   win.addEventListener("resize", requestGlobalFrame, { passive: true });
   scope.addEventListener("scroll", requestGlobalFrame, { passive: true });
 
+  const setPreviewInlineOtherRailHover = groupKey => {
+    scope.querySelectorAll?.(".inline-other-rail-hit[data-preview-inline-other-toggle]").forEach(button => {
+      button.classList.toggle("is-group-hover", !!groupKey && button.dataset.previewInlineOtherToggle === groupKey);
+    });
+  };
+  const previewInlineOtherRailEventGroup = event => {
+    const button = event.target?.closest?.(".inline-other-rail-hit[data-preview-inline-other-toggle]");
+    return button && scope.contains(button) ? String(button.dataset.previewInlineOtherToggle || "") : "";
+  };
+  const previewInlineOtherRailEnter = event => {
+    const groupKey = previewInlineOtherRailEventGroup(event);
+    if (groupKey) setPreviewInlineOtherRailHover(groupKey);
+  };
+  const previewInlineOtherRailLeave = event => {
+    const groupKey = previewInlineOtherRailEventGroup(event);
+    if (!groupKey) return;
+    const nextButton = event.relatedTarget?.closest?.(".inline-other-rail-hit[data-preview-inline-other-toggle]");
+    if (nextButton && scope.contains(nextButton) && String(nextButton.dataset.previewInlineOtherToggle || "") === groupKey) return;
+    setPreviewInlineOtherRailHover("");
+  };
+
   const clickHandler = event => {
     const inlineOtherButton = event.target.closest?.("[data-preview-inline-other-toggle]");
     if (inlineOtherButton && scope.contains(inlineOtherButton)) {
       const groupKey = String(inlineOtherButton.dataset.previewInlineOtherToggle || "");
       if (!previewInlineOtherGroups.has(groupKey)) return;
       event.preventDefault();
+      setPreviewInlineOtherRailHover("");
       const anchor = mainList.captureAnchor();
       if (collapsedPreviewInlineOtherGroups.has(groupKey)) collapsedPreviewInlineOtherGroups.delete(groupKey);
       else collapsedPreviewInlineOtherGroups.add(groupKey);
@@ -11875,6 +11938,10 @@ function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, s
     }
   };
   scope.addEventListener("click", clickHandler);
+  scope.addEventListener("pointerover", previewInlineOtherRailEnter);
+  scope.addEventListener("pointerout", previewInlineOtherRailLeave);
+  scope.addEventListener("focusin", previewInlineOtherRailEnter);
+  scope.addEventListener("focusout", previewInlineOtherRailLeave);
 
   const findRecordIndex = (list, identity = {}) => {
     const uid = String(identity.uid || "");
@@ -12029,6 +12096,10 @@ function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, s
       win.removeEventListener("resize", requestGlobalFrame);
       scope.removeEventListener("scroll", requestGlobalFrame);
       scope.removeEventListener("click", clickHandler);
+      scope.removeEventListener("pointerover", previewInlineOtherRailEnter);
+      scope.removeEventListener("pointerout", previewInlineOtherRailLeave);
+      scope.removeEventListener("focusin", previewInlineOtherRailEnter);
+      scope.removeEventListener("focusout", previewInlineOtherRailLeave);
       win.clearTimeout(jumpHighlightTimer);
       mainList.destroy();
       otherList?.destroy();
@@ -12060,7 +12131,7 @@ function renderPreview(options = {}) {
   const paging = pagingInfoForRows(mainRows);
   const pageRows = rowsForPaging(mainRows, paging);
   const sideRows = otherVisibleRows();
-  const hasInlineOtherIndex = !sideOtherEnabled() && pageRows.some(row => normalizedTab(row.tab) === "other");
+  const hasInlineOtherIndex = !sideOtherEnabled() && collapseInlineOtherEnabled() && pageRows.some(row => normalizedTab(row.tab) === "other");
   const shouldVirtualize = state.visible.length >= PREVIEW_VIRTUAL_SOURCE_THRESHOLD
     || pageRows.length + sideRows.length >= PREVIEW_VIRTUAL_DOM_THRESHOLD;
 
@@ -13451,7 +13522,7 @@ function compactExportRuntime(root) {
 
     const inlineOtherGroups = new Map();
     const collapsedInlineOtherGroups = new Set();
-    if (!data.s) {
+    if (!data.s && inlineOtherStartsCollapsed) {
       let groupId = 0;
       let inOtherGroup = false;
       for (const record of mainRecords) {
@@ -14379,18 +14450,43 @@ function compactExportRuntime(root) {
         mainList.schedule(true);
       });
     };
+    const setInlineOtherRailHover = groupId => {
+      scope.querySelectorAll?.(".inline-other-rail-hit[data-inline-other-toggle]").forEach(button => {
+        button.classList.toggle("is-group-hover", !!groupId && (Number(button.getAttribute("data-inline-other-toggle")) || 0) === groupId);
+      });
+    };
+    const inlineOtherRailEventGroup = event => {
+      const button = event.target?.closest?.(".inline-other-rail-hit[data-inline-other-toggle]");
+      return button && scope.contains(button) ? Number(button.getAttribute("data-inline-other-toggle")) || 0 : 0;
+    };
+    const inlineOtherRailEnter = event => {
+      const groupId = inlineOtherRailEventGroup(event);
+      if (groupId) setInlineOtherRailHover(groupId);
+    };
+    const inlineOtherRailLeave = event => {
+      const groupId = inlineOtherRailEventGroup(event);
+      if (!groupId) return;
+      const nextButton = event.relatedTarget?.closest?.(".inline-other-rail-hit[data-inline-other-toggle]");
+      if (nextButton && scope.contains(nextButton) && (Number(nextButton.getAttribute("data-inline-other-toggle")) || 0) === groupId) return;
+      setInlineOtherRailHover(0);
+    };
     const inlineOtherToggleHandler = event => {
       const button = event.target?.closest?.("[data-inline-other-toggle]");
       if (!button) return;
       const groupId = Number(button.getAttribute("data-inline-other-toggle")) || 0;
       if (!groupId || !inlineOtherGroups.has(groupId)) return;
       event.preventDefault();
+      setInlineOtherRailHover(0);
       const anchor = mainList.captureAnchor();
       if (collapsedInlineOtherGroups.has(groupId)) collapsedInlineOtherGroups.delete(groupId);
       else collapsedInlineOtherGroups.add(groupId);
       refreshInlineMainList(anchor, groupId);
     };
     scope.addEventListener?.("click", inlineOtherToggleHandler);
+    scope.addEventListener?.("pointerover", inlineOtherRailEnter);
+    scope.addEventListener?.("pointerout", inlineOtherRailLeave);
+    scope.addEventListener?.("focusin", inlineOtherRailEnter);
+    scope.addEventListener?.("focusout", inlineOtherRailLeave);
     const requestGlobalFrame = () => {
       mainList.refreshScrollRoot(false);
       otherList?.refreshScrollRoot(false);
@@ -14501,6 +14597,10 @@ function compactExportRuntime(root) {
       },
       destroy() {
         scope.removeEventListener?.("click", inlineOtherToggleHandler);
+        scope.removeEventListener?.("pointerover", inlineOtherRailEnter);
+        scope.removeEventListener?.("pointerout", inlineOtherRailLeave);
+        scope.removeEventListener?.("focusin", inlineOtherRailEnter);
+        scope.removeEventListener?.("focusout", inlineOtherRailLeave);
         win.removeEventListener("scroll", requestGlobalFrame);
         win.removeEventListener("resize", requestGlobalFrame);
         if (scope !== doc) scope.removeEventListener?.("scroll", requestGlobalFrame);
@@ -15609,7 +15709,7 @@ body{background:#edf1f5;color:#172033}
 .other-text{color:rgba(15,23,42,.78)}
 .inline-other-summary-row,.inline-other-details{background:transparent;border:0}
 .inline-other-summary-row .inline-other-summary,.inline-other-details>summary{color:rgba(15,23,42,.62);background:rgba(15,23,42,.035)!important;border-color:rgba(15,23,42,.065)!important}
-.inline-other-summary-row .inline-other-summary:hover,.inline-other-details>summary:hover,.inline-other-rail-hit:hover{background:rgba(15,23,42,.075)!important;color:#334155}
+.inline-other-summary-row .inline-other-summary:hover,.inline-other-details>summary:hover,.inline-other-rail-hit.is-group-hover{background:rgba(15,23,42,.075)!important;color:#334155}
 .inline-other-summary-label{color:inherit!important;background:transparent!important;border:0!important}
 .inline-other-rail-hit{color:rgba(15,23,42,.62)!important;background:rgba(15,23,42,.035)!important;border-left-color:rgba(15,23,42,.065)!important}
 .log-row,.log-row.is-odd,.log-row.group-tone-a{background:#fff;border-bottom-color:rgba(15,23,42,.1)}
@@ -15713,7 +15813,7 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .inline-other-summary[aria-expanded="true"],.inline-other-details[open]>summary{border-radius:0 8px 0 0!important}
 .inline-other-details>summary::-webkit-details-marker{display:none}
 .inline-other-details>summary::marker{content:""}
-.inline-other-summary-row .inline-other-summary:hover,.inline-other-details>summary:hover,.inline-other-rail-hit:hover{background:rgba(255,255,255,.095)!important;color:#e7e7e7}
+.inline-other-summary-row .inline-other-summary:hover,.inline-other-details>summary:hover,.inline-other-rail-hit.is-group-hover{background:rgba(255,255,255,.095)!important;color:#e7e7e7}
 .inline-other-summary-row strong,.inline-other-details>summary strong{color:inherit;font-weight:700}
 .inline-other-summary-label{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:0;height:auto;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font-size:10px;font-variant-numeric:tabular-nums;line-height:1}
 .inline-other-summary-label::after{display:none}
@@ -15780,7 +15880,7 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .bgm-note{margin:0;color:var(--muted);font-size:11px;line-height:1.35;max-height:32px;overflow:hidden}
 .bgm-tag{color:rgba(143,199,255,.9);border-color:rgba(143,199,255,.28)}
 @media(min-width:1960px){.layout.has-bgm-panel{grid-template-rows:1fr}.layout.has-bgm-panel .ccfolia-wrap,.layout.has-bgm-panel .other-wrap{grid-row:auto}.layout > .bgm-panel{position:fixed;top:auto;right:calc((100vw - 1240px) / 2 - 360px);bottom:24px;width:340px}.layout > .bgm-panel .bgm-frame{height:188px}}
-@media(max-width:700px),(hover:none) and (pointer:coarse){.page{padding:16px 8px 80px}.title{font-size:22px;margin-bottom:10px}.scene-pager{position:sticky;top:0;z-index:20;margin:0 -2px 8px;padding:6px 0;background:rgba(24,24,24,.92);backdrop-filter:blur(6px)}.scene-pager button{min-height:26px;padding:3px 7px;font-size:11px}.scene-pager-label{min-width:0;max-width:34vw;font-size:11px}.layout{position:relative;grid-template-columns:minmax(0,1fr) minmax(0,0);height:auto;min-height:0;gap:0;max-width:100%;touch-action:pan-y}.layout.has-bgm-panel{grid-template-rows:auto}.layout.has-bgm-panel .ccfolia-wrap,.layout.has-bgm-panel .other-wrap{grid-row:auto}.ccfolia-wrap{min-width:0;overflow:visible;border-radius:6px}.other-wrap{position:fixed;top:8px;right:var(--trpg-other-right,6px);bottom:8px;z-index:40;min-width:92px;width:32vw;max-width:150px;height:auto;max-height:calc(100vh - 16px);overflow:auto;border-radius:6px;box-shadow:none;opacity:0;transform:translateX(24px) scale(.9,.98);transform-origin:right center;transition:opacity .22s ease,transform .28s cubic-bezier(.16,1.28,.28,1);visibility:hidden;pointer-events:none}.layout.is-other-split{grid-template-columns:minmax(0,1fr);padding-right:calc(min(32vw,150px) + 4px);gap:0;align-items:start}.layout.is-other-split.is-other-left{padding-right:0;padding-left:calc(min(32vw,150px) + 4px)}.layout.is-other-left .other-wrap{right:auto;left:var(--trpg-other-left,6px);transform:translateX(-24px) scale(.9,.98);transform-origin:left center}.layout.is-other-split .other-wrap{opacity:1;transform:translateX(0) scale(1);visibility:visible;pointer-events:auto}.layout.is-other-leaving .other-wrap{opacity:0;transform:translateX(20px) scale(.92,.98)}.layout.is-other-left.is-other-leaving .other-wrap{transform:translateX(-20px) scale(.92,.98)}.layout.is-other-split .log-row{gap:6px;padding:7px 5px}.layout.is-other-split .avatar{width:26px;height:26px;flex-basis:26px;border-radius:5px}.layout.is-other-split .tab-avatar{padding:3px 2px;font-size:clamp(5px,1.75vw,7px);line-height:1.05;white-space:nowrap;word-break:normal;overflow:hidden;text-overflow:clip;letter-spacing:-.03em}.layout.is-other-split .name{font-size:11px}.layout.is-other-split .tag,.layout.is-other-split .expr-tag{font-size:9px}.layout.is-other-split .text{font-size:min(var(--font-size),11px);line-height:1.4}.layout.is-other-split .system-text{max-width:100%;font-size:10px}.layout.is-other-split .other-title{padding:6px 7px;font-size:11px}.layout.is-other-split .other-row{padding:6px 7px}.layout.is-other-split .other-name,.layout.is-other-split .other-text{font-size:10px}.log-row{gap:9px;padding:11px 9px}.log-row.has-continuation{padding-bottom:0}.log-row.is-continuation{min-height:0!important;padding-top:0;padding-bottom:0}.log-row.is-continuation .message,.log-row.is-continuation .grouped-line,.log-row.is-continuation .text{min-height:0!important}.log-row.is-continuation:not(.has-continuation){padding-bottom:7px}.log-row.has-continuation .text br+br,.log-row.is-continuation .text br+br{display:none}.system-text{max-width:100%}.avatar{width:min(var(--avatar-size),42px);height:min(var(--avatar-size),42px);flex-basis:min(var(--avatar-size),42px)}.is-continuation .avatar{visibility:hidden}.bgm-panel{display:none}.bgm-panel.is-mobile-bgm-panel{display:grid!important;position:static;width:auto;max-width:none;margin:0 0 10px;opacity:1;z-index:auto}.bgm-panel.is-mobile-bgm-panel .bgm-frame{height:160px}.bgm-now{left:8px;bottom:8px;max-width:120px;min-height:22px;padding:2px 7px;font-size:10px}.other-title{padding:8px 10px}html.trpg-host-tistory .other-wrap{top:var(--trpg-other-top,0px);bottom:var(--trpg-other-bottom,0px);max-height:calc(100vh - var(--trpg-other-top,0px) - var(--trpg-other-bottom,0px))}html.trpg-host-tistory .bgm-now{bottom:74px}}
+@media(max-width:700px),(hover:none) and (pointer:coarse){.page{padding:16px 8px 80px}.title{font-size:22px;margin-bottom:10px}.scene-pager{position:sticky;top:0;z-index:20;margin:0 -2px 8px;padding:6px 0;background:rgba(24,24,24,.92);backdrop-filter:blur(6px)}.scene-pager button{min-height:26px;padding:3px 7px;font-size:11px}.scene-pager-label{min-width:0;max-width:34vw;font-size:11px}.layout{position:relative;grid-template-columns:minmax(0,1fr) minmax(0,0);height:auto;min-height:0;gap:0;max-width:100%;touch-action:pan-y}.layout.has-bgm-panel{grid-template-rows:auto}.layout.has-bgm-panel .ccfolia-wrap,.layout.has-bgm-panel .other-wrap{grid-row:auto}.ccfolia-wrap{min-width:0;overflow:visible;border-radius:6px}.other-wrap{position:fixed;top:8px;right:var(--trpg-other-right,6px);bottom:8px;z-index:40;min-width:92px;width:32vw;max-width:150px;height:auto;max-height:calc(100vh - 16px);overflow:auto;border-radius:6px;box-shadow:none;opacity:0;transform:translateX(24px) scale(.9,.98);transform-origin:right center;transition:opacity .22s ease,transform .28s cubic-bezier(.16,1.28,.28,1);visibility:hidden;pointer-events:none}.layout.is-other-split{grid-template-columns:minmax(0,1fr);padding-right:calc(min(32vw,150px) + 4px);gap:0;align-items:start}.layout.is-other-split.is-other-left{padding-right:0;padding-left:calc(min(32vw,150px) + 4px)}.layout.is-other-left .other-wrap{right:auto;left:var(--trpg-other-left,6px);transform:translateX(-24px) scale(.9,.98);transform-origin:left center}.layout.is-other-split .other-wrap{opacity:1;transform:translateX(0) scale(1);visibility:visible;pointer-events:auto}.layout.is-other-leaving .other-wrap{opacity:0;transform:translateX(20px) scale(.92,.98)}.layout.is-other-left.is-other-leaving .other-wrap{transform:translateX(-20px) scale(.92,.98)}.layout.is-other-split .log-row{gap:6px;padding:7px 5px}.layout.is-other-split .avatar{width:26px;height:26px;flex-basis:26px;border-radius:5px}.layout.is-other-split .tab-avatar{padding:3px 2px;font-size:clamp(5px,1.75vw,7px);line-height:1.05;white-space:nowrap;word-break:normal;overflow:hidden;text-overflow:clip;letter-spacing:-.03em}.layout.is-other-split .name{font-size:11px}.layout.is-other-split .tag,.layout.is-other-split .expr-tag{font-size:9px}.layout.is-other-split .text{font-size:min(var(--font-size),11px);line-height:1.4}.layout.is-other-split .system-text{max-width:100%;font-size:10px}.layout.is-other-split .other-title{padding:6px 7px;font-size:11px}.layout.is-other-split .other-row{padding:6px 7px}.layout.is-other-split .other-name,.layout.is-other-split .other-text{font-size:10px}.log-row{gap:9px;padding:11px 9px}.log-row.has-continuation{padding-bottom:0}.log-row.is-continuation{min-height:0!important;padding-top:0;padding-bottom:0}.log-row.is-continuation .message,.log-row.is-continuation .grouped-line,.log-row.is-continuation .text{min-height:0!important}.log-row.is-continuation:not(.has-continuation){padding-bottom:7px}.log-row.has-continuation .text br+br,.log-row.is-continuation .text br+br{display:none}.system-text{max-width:100%}.avatar{width:min(var(--avatar-size),42px);height:min(var(--avatar-size),42px);flex-basis:min(var(--avatar-size),42px)}.is-continuation .avatar{visibility:hidden}.bgm-panel[data-trpg-bgm-panel]{display:grid!important;position:static!important;grid-column:1!important;grid-row:auto!important;width:100%!important;max-width:none!important;margin:0 0 10px!important;opacity:1!important;z-index:auto!important}.bgm-panel[data-trpg-bgm-panel] .bgm-frame{height:160px}.bgm-now{left:8px;bottom:8px;max-width:120px;min-height:22px;padding:2px 7px;font-size:10px}.other-title{padding:8px 10px}html.trpg-host-tistory .other-wrap{top:var(--trpg-other-top,0px);bottom:var(--trpg-other-bottom,0px);max-height:calc(100vh - var(--trpg-other-top,0px) - var(--trpg-other-bottom,0px))}html.trpg-host-tistory .bgm-now{bottom:74px}}
 @media(max-width:700px),(hover:none) and (pointer:coarse){.ccfolia-wrap.has-inline-other-index{--inline-other-index-width:0px;padding-right:8px;border-right-color:var(--line);background-color:#2c2c2cde;background-image:none}.inline-other-summary-row,.inline-other-details,.inline-other-details:not([open]){width:100%;min-height:27px;height:auto;overflow:hidden}.inline-other-details[open]{display:flex;flex-direction:column;min-height:0}.inline-other-details[open]>summary{order:2}.inline-other-details[open]>.inline-other-details-body{order:1}.inline-other-summary-row .inline-other-summary,.inline-other-details>summary{position:static;inset:auto;flex-direction:row;justify-content:space-between;width:100%;min-height:27px;margin:0!important;padding:4px 10px!important;border:0!important;border-top:1px solid rgba(255,255,255,.055)!important;border-bottom:1px solid rgba(255,255,255,.055)!important;border-radius:0!important;background:rgba(255,255,255,.045)!important;text-align:left}.inline-other-summary-chevron{margin:0 0 0 auto}.has-inline-other-rail .inline-other-rail-hit{display:none!important}.is-inline-other-group-last.has-inline-other-rail{padding-bottom:27px}.is-inline-other-group-last.has-inline-other-rail .inline-other-rail-hit{position:absolute!important;z-index:4!important;inset:auto 0 0 0!important;display:flex!important;flex-direction:row;align-items:center;justify-content:center;gap:8px;width:100%!important;min-width:0!important;max-width:none!important;min-height:27px;margin:0!important;padding:4px 10px!important;border:0!important;border-top:1px solid rgba(255,255,255,.055)!important;border-radius:0!important;background:rgba(255,255,255,.045)!important}.inline-other-rail-collapse{margin-top:0}.is-inline-other-group-last.has-inline-other-rail .inline-other-rail-collapse{position:absolute;left:50%;margin:0;transform:translateX(-50%)}html[data-theme=light] .ccfolia-wrap.has-inline-other-index{background-color:rgba(255,255,255,.96)}html[data-theme=light] .inline-other-summary-row .inline-other-summary,html[data-theme=light] .inline-other-details>summary,html[data-theme=light] .is-inline-other-group-last.has-inline-other-rail .inline-other-rail-hit{border-color:rgba(15,23,42,.07)!important;background:rgba(15,23,42,.035)!important}}
 .trpg-search-shell{position:sticky;top:8px;z-index:54;height:0;display:flex;justify-content:flex-end;pointer-events:none}
 .trpg-search{pointer-events:auto;display:grid;grid-template-columns:minmax(180px,1fr) auto auto minmax(64px,auto) auto;gap:6px;align-items:center;width:min(580px,100%);max-width:100%;padding:7px;border:1px solid var(--line);border-radius:8px;background:rgba(32,32,32,.96);box-shadow:0 8px 28px rgba(0,0,0,.34);backdrop-filter:blur(7px)}
@@ -16286,6 +16386,7 @@ async function runExportTask(kind, worker) {
 function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
   let mainRows = rows;
   const otherRows = [];
+  const foldInlineOther = !useSide && collapseInlineOtherEnabled();
   if (useSide) {
     mainRows = [];
     rows.forEach(row => (normalizedTab(row.tab) === "other" ? otherRows : mainRows).push(row));
@@ -16306,9 +16407,12 @@ function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
         groupHtml += renderRow(otherRow, previous, mainRows[cursor + 1] || null, false, null, groupTone);
         previous = otherRow;
       }
-      const count = end - index;
-      const open = collapseInlineOtherEnabled() ? "" : " open";
-      rowHtml += `<details class="inline-other-details"${open}><summary aria-label="잡담 ${count.toLocaleString("ko-KR")}개"><span class="inline-other-summary-label"><strong>${count.toLocaleString("ko-KR")}</strong></span><span class="inline-other-summary-chevron" aria-hidden="true">⌄</span></summary><div class="inline-other-details-body">${groupHtml}</div></details>`;
+      if (foldInlineOther) {
+        const count = end - index;
+        rowHtml += `<details class="inline-other-details"><summary aria-label="잡담 ${count.toLocaleString("ko-KR")}개"><span class="inline-other-summary-label"><strong>${count.toLocaleString("ko-KR")}</strong></span><span class="inline-other-summary-chevron" aria-hidden="true">⌄</span></summary><div class="inline-other-details-body">${groupHtml}</div></details>`;
+      } else {
+        rowHtml += groupHtml;
+      }
       index = end;
       continue;
     }
@@ -16319,7 +16423,7 @@ function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
     index += 1;
   }
   const otherHtml = otherRows.map(row => renderOtherRow(row)).join("");
-  const hasInlineOtherIndex = !useSide && mainRows.some(row => normalizedTab(row.tab) === "other");
+  const hasInlineOtherIndex = foldInlineOther && mainRows.some(row => normalizedTab(row.tab) === "other");
   const content = useSide
     ? `<div class="layout" role="group"><div class="ccfolia-wrap">${rowHtml}</div><div class="other-wrap">${otherHtml}</div></div>`
     : `<div class="ccfolia-wrap${hasInlineOtherIndex ? " has-inline-other-index" : ""}">${rowHtml}</div>`;
