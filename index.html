@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.24">
+<meta name="trpg-app-version" content="7.26">
+<!-- v7.26: allow yellow day boundaries to be deleted; automatic boundaries store a durable exclusion while manual boundaries are removed directly. -->
+<!-- v7.25: show the editable yellow day-boundary control for automatic day splits as well as manual ones, while preserving automatic boundaries when a custom label is cleared. -->
 <!-- v7.24: keep exported BGM controls visible on mobile hosts whose responsive viewport settles after runtime initialization, and rehome the panel whenever the mobile media state changes. -->
 <!-- v7.23: make virtual inline-other rail segments share one group-wide hover/focus state so the expanded rail behaves like a single control. -->
 <!-- v7.22: disabling default inline-other folding now omits every fold wrapper, rail, count, and chevron instead of merely starting groups open. -->
@@ -1499,11 +1501,44 @@ html[data-theme="light"] .narrator-text { color: rgba(15,23,42,.8); }
   font: inherit;
 }
 
+.day-boundary-actions {
+  display: inline-flex;
+  justify-self: center;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.day-boundary-delete-button {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0;
+  border: 1px solid rgba(255,205,102,.3);
+  border-radius: 50%;
+  background: rgba(58,42,18,.54);
+  color: rgba(255,230,163,.72);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .day-boundary-label-button:hover,
 .day-boundary-label-button:focus-visible {
   border-color: rgba(255,221,143,.72);
   background: rgba(101,72,23,.92);
   color: #fff2c9;
+}
+
+.day-boundary-delete-button:hover,
+.day-boundary-delete-button:focus-visible {
+  border-color: rgba(255,174,143,.64);
+  background: rgba(108,47,33,.78);
+  color: #ffe5dc;
 }
 
 .day-boundary-before { color: rgba(255,255,255,.5); }
@@ -2750,6 +2785,9 @@ html[data-theme="light"] .day-boundary { color: rgba(15,23,42,.7); background: l
 html[data-theme="light"] .day-boundary-mark { color: #7a5100; background: rgba(255,247,226,.94); border-color: rgba(180,124,17,.28); }
 html[data-theme="light"] .day-boundary-label-button:hover,
 html[data-theme="light"] .day-boundary-label-button:focus-visible { color: #6a4500; background: #fff; border-color: rgba(180,124,17,.52); }
+html[data-theme="light"] .day-boundary-delete-button { color: rgba(122,81,0,.7); background: rgba(255,255,255,.72); border-color: rgba(180,124,17,.24); }
+html[data-theme="light"] .day-boundary-delete-button:hover,
+html[data-theme="light"] .day-boundary-delete-button:focus-visible { color: #8a2f1d; background: #fff5f1; border-color: rgba(180,69,42,.42); }
 html[data-theme="light"] .day-boundary-before { color: rgba(15,23,42,.58); }
 html[data-theme="light"] .day-boundary-after { color: rgba(122,81,0,.76); }
 html[data-theme="light"] .split-boundary-before { color: rgba(15,23,42,.58); }
@@ -3062,8 +3100,8 @@ html[data-theme="light"] .message-edit-portrait-choice, html[data-theme="light"]
           </label>
         </div>
         <div class="manual-day-split-help">
-          <span>연속 세션처럼 자동 구분이 애매하면 미리보기 메시지의 <strong>☀</strong> 버튼으로 다음 일차를 시작하세요. 생성된 노란 경계를 누르면 목차 이름을 지정할 수 있습니다.</span>
-          <button id="clearDaySplitsBtn" type="button" hidden>수동 일차 경계 지우기</button>
+          <span>자동·수동으로 생성된 노란 경계를 누르면 목차 이름을 지정하고, 옆의 <strong>×</strong>로 해당 일차 나눔을 삭제할 수 있습니다. 연속 세션처럼 자동 구분이 애매하면 미리보기 메시지의 <strong>☀</strong> 버튼으로 다음 일차를 시작하세요.</span>
+          <button id="clearDaySplitsBtn" type="button" hidden>일차 편집 초기화</button>
         </div>
         <div class="option-grid">
           <div class="check-row"><input id="groupRows" type="checkbox"><label for="groupRows">같은 캐릭터·표정 연속 대사 묶기</label></div>
@@ -3146,7 +3184,7 @@ html[data-theme="light"] .message-edit-portrait-choice, html[data-theme="light"]
             <div class="status">꺼두면 여러 HTML 파일로, 켜면 하나의 HTML 안에서 이전·다음 버튼으로 나눕니다.</div>
             <div class="check-row"><input id="inlineImages" type="checkbox"><label for="inlineImages">이미지를 HTML에 내장</label></div>
             <div class="check-row"><input id="sessionNavigator" type="checkbox" checked><label for="sessionNavigator">일차 목차·바로가기 포함 <small>(기본 ON)</small></label></div>
-            <div class="status">자동 일차와 <strong>☀ 다음 일차 시작</strong> 버튼으로 만든 수동 일차를 목차에 표시합니다. 수동 일차 경계의 이름은 미리보기 경계에서 지정할 수 있습니다. 끄면 최종 압축 HTML에 목차 데이터를 넣지 않습니다. ✂ HTML/페이지 분할점은 이 목차와 별개입니다.</div>
+            <div class="status">자동 일차와 <strong>☀ 다음 일차 시작</strong> 버튼으로 만든 수동 일차를 목차에 표시합니다. 자동·수동 일차 경계의 이름은 미리보기의 노란 경계에서 지정할 수 있습니다. 끄면 최종 압축 HTML에 목차 데이터를 넣지 않습니다. ✂ HTML/페이지 분할점은 이 목차와 별개입니다.</div>
             <div class="check-row"><input id="tistoryFallback" type="checkbox"><label for="tistoryFallback">티스토리 보호글 호환 본문 포함 <small>(보호글용 · 용량 증가)</small></label></div>
             <div class="status">제목만 보이고 로그 본문이 생성되지 않는 보호글·동적 스킨에서 사용합니다. 정상 실행되면 압축 로그로 자동 전환됩니다.</div>
             <div class="check-row"><input id="notionStatic" type="checkbox"><label for="notionStatic">노션 호환 정적 HTML로 내보내기 <small>(용량 크게 증가)</small></label></div>
@@ -3509,6 +3547,7 @@ const state = {
   splitOrderHints: new Map(),
   splitUidHints: new Map(),
   manualDaySplits: [],
+  ignoredAutoDaySplits: [],
   bgmTriggerByUid: new Map(),
   workKey: "",
   pendingDraft: null,
@@ -3846,6 +3885,7 @@ function workDraftPayload() {
     manualSplits: el("manualSplits")?.value || "",
     manualOtherSplits: el("manualOtherSplits")?.value || "",
     manualDaySplits: state.manualDaySplits.map(entry => ({ ...entry })),
+    ignoredAutoDaySplits: state.ignoredAutoDaySplits.map(entry => ({ ...entry })),
     portraitOverrides: [...state.manualPortraitOverrides.entries()],
     textOverrides: [...state.manualTextOverrides.entries()],
     splitOrderHints: [...state.splitOrderHints.entries()],
@@ -3916,6 +3956,7 @@ function applyWorkDraft(draft) {
   if (typeof draft.manualSplits === "string") el("manualSplits").value = draft.manualSplits;
   if (typeof draft.manualOtherSplits === "string") el("manualOtherSplits").value = draft.manualOtherSplits;
   state.manualDaySplits = normalizeManualDaySplitEntries(draft.manualDaySplits);
+  state.ignoredAutoDaySplits = normalizeIgnoredAutoDaySplitEntries(draft.ignoredAutoDaySplits);
   state.manualPortraitOverrides = normalizePortraitOverrideEntries(draft.portraitOverrides);
   state.manualTextOverrides = normalizeTextOverrideEntries(draft.textOverrides);
   applyManualMessageEdits();
@@ -5081,6 +5122,10 @@ function applySavedConverterSettings(settings) {
   if (Array.isArray(settings.manualDaySplits)) {
     state.manualDaySplits = normalizeManualDaySplitEntries(settings.manualDaySplits);
     if (state.manualDaySplits.length) restored.push("수동 일차 경계");
+  }
+  if (Array.isArray(settings.ignoredAutoDaySplits)) {
+    state.ignoredAutoDaySplits = normalizeIgnoredAutoDaySplitEntries(settings.ignoredAutoDaySplits);
+    if (state.ignoredAutoDaySplits.length) restored.push("제외한 자동 일차 경계");
   }
   if (settings.portraitOverrides) {
     state.manualPortraitOverrides = normalizePortraitOverrideEntries(settings.portraitOverrides);
@@ -7693,6 +7738,7 @@ function converterSettingsPayload() {
     manualSplits: el("manualSplits").value,
     manualOtherSplits: el("manualOtherSplits").value,
     manualDaySplits: state.manualDaySplits.map(entry => ({ ...entry })),
+    ignoredAutoDaySplits: state.ignoredAutoDaySplits.map(entry => ({ ...entry })),
     portraitOverrides: [...state.manualPortraitOverrides.entries()],
     textOverrides: [...state.manualTextOverrides.entries()],
     expressionLibrary: savedExpressionLibraryPayload(),
@@ -10490,6 +10536,46 @@ function normalizeManualDaySplitEntries(value) {
   });
 }
 
+function normalizeIgnoredAutoDaySplitEntries(value) {
+  const source = Array.isArray(value) ? value : [];
+  const byKey = new Map();
+  source.forEach(item => {
+    const entry = item && typeof item === "object" ? item : {};
+    const id = Number(entry.id);
+    const uid = String(entry.uid || "");
+    const order = entry.order == null || entry.order === "" ? NaN : Number(entry.order);
+    if (!uid && !Number.isFinite(order) && !(Number.isFinite(id) && id > 0)) return;
+    const normalized = {
+      id: Number.isFinite(id) && id > 0 ? id : 0,
+      uid,
+      order: Number.isFinite(order) && order >= 0 ? order : null
+    };
+    const key = uid ? `uid:${uid}` : (normalized.order != null ? `order:${normalized.order}` : `id:${normalized.id}`);
+    byKey.set(key, normalized);
+  });
+  return [...byKey.values()];
+}
+
+function ignoredAutoDaySplitEntries() {
+  state.ignoredAutoDaySplits = normalizeIgnoredAutoDaySplitEntries(state.ignoredAutoDaySplits);
+  return state.ignoredAutoDaySplits;
+}
+
+function ignoredAutoDaySplitStartIndicesForRows(rows) {
+  if (!Array.isArray(rows) || rows.length < 2) return [];
+  const lookup = buildRowIdentityLookup(rows);
+  const indices = new Set();
+  ignoredAutoDaySplitEntries().forEach(entry => {
+    let index = rowIndexFromLookup(lookup, entry);
+    if (index < 0 && entry.order != null) {
+      const storedOrder = Number(entry.order);
+      index = rows.findIndex((row, rowIndex) => sourceOrderForExportRow(row, rowIndex) === storedOrder);
+    }
+    if (index > 0 && index < rows.length) indices.add(index);
+  });
+  return [...indices].sort((a, b) => a - b);
+}
+
 function storedDaySplitOrder(entry) {
   if (entry?.order == null || entry.order === "") return null;
   const order = Number(entry.order);
@@ -10535,9 +10621,9 @@ function hasManualDaySplit(message) {
 function updateManualDaySplitUi() {
   const button = el("clearDaySplitsBtn");
   if (!button) return;
-  const count = manualDaySplitEntries().length;
+  const count = manualDaySplitEntries().length + ignoredAutoDaySplitEntries().length;
   button.hidden = count === 0;
-  button.textContent = count ? `수동 일차 경계 ${count.toLocaleString()}개 지우기` : "수동 일차 경계 지우기";
+  button.textContent = count ? `일차 편집 ${count.toLocaleString()}개 초기화` : "일차 편집 초기화";
 }
 
 function sourceOrderForExportRow(row, fallbackIndex = 0) {
@@ -10577,22 +10663,79 @@ function manualDaySplitStartOrdersForRows(rows) {
     .filter(Number.isFinite);
 }
 
+function dayBoundaryEntries() {
+  const rows = Array.isArray(state.messages) ? state.messages : [];
+  const byStart = new Map();
+  manualDaySplitEntries().forEach(entry => {
+    const boundaryOrder = resolvedDaySplitOrder(entry);
+    if (!Number.isFinite(boundaryOrder)) return;
+    const startIndex = upperBoundMessageOrder(rows, boundaryOrder);
+    if (startIndex <= 0 || startIndex >= rows.length) return;
+    const startRow = rows[startIndex];
+    const value = {
+      ...entry,
+      startIndex,
+      startId: Number(startRow?.id) || 0,
+      startUid: String(startRow?.uid || ""),
+      startOrder: Number.isFinite(messageOrder(startRow)) ? messageOrder(startRow) : startIndex
+    };
+    const previous = byStart.get(startIndex);
+    if (!previous || (!previous.label && entry.label)) byStart.set(startIndex, value);
+  });
+
+  (state.sessionPageRanges || []).forEach(session => {
+    const startOrder = Number(session?.startOrder);
+    if (!session?.automatic || !Number.isFinite(startOrder) || startOrder <= 0) return;
+    const startIndex = lowerBoundMessageOrder(rows, startOrder);
+    if (startIndex <= 0 || startIndex >= rows.length) return;
+    const previousRow = rows[startIndex - 1];
+    const startRow = rows[startIndex];
+    const existing = byStart.get(startIndex);
+    const automaticMeta = {
+      automatic: true,
+      startIndex,
+      startId: Number(startRow?.id) || 0,
+      startUid: String(startRow?.uid || ""),
+      startOrder: Number.isFinite(messageOrder(startRow)) ? messageOrder(startRow) : startOrder,
+      defaultLabel: `${Number(session.dayNumber) || startIndex + 1}일차`
+    };
+    if (existing) {
+      byStart.set(startIndex, { ...existing, ...automaticMeta });
+      return;
+    }
+    byStart.set(startIndex, {
+      id: Number(previousRow?.id) || 0,
+      uid: String(previousRow?.uid || ""),
+      order: Number.isFinite(messageOrder(previousRow)) ? messageOrder(previousRow) : startOrder - 1,
+      label: "",
+      ...automaticMeta
+    });
+  });
+
+  return [...byStart.values()].sort((a, b) => Number(a.startIndex) - Number(b.startIndex));
+}
+
 function dayBoundaryHtml(entry) {
   const order = resolvedDaySplitOrder(entry);
   const storedOrder = storedDaySplitOrder(entry);
   const key = entry.uid ? `uid:${entry.uid}` : (storedOrder != null ? `order:${storedOrder}` : `id:${entry.id}`);
   const label = String(entry.label || "").trim();
-  const labelText = label ? `☀ ${label}` : "☀ 목차 이름 지정";
-  return `<div class="day-boundary" data-day-boundary-key="${escapeHtml(key)}" data-day-boundary-order="${Number.isFinite(order) ? order : ""}" role="separator" aria-label="수동 일차 경계">
+  const defaultLabel = String(entry.defaultLabel || "").trim();
+  const labelText = `☀ ${label || defaultLabel || "목차 이름 지정"}`;
+  const boundaryKind = entry.automatic ? "자동" : "수동";
+  return `<div class="day-boundary${entry.automatic ? " is-auto" : ""}" data-day-boundary-key="${escapeHtml(key)}" data-day-boundary-order="${Number.isFinite(order) ? order : ""}" role="separator" aria-label="${boundaryKind} 일차 경계">
     <span class="day-boundary-before">↑ 이 위까지 이전 일차</span>
-    <button type="button" class="day-boundary-mark day-boundary-label-button" data-day-split-id="${Number(entry.id) || 0}" data-day-split-uid="${escapeHtml(entry.uid || "")}" data-day-split-order="${storedOrder != null ? storedOrder : ""}" title="다음 일차의 목차 이름 변경">${escapeHtml(labelText)}</button>
+    <span class="day-boundary-actions">
+      <button type="button" class="day-boundary-mark day-boundary-label-button" data-day-split-id="${Number(entry.id) || 0}" data-day-split-uid="${escapeHtml(entry.uid || "")}" data-day-split-order="${storedOrder != null ? storedOrder : ""}" data-day-boundary-auto="${entry.automatic ? "true" : "false"}" title="다음 일차의 목차 이름 변경">${escapeHtml(labelText)}</button>
+      <button type="button" class="day-boundary-delete-button" data-day-split-id="${Number(entry.id) || 0}" data-day-split-uid="${escapeHtml(entry.uid || "")}" data-day-split-order="${storedOrder != null ? storedOrder : ""}" data-day-boundary-auto="${entry.automatic ? "true" : "false"}" data-day-start-id="${Number(entry.startId) || 0}" data-day-start-uid="${escapeHtml(entry.startUid || "")}" data-day-start-order="${Number.isFinite(Number(entry.startOrder)) ? Number(entry.startOrder) : ""}" title="이 일차 나눔 삭제" aria-label="이 일차 나눔 삭제">×</button>
+    </span>
     <span class="day-boundary-after">↓ 이 아래부터 다음 일차</span>
   </div>`;
 }
 
 function dayBoundaryMapForWindow(windowRows, allColumnRows) {
   const map = new Map();
-  const entries = manualDaySplitEntries();
+  const entries = dayBoundaryEntries();
   if (!windowRows.length || !allColumnRows.length || !entries.length) return map;
   const firstOrder = messageRenderOrder(windowRows[0]);
   const startIndex = Number.isFinite(firstOrder) ? lowerBoundMessageOrder(allColumnRows, firstOrder) : allColumnRows.indexOf(windowRows[0]);
@@ -10967,7 +11110,7 @@ function buildPreviewMainVirtualRecords(pageRows, allMainRows) {
           order: Number.isFinite(order) ? order + .6 : Number(entry.id) || 0,
           virtualKey: `main:day-boundary:${entry.uid || entry.order || entry.id}:${boundaryIndex}`,
           entry,
-          text: "수동 일차 경계",
+          text: entry.automatic ? "자동 일차 경계" : "수동 일차 경계",
           name: ""
         });
       });
@@ -11032,7 +11175,7 @@ function buildPreviewOtherVirtualRecords(rows) {
         order: Number.isFinite(order) ? order + .6 : Number(entry.id) || 0,
         virtualKey: `other:day-boundary:${entry.uid || entry.order || entry.id}:${boundaryIndex}`,
         entry,
-        text: "수동 일차 경계",
+        text: entry.automatic ? "자동 일차 경계" : "수동 일차 경계",
         name: ""
       });
     });
@@ -11913,6 +12056,11 @@ function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, s
       openMessageEditor({ id: Number(editButtonElement.dataset.editId), uid: editButtonElement.dataset.editUid || "", order: Number(editButtonElement.dataset.editOrder) });
       return;
     }
+    const dayDeleteButtonElement = event.target.closest?.(".day-boundary-delete-button[data-day-split-id]");
+    if (dayDeleteButtonElement && scope.contains(dayDeleteButtonElement)) {
+      deleteDayBoundary(dayDeleteButtonElement);
+      return;
+    }
     const dayLabelButtonElement = event.target.closest?.(".day-boundary-label-button[data-day-split-id]");
     if (dayLabelButtonElement && scope.contains(dayLabelButtonElement)) {
       renameManualDaySplit(dayLabelButtonElement);
@@ -12158,6 +12306,12 @@ function renderPreview(options = {}) {
     root.querySelectorAll(".day-split-button[data-day-split-id]").forEach(button => {
       button.addEventListener("click", () => toggleManualDaySplit(button));
     });
+    root.querySelectorAll(".day-boundary-label-button[data-day-split-id]").forEach(button => {
+      button.addEventListener("click", () => renameManualDaySplit(button));
+    });
+    root.querySelectorAll(".day-boundary-delete-button[data-day-split-id]").forEach(button => {
+      button.addEventListener("click", () => deleteDayBoundary(button));
+    });
     root.querySelectorAll(".bgm-button[data-bgm-id]").forEach(button => {
       button.addEventListener("click", () => addBgmTrigger({
         id: Number(button.dataset.bgmId),
@@ -12369,6 +12523,7 @@ function revealDayBoundary(entry) {
 
 function renameManualDaySplit(sourceButton) {
   const rawOrder = sourceButton?.dataset.daySplitOrder;
+  const automatic = sourceButton?.dataset.dayBoundaryAuto === "true";
   const identity = {
     id: Number(sourceButton?.dataset.daySplitId),
     uid: String(sourceButton?.dataset.daySplitUid || ""),
@@ -12381,19 +12536,71 @@ function renameManualDaySplit(sourceButton) {
     if (Number.isFinite(identity.order) && storedOrder != null) return storedOrder === identity.order;
     return !entry.uid && storedOrder == null && Number(entry.id) === identity.id;
   });
-  if (index < 0) return;
-  const current = String(entries[index].label || "");
+  if (index < 0 && !automatic) return;
+  const current = index >= 0 ? String(entries[index].label || "") : "";
   const next = window.prompt("이 경계 아래에서 시작하는 일차의 목차 이름을 입력하세요.\n비워두면 자동으로 ‘N일차’가 표시됩니다.", current);
   if (next == null) return;
-  entries[index].label = String(next).trim().slice(0, 80);
+  const label = String(next).trim().slice(0, 80);
+  if (automatic && !label) {
+    if (index >= 0) entries.splice(index, 1);
+  } else if (index >= 0) {
+    entries[index].label = label;
+  } else {
+    entries.push({
+      id: Number.isFinite(identity.id) ? identity.id : 0,
+      uid: identity.uid,
+      order: Number.isFinite(identity.order) ? identity.order : null,
+      label
+    });
+  }
   state.manualDaySplits = normalizeManualDaySplitEntries(entries);
   rebuildSessionPageRanges();
-  const message = entries[index].label
-    ? `목차 이름을 ‘${entries[index].label}’(으)로 변경했습니다.`
+  const message = label
+    ? `목차 이름을 ‘${label}’(으)로 변경했습니다.`
     : "목차 이름을 기본 일차 표기로 되돌렸습니다.";
-  showSplitActionToast(sourceButton, message, !entries[index].label);
+  showSplitActionToast(sourceButton, message, !label);
   setStatus(message);
   renderPreview({ preserveScroll: true });
+  scheduleWorkDraftSave();
+}
+
+function deleteDayBoundary(sourceButton) {
+  const rawOrder = sourceButton?.dataset.daySplitOrder;
+  const identity = {
+    id: Number(sourceButton?.dataset.daySplitId),
+    uid: String(sourceButton?.dataset.daySplitUid || ""),
+    order: rawOrder == null || rawOrder === "" ? null : Number(rawOrder)
+  };
+  const automatic = sourceButton?.dataset.dayBoundaryAuto === "true";
+  const remainingManual = manualDaySplitEntries().filter(entry => {
+    if (identity.uid && entry.uid) return entry.uid !== identity.uid;
+    const storedOrder = storedDaySplitOrder(entry);
+    if (Number.isFinite(identity.order) && storedOrder != null) return storedOrder !== identity.order;
+    return entry.uid || storedOrder != null || Number(entry.id) !== identity.id;
+  });
+  state.manualDaySplits = normalizeManualDaySplitEntries(remainingManual);
+
+  if (automatic) {
+    const startOrderRaw = sourceButton?.dataset.dayStartOrder;
+    const startEntry = {
+      id: Number(sourceButton?.dataset.dayStartId) || 0,
+      uid: String(sourceButton?.dataset.dayStartUid || ""),
+      order: startOrderRaw == null || startOrderRaw === "" ? null : Number(startOrderRaw)
+    };
+    state.ignoredAutoDaySplits = normalizeIgnoredAutoDaySplitEntries([
+      ...ignoredAutoDaySplitEntries(),
+      startEntry
+    ]);
+  }
+
+  rebuildSessionPageRanges();
+  syncDaySplitButtonStates();
+  updateManualDaySplitUi();
+  const message = automatic
+    ? "자동 일차 나눔을 삭제해 앞 일차와 합쳤습니다."
+    : "수동 일차 나눔을 삭제했습니다.";
+  setStatus(message);
+  updateView();
   scheduleWorkDraftSave();
 }
 
@@ -13094,12 +13301,17 @@ function buildSessionPageRanges(rows) {
   if (sourceRows.length < 2) return [];
   const points = buildSparseTimeline(sourceRows);
   const starts = new Set([0]);
+  const automaticStarts = new Set();
+  const ignoredAutomaticStarts = new Set(ignoredAutoDaySplitStartIndicesForRows(sourceRows));
   const manualLabels = new Map();
 
   for (let index = 1; index < points.length; index += 1) {
     if (timelineCreatesAutomaticDayBoundary(points[index - 1], points[index])) {
       const start = Number(points[index].order);
-      if (Number.isFinite(start) && start > 0 && start < sourceRows.length) starts.add(start);
+      if (Number.isFinite(start) && start > 0 && start < sourceRows.length && !ignoredAutomaticStarts.has(start)) {
+        starts.add(start);
+        automaticStarts.add(start);
+      }
     }
   }
 
@@ -13121,6 +13333,7 @@ function buildSessionPageRanges(rows) {
     return {
       dayNumber: index + 1,
       label: manualLabels.get(startOrder) || `${index + 1}일차`,
+      automatic: automaticStarts.has(startOrder),
       startOrder,
       endOrder,
       startMinute: Number(startPoint?.minute) || 0,
@@ -13242,9 +13455,10 @@ function createCompactLogPayload(rows, useSide, includeSessionNavigator = sessio
 
   const sparseTimeline = includeSessionNavigator ? encodeSparseTimeline(rows) : null;
   const manualSessionMarkers = includeSessionNavigator ? manualDaySplitMarkersForRows(rows) : [];
+  const ignoredAutomaticDayStarts = includeSessionNavigator ? ignoredAutoDaySplitStartIndicesForRows(rows) : [];
 
   const payload = {
-    v: 14,
+    v: 15,
     s: useSide ? 1 : 0,
     f: !useSide && collapseInlineOtherEnabled() ? 1 : 0,
     o: OTHER_TAB_PATTERN_SOURCE,
@@ -13283,6 +13497,7 @@ function createCompactLogPayload(rows, useSide, includeSessionNavigator = sessio
     payload.k = sparseTimeline.values;
     if (sparseTimeline.dateLabels.length) payload.d = sparseTimeline.dateLabels;
     if (manualSessionMarkers.length) payload.w = manualSessionMarkers.map(entry => [entry.startOrder, entry.label]);
+    if (ignoredAutomaticDayStarts.length) payload.z = ignoredAutomaticDayStarts;
   }
   return payload;
 }
@@ -13355,6 +13570,9 @@ function compactExportRuntime(root) {
           };
         }).filter(Boolean)
       : [];
+    const ignoredAutomaticDayStarts = enableSessionNavigator && Array.isArray(data.z)
+      ? new Set(data.z.map(Number).filter(value => Number.isFinite(value) && value > 0))
+      : new Set();
     const triggerValues = Array.isArray(data.u) ? data.u : [];
     let otherTabPattern;
     try { otherTabPattern = new RegExp(String(data.o || "^(?:other|잡담|기타|雑談|その他)\\d*$")); }
@@ -14930,7 +15148,7 @@ function compactExportRuntime(root) {
       for (let index = 1; index < points.length; index += 1) {
         if (!timelineCreatesAutomaticDayBoundary(points[index - 1], points[index])) continue;
         const start = Number(points[index].order);
-        if (Number.isFinite(start) && start > 0 && start < allRecords.length) markDay(start);
+        if (Number.isFinite(start) && start > 0 && start < allRecords.length && !ignoredAutomaticDayStarts.has(start)) markDay(start);
       }
       manualMarkers.forEach(entry => {
         const start = Number(entry?.startOrder);
@@ -17025,6 +17243,7 @@ orderFile.addEventListener("change", async () => {
   state.selectedChars = new Set();
   state.avatarHiddenTabs = new Set();
   state.manualDaySplits = [];
+  state.ignoredAutoDaySplits = [];
   state.manualPortraitOverrides = new Map();
   state.autoPortraits = new Map();
   state.tabStyles = new Map();
@@ -17280,11 +17499,12 @@ el("clearSplitsBtn").addEventListener("click", () => {
 });
 el("clearDaySplitsBtn")?.addEventListener("click", () => {
   state.manualDaySplits = [];
+  state.ignoredAutoDaySplits = [];
   rebuildSessionPageRanges();
   updateManualDaySplitUi();
   state.page = 1;
   if (state.messages.length) updateView();
-  setStatus("수동 일차 경계를 모두 지웠습니다.");
+  setStatus("일차 편집을 초기화했습니다. 삭제했던 자동 일차 경계도 복원했습니다.");
   scheduleWorkDraftSave();
 });
 el("saveBtn").addEventListener("click", () => runExportTask("save", createExportLinksFromRows));
