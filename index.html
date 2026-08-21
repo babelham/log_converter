@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.26">
+<meta name="trpg-app-version" content="7.27">
+<!-- v7.27: add one-click deletion for all automatic day boundaries and make the oldest message's day button rename the first TOC entry instead of creating a stray one-message day. -->
 <!-- v7.26: allow yellow day boundaries to be deleted; automatic boundaries store a durable exclusion while manual boundaries are removed directly. -->
 <!-- v7.25: show the editable yellow day-boundary control for automatic day splits as well as manual ones, while preserving automatic boundaries when a custom label is cleared. -->
 <!-- v7.24: keep exported BGM controls visible on mobile hosts whose responsive viewport settles after runtime initialization, and rehome the panel whenever the mobile media state changes. -->
@@ -1402,6 +1403,14 @@ html[data-theme="light"] .narrator-text { color: rgba(15,23,42,.8); }
   flex: 0 0 auto;
   padding: 5px 8px;
   font-size: 10px;
+}
+
+.manual-day-split-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 
@@ -3100,8 +3109,11 @@ html[data-theme="light"] .message-edit-portrait-choice, html[data-theme="light"]
           </label>
         </div>
         <div class="manual-day-split-help">
-          <span>자동·수동으로 생성된 노란 경계를 누르면 목차 이름을 지정하고, 옆의 <strong>×</strong>로 해당 일차 나눔을 삭제할 수 있습니다. 연속 세션처럼 자동 구분이 애매하면 미리보기 메시지의 <strong>☀</strong> 버튼으로 다음 일차를 시작하세요.</span>
-          <button id="clearDaySplitsBtn" type="button" hidden>일차 편집 초기화</button>
+          <span>자동·수동으로 생성된 노란 경계를 누르면 목차 이름을 지정하고, 옆의 <strong>×</strong>로 해당 일차 나눔을 삭제할 수 있습니다. 첫 메시지의 <strong>☀</strong>은 첫 일차 이름을 지정하고, 이후 메시지의 <strong>☀</strong>은 다음 일차를 시작합니다.</span>
+          <span class="manual-day-split-actions">
+            <button id="clearAutoDaySplitsBtn" type="button" hidden>자동 일차 나눔 모두 삭제</button>
+            <button id="clearDaySplitsBtn" type="button" hidden>일차 편집 초기화</button>
+          </span>
         </div>
         <div class="option-grid">
           <div class="check-row"><input id="groupRows" type="checkbox"><label for="groupRows">같은 캐릭터·표정 연속 대사 묶기</label></div>
@@ -3548,6 +3560,7 @@ const state = {
   splitUidHints: new Map(),
   manualDaySplits: [],
   ignoredAutoDaySplits: [],
+  firstDayLabel: "",
   bgmTriggerByUid: new Map(),
   workKey: "",
   pendingDraft: null,
@@ -3886,6 +3899,7 @@ function workDraftPayload() {
     manualOtherSplits: el("manualOtherSplits")?.value || "",
     manualDaySplits: state.manualDaySplits.map(entry => ({ ...entry })),
     ignoredAutoDaySplits: state.ignoredAutoDaySplits.map(entry => ({ ...entry })),
+    firstDayLabel: state.firstDayLabel,
     portraitOverrides: [...state.manualPortraitOverrides.entries()],
     textOverrides: [...state.manualTextOverrides.entries()],
     splitOrderHints: [...state.splitOrderHints.entries()],
@@ -3957,6 +3971,7 @@ function applyWorkDraft(draft) {
   if (typeof draft.manualOtherSplits === "string") el("manualOtherSplits").value = draft.manualOtherSplits;
   state.manualDaySplits = normalizeManualDaySplitEntries(draft.manualDaySplits);
   state.ignoredAutoDaySplits = normalizeIgnoredAutoDaySplitEntries(draft.ignoredAutoDaySplits);
+  state.firstDayLabel = String(draft.firstDayLabel || "").trim().slice(0, 80);
   state.manualPortraitOverrides = normalizePortraitOverrideEntries(draft.portraitOverrides);
   state.manualTextOverrides = normalizeTextOverrideEntries(draft.textOverrides);
   applyManualMessageEdits();
@@ -5126,6 +5141,10 @@ function applySavedConverterSettings(settings) {
   if (Array.isArray(settings.ignoredAutoDaySplits)) {
     state.ignoredAutoDaySplits = normalizeIgnoredAutoDaySplitEntries(settings.ignoredAutoDaySplits);
     if (state.ignoredAutoDaySplits.length) restored.push("제외한 자동 일차 경계");
+  }
+  if (typeof settings.firstDayLabel === "string") {
+    state.firstDayLabel = settings.firstDayLabel.trim().slice(0, 80);
+    if (state.firstDayLabel) restored.push("첫 일차 이름");
   }
   if (settings.portraitOverrides) {
     state.manualPortraitOverrides = normalizePortraitOverrideEntries(settings.portraitOverrides);
@@ -7739,6 +7758,7 @@ function converterSettingsPayload() {
     manualOtherSplits: el("manualOtherSplits").value,
     manualDaySplits: state.manualDaySplits.map(entry => ({ ...entry })),
     ignoredAutoDaySplits: state.ignoredAutoDaySplits.map(entry => ({ ...entry })),
+    firstDayLabel: state.firstDayLabel,
     portraitOverrides: [...state.manualPortraitOverrides.entries()],
     textOverrides: [...state.manualTextOverrides.entries()],
     expressionLibrary: savedExpressionLibraryPayload(),
@@ -10576,6 +10596,19 @@ function ignoredAutoDaySplitStartIndicesForRows(rows) {
   return [...indices].sort((a, b) => a - b);
 }
 
+function automaticDaySplitStartIndicesForRows(rows, timelinePoints = null) {
+  const sourceRows = Array.isArray(rows) ? rows : [];
+  if (sourceRows.length < 2) return [];
+  const points = Array.isArray(timelinePoints) ? timelinePoints : buildSparseTimeline(sourceRows);
+  const starts = new Set();
+  for (let index = 1; index < points.length; index += 1) {
+    if (!timelineCreatesAutomaticDayBoundary(points[index - 1], points[index])) continue;
+    const start = Number(points[index].order);
+    if (Number.isFinite(start) && start > 0 && start < sourceRows.length) starts.add(start);
+  }
+  return [...starts].sort((a, b) => a - b);
+}
+
 function storedDaySplitOrder(entry) {
   if (entry?.order == null || entry.order === "") return null;
   const order = Number(entry.order);
@@ -10605,25 +10638,60 @@ function manualDaySplitEntries() {
   return state.manualDaySplits;
 }
 
+function isFirstMessage(message) {
+  const first = state.messages[0];
+  if (!message || !first) return false;
+  const uid = String(message.uid || "");
+  const firstUid = String(first.uid || "");
+  if (uid && firstUid) return uid === firstUid;
+  const order = Number(messageOrder(message));
+  const firstOrder = Number(messageOrder(first));
+  return Number.isFinite(order) && Number.isFinite(firstOrder) && order === firstOrder;
+}
+
+function daySplitEntryMatchesMessage(entry, message) {
+  if (!entry || !message) return false;
+  const uid = String(message.uid || "");
+  if (uid && entry.uid) return entry.uid === uid;
+  const order = Number(messageOrder(message));
+  const storedOrder = storedDaySplitOrder(entry);
+  if (Number.isFinite(order) && storedOrder != null) return storedOrder === order;
+  return !entry.uid && storedOrder == null && Number(entry.id) === Number(message.id);
+}
+
+function effectiveFirstDayLabel() {
+  if (state.firstDayLabel) return state.firstDayLabel;
+  const first = state.messages[0];
+  if (!first) return "";
+  const legacy = manualDaySplitEntries().find(entry => daySplitEntryMatchesMessage(entry, first));
+  return String(legacy?.label || "").trim().slice(0, 80);
+}
+
 function hasManualDaySplit(message) {
   if (!message) return false;
-  const uid = String(message.uid || "");
-  const order = Number(messageOrder(message));
-  const id = Number(message.id);
-  return manualDaySplitEntries().some(entry => {
-    if (uid && entry.uid) return entry.uid === uid;
-    const storedOrder = storedDaySplitOrder(entry);
-    if (Number.isFinite(order) && storedOrder != null) return storedOrder === order;
-    return !entry.uid && storedOrder == null && Number(entry.id) === id;
-  });
+  if (isFirstMessage(message) && state.firstDayLabel) return true;
+  return manualDaySplitEntries().some(entry => daySplitEntryMatchesMessage(entry, message));
 }
 
 function updateManualDaySplitUi() {
   const button = el("clearDaySplitsBtn");
-  if (!button) return;
-  const count = manualDaySplitEntries().length + ignoredAutoDaySplitEntries().length;
-  button.hidden = count === 0;
-  button.textContent = count ? `일차 편집 ${count.toLocaleString()}개 초기화` : "일차 편집 초기화";
+  const autoButton = el("clearAutoDaySplitsBtn");
+  const manualCount = manualDaySplitEntries().length;
+  const ignoredEntries = ignoredAutoDaySplitEntries();
+  const count = manualCount + ignoredEntries.length + (state.firstDayLabel ? 1 : 0);
+  if (button) {
+    button.hidden = count === 0;
+    button.textContent = count ? `일차 편집 ${count.toLocaleString()}개 초기화` : "일차 편집 초기화";
+  }
+  if (autoButton) {
+    const ignoredStarts = new Set(ignoredAutoDaySplitStartIndicesForRows(state.messages));
+    const activeAutoCount = automaticDaySplitStartIndicesForRows(state.messages)
+      .filter(start => !ignoredStarts.has(start)).length;
+    autoButton.hidden = activeAutoCount === 0;
+    autoButton.textContent = activeAutoCount
+      ? `자동 일차 나눔 ${activeAutoCount.toLocaleString()}개 모두 삭제`
+      : "자동 일차 나눔 모두 삭제";
+  }
 }
 
 function sourceOrderForExportRow(row, fallbackIndex = 0) {
@@ -10637,6 +10705,7 @@ function manualDaySplitMarkersForRows(rows) {
   if (!Array.isArray(rows) || rows.length < 2) return [];
   const markers = new Map();
   manualDaySplitEntries().forEach(entry => {
+    if (isFirstMessage(rows[0]) && daySplitEntryMatchesMessage(entry, rows[0])) return;
     const boundaryOrder = resolvedDaySplitOrder(entry);
     if (!Number.isFinite(boundaryOrder)) return;
     const startOrder = rows.findIndex((row, index) => sourceOrderForExportRow(row, index) > boundaryOrder);
@@ -10927,7 +10996,10 @@ function splitButton(message, target = "main") {
 
 function daySplitButton(message) {
   const isSet = hasManualDaySplit(message);
-  const label = isSet ? "수동 일차 경계 제거" : "이 채팅 뒤에서 다음 일차 시작";
+  const first = isFirstMessage(message);
+  const label = first
+    ? (effectiveFirstDayLabel() ? "첫 일차 이름 변경" : "첫 일차 이름 지정")
+    : (isSet ? "수동 일차 경계 제거" : "이 채팅 뒤에서 다음 일차 시작");
   const order = messageRenderOrder(message);
   return `<button type="button" class="split-button day-split-button${isSet ? " is-set" : ""}" data-day-split-id="${message.id}" data-day-split-uid="${escapeHtml(message.uid || "")}" data-day-split-order="${Number.isFinite(order) ? order : ""}" title="${label}" aria-label="${label}" aria-pressed="${isSet ? "true" : "false"}">${label}</button>`;
 }
@@ -12493,13 +12565,22 @@ function syncDaySplitButtonStates() {
       uid: String(button.dataset.daySplitUid || ""),
       order: Number(button.dataset.daySplitOrder)
     };
-    const isSet = manualDaySplitEntries().some(entry => {
+    const first = state.messages[0];
+    const firstUid = String(first?.uid || "");
+    const firstOrder = Number(messageOrder(first));
+    const isFirst = !!first && (
+      (identity.uid && firstUid && identity.uid === firstUid)
+      || (Number.isFinite(identity.order) && Number.isFinite(firstOrder) && identity.order === firstOrder)
+    );
+    const isSet = isFirst ? !!effectiveFirstDayLabel() : manualDaySplitEntries().some(entry => {
       if (identity.uid && entry.uid) return entry.uid === identity.uid;
       const storedOrder = storedDaySplitOrder(entry);
       if (Number.isFinite(identity.order) && storedOrder != null) return storedOrder === identity.order;
       return !entry.uid && storedOrder == null && Number(entry.id) === identity.id;
     });
-    const label = isSet ? "수동 일차 경계 제거" : "이 채팅 뒤에서 다음 일차 시작";
+    const label = isFirst
+      ? (effectiveFirstDayLabel() ? "첫 일차 이름 변경" : "첫 일차 이름 지정")
+      : (isSet ? "수동 일차 경계 제거" : "이 채팅 뒤에서 다음 일차 시작");
     button.classList.toggle("is-set", isSet);
     button.parentElement?.classList.toggle("has-day-split", isSet);
     button.title = label;
@@ -12609,6 +12690,40 @@ function toggleManualDaySplit(sourceButton) {
   const uid = String(sourceButton?.dataset.daySplitUid || "");
   const order = Number(sourceButton?.dataset.daySplitOrder);
   if (!Number.isFinite(order) || order < 0) return;
+  const first = state.messages[0];
+  const firstUid = String(first?.uid || "");
+  const firstOrder = Number(messageOrder(first));
+  const isFirst = !!first && (
+    (uid && firstUid && uid === firstUid)
+    || (Number.isFinite(firstOrder) && order === firstOrder)
+  );
+  if (isFirst) {
+    const entries = manualDaySplitEntries().map(entry => ({ ...entry }));
+    const legacyIndex = entries.findIndex(entry => {
+      if (uid && entry.uid) return entry.uid === uid;
+      const storedOrder = storedDaySplitOrder(entry);
+      if (storedOrder != null) return storedOrder === order;
+      return !entry.uid && Number(entry.id) === id;
+    });
+    const current = state.firstDayLabel || (legacyIndex >= 0 ? String(entries[legacyIndex].label || "") : "");
+    const next = window.prompt("첫 일차의 목차 이름을 입력하세요.\n비워두면 자동으로 ‘1일차’가 표시됩니다.", current);
+    if (next == null) return;
+    const label = String(next).trim().slice(0, 80);
+    if (legacyIndex >= 0) entries.splice(legacyIndex, 1);
+    state.manualDaySplits = normalizeManualDaySplitEntries(entries);
+    state.firstDayLabel = label;
+    rebuildSessionPageRanges();
+    syncDaySplitButtonStates();
+    updateManualDaySplitUi();
+    const message = label
+      ? `첫 일차의 목차 이름을 ‘${label}’(으)로 지정했습니다.`
+      : "첫 일차 이름을 기본 표기로 되돌렸습니다.";
+    showSplitActionToast(sourceButton, message, !label);
+    setStatus(message);
+    updateView();
+    scheduleWorkDraftSave();
+    return;
+  }
   if (upperBoundMessageOrder(state.messages, order) >= state.messages.length) {
     showSplitActionToast(sourceButton, "마지막 메시지 뒤에는 다음 일차를 만들 수 없습니다.", true);
     return;
@@ -13305,15 +13420,12 @@ function buildSessionPageRanges(rows) {
   const ignoredAutomaticStarts = new Set(ignoredAutoDaySplitStartIndicesForRows(sourceRows));
   const manualLabels = new Map();
 
-  for (let index = 1; index < points.length; index += 1) {
-    if (timelineCreatesAutomaticDayBoundary(points[index - 1], points[index])) {
-      const start = Number(points[index].order);
-      if (Number.isFinite(start) && start > 0 && start < sourceRows.length && !ignoredAutomaticStarts.has(start)) {
-        starts.add(start);
-        automaticStarts.add(start);
-      }
+  automaticDaySplitStartIndicesForRows(sourceRows, points).forEach(start => {
+    if (!ignoredAutomaticStarts.has(start)) {
+      starts.add(start);
+      automaticStarts.add(start);
     }
-  }
+  });
 
   manualDaySplitMarkersForRows(sourceRows).forEach(marker => {
     const start = Number(marker.startOrder);
@@ -13332,7 +13444,7 @@ function buildSessionPageRanges(rows) {
     const endPoint = timelinePointAtOrBefore(points, Math.max(startOrder, endOrder - 1));
     return {
       dayNumber: index + 1,
-      label: manualLabels.get(startOrder) || `${index + 1}일차`,
+      label: (startOrder === 0 ? effectiveFirstDayLabel() : manualLabels.get(startOrder)) || `${index + 1}일차`,
       automatic: automaticStarts.has(startOrder),
       startOrder,
       endOrder,
@@ -13458,7 +13570,7 @@ function createCompactLogPayload(rows, useSide, includeSessionNavigator = sessio
   const ignoredAutomaticDayStarts = includeSessionNavigator ? ignoredAutoDaySplitStartIndicesForRows(rows) : [];
 
   const payload = {
-    v: 15,
+    v: 16,
     s: useSide ? 1 : 0,
     f: !useSide && collapseInlineOtherEnabled() ? 1 : 0,
     o: OTHER_TAB_PATTERN_SOURCE,
@@ -13498,6 +13610,8 @@ function createCompactLogPayload(rows, useSide, includeSessionNavigator = sessio
     if (sparseTimeline.dateLabels.length) payload.d = sparseTimeline.dateLabels;
     if (manualSessionMarkers.length) payload.w = manualSessionMarkers.map(entry => [entry.startOrder, entry.label]);
     if (ignoredAutomaticDayStarts.length) payload.z = ignoredAutomaticDayStarts;
+    const firstLabel = effectiveFirstDayLabel();
+    if (firstLabel) payload.y = firstLabel;
   }
   return payload;
 }
@@ -13573,6 +13687,7 @@ function compactExportRuntime(root) {
     const ignoredAutomaticDayStarts = enableSessionNavigator && Array.isArray(data.z)
       ? new Set(data.z.map(Number).filter(value => Number.isFinite(value) && value > 0))
       : new Set();
+    const firstDayLabel = enableSessionNavigator ? String(data.y || "").trim().slice(0, 80) : "";
     const triggerValues = Array.isArray(data.u) ? data.u : [];
     let otherTabPattern;
     try { otherTabPattern = new RegExp(String(data.o || "^(?:other|잡담|기타|雑談|その他)\\d*$")); }
@@ -15137,7 +15252,7 @@ function compactExportRuntime(root) {
     };
     const buildSessionIndex = (points, manualMarkers = []) => {
       if (allRecords.length < 2) return [];
-      const markers = new Map([[0, { label: "", manual: false }]]);
+      const markers = new Map([[0, { label: firstDayLabel, manual: !!firstDayLabel }]]);
       const markDay = (start, label = "", manual = false) => {
         const previous = markers.get(start) || { label: "", manual: false };
         markers.set(start, {
@@ -17244,6 +17359,7 @@ orderFile.addEventListener("change", async () => {
   state.avatarHiddenTabs = new Set();
   state.manualDaySplits = [];
   state.ignoredAutoDaySplits = [];
+  state.firstDayLabel = "";
   state.manualPortraitOverrides = new Map();
   state.autoPortraits = new Map();
   state.tabStyles = new Map();
@@ -17500,11 +17616,49 @@ el("clearSplitsBtn").addEventListener("click", () => {
 el("clearDaySplitsBtn")?.addEventListener("click", () => {
   state.manualDaySplits = [];
   state.ignoredAutoDaySplits = [];
+  state.firstDayLabel = "";
   rebuildSessionPageRanges();
   updateManualDaySplitUi();
   state.page = 1;
   if (state.messages.length) updateView();
   setStatus("일차 편집을 초기화했습니다. 삭제했던 자동 일차 경계도 복원했습니다.");
+  scheduleWorkDraftSave();
+});
+el("clearAutoDaySplitsBtn")?.addEventListener("click", () => {
+  const rows = state.messages;
+  const alreadyIgnored = new Set(ignoredAutoDaySplitStartIndicesForRows(rows));
+  const activeStarts = automaticDaySplitStartIndicesForRows(rows)
+    .filter(start => !alreadyIgnored.has(start));
+  if (!activeStarts.length) {
+    updateManualDaySplitUi();
+    return;
+  }
+  const activeStartSet = new Set(activeStarts);
+  const exclusions = activeStarts.map(startIndex => {
+    const row = rows[startIndex];
+    return {
+      id: Number(row?.id) || 0,
+      uid: String(row?.uid || ""),
+      order: Number.isFinite(messageOrder(row)) ? messageOrder(row) : startIndex
+    };
+  });
+  state.ignoredAutoDaySplits = normalizeIgnoredAutoDaySplitEntries([
+    ...ignoredAutoDaySplitEntries(),
+    ...exclusions
+  ]);
+  state.manualDaySplits = normalizeManualDaySplitEntries(
+    manualDaySplitEntries().filter(entry => {
+      const boundaryOrder = resolvedDaySplitOrder(entry);
+      if (!Number.isFinite(boundaryOrder)) return true;
+      return !activeStartSet.has(upperBoundMessageOrder(rows, boundaryOrder));
+    })
+  );
+  rebuildSessionPageRanges();
+  syncDaySplitButtonStates();
+  updateManualDaySplitUi();
+  state.page = 1;
+  if (rows.length) updateView();
+  setStatus(`자동 일차 나눔 ${activeStarts.length.toLocaleString()}개를 모두 삭제했습니다. 별도로 만든 수동 일차 나눔은 유지했습니다.`);
   scheduleWorkDraftSave();
 });
 el("saveBtn").addEventListener("click", () => runExportTask("save", createExportLinksFromRows));
