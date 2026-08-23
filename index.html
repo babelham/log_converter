@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.32">
+<meta name="trpg-app-version" content="7.34">
+<!-- v7.34: keep editor auto-day pagination independent from manual TOC boundaries while retaining custom labels on automatic days. -->
+<!-- v7.33: preserve the current preview page and scroll position when unified boundaries are saved or removed. -->
 <!-- v7.32: default new boundary TOC registration to enabled while preserving existing saved states. -->
 <!-- v7.31: remember the last saved file/page output choice and reuse it as the default for the next new manual boundary. -->
 <!-- v7.30: always expose the first day in the boundary manager, simplify its editor, and prioritize boundary naming and TOC controls over file/page output. -->
@@ -4860,8 +4862,7 @@ function refreshUnifiedBoundaries(message = "") {
   rebuildSessionPageRanges();
   syncUnifiedBoundaryCountUi();
   updateManualDaySplitUi();
-  state.page = 1;
-  if (state.messages.length) updateView();
+  if (state.messages.length) updateView({ preserveScroll: true });
   if (message) setStatus(message);
   scheduleWorkDraftSave();
 }
@@ -11250,7 +11251,7 @@ function updateStyleOnly() {
   scheduleWorkDraftSave();
 }
 
-function updateView() {
+function updateView(options = {}) {
   applyStyleControls();
   updateManualDaySplitUi();
   state.visible = filteredMessages();
@@ -11272,7 +11273,7 @@ function updateView() {
   el("nextBtn").disabled = state.page >= paging.pageCount;
   updateFilterAndExportSummary();
   renderBoundaryList();
-  renderPreview();
+  renderPreview(options);
   scheduleWorkDraftSave();
 }
 
@@ -14181,10 +14182,9 @@ function buildSessionPageRanges(rows) {
 
   manualDaySplitMarkersForRows(sourceRows).forEach(marker => {
     const start = Number(marker.startOrder);
-    if (start > 0 && start < sourceRows.length) {
-      starts.add(start);
-      if (marker.label) manualLabels.set(start, marker.label);
-    }
+    // 수동 목차는 출력용 구간만 추가한다. 편집기 페이지는 자동 일차만 유지하되,
+    // 자동 일차와 같은 위치에 지정한 이름은 해당 페이지 이름으로 사용한다.
+    if (start > 0 && start < sourceRows.length && marker.label) manualLabels.set(start, marker.label);
   });
 
   const orderedStarts = [...starts].sort((a, b) => a - b);
