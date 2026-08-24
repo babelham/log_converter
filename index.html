@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.45">
-<!-- v7.45: restore the light-mode main dialogue alternation to the cool-gray palette. -->
+<meta name="trpg-app-version" content="7.51">
+<!-- v7.51: keep an auto-expanded scroll summary open until its current display cycle ends. -->
 <!-- Earlier patch details are preserved in the file's version history. -->
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
@@ -15641,6 +15641,46 @@ function compactExportRuntime(root) {
       return previous;
     }
 
+    let transientNavigationHighlightTimer = 0;
+    let transientNavigationHighlightActive = false;
+    const cancelTransientNavigationHighlightTimer = () => {
+      if (!transientNavigationHighlightTimer) return;
+      win.clearTimeout(transientNavigationHighlightTimer);
+      transientNavigationHighlightTimer = 0;
+    };
+    const clearTransientNavigationHighlight = () => {
+      cancelTransientNavigationHighlightTimer();
+      if (!transientNavigationHighlightActive) return;
+      transientNavigationHighlightActive = false;
+      mainList.setHighlight(null);
+      otherList?.setHighlight(null);
+    };
+    const scheduleTransientNavigationHighlightClear = (duration = 2400) => {
+      if (!transientNavigationHighlightActive) return;
+      cancelTransientNavigationHighlightTimer();
+      transientNavigationHighlightTimer = win.setTimeout(clearTransientNavigationHighlight, Math.max(400, duration));
+    };
+    const beginTransientNavigationHighlight = record => {
+      cancelTransientNavigationHighlightTimer();
+      transientNavigationHighlightActive = true;
+      mainList.setHighlight(record?.kind === "main" ? record : null);
+      otherList?.setHighlight(record?.kind === "other" ? record : null);
+      // 이동 실패나 중단 시에도 강조가 남지 않도록 안전 타이머를 먼저 둔다.
+      scheduleTransientNavigationHighlightClear(3600);
+    };
+    const setPersistentNavigationHighlight = record => {
+      cancelTransientNavigationHighlightTimer();
+      transientNavigationHighlightActive = false;
+      mainList.setHighlight(record?.kind === "main" ? record : null);
+      otherList?.setHighlight(record?.kind === "other" ? record : null);
+    };
+    const transientNavigationHighlightHover = event => {
+      if (!transientNavigationHighlightActive) return;
+      const row = event.target?.closest?.(".is-search-target");
+      if (row && scope.contains?.(row)) clearTransientNavigationHighlight();
+    };
+    scope.addEventListener?.("pointerover", transientNavigationHighlightHover);
+
     const api = {
       stats: runtimeStats,
       mainRecords,
@@ -15719,7 +15759,7 @@ function compactExportRuntime(root) {
       syncOther(index, optionsValue = {}) {
         return this.settleOther(index, optionsValue);
       },
-      async jumpToRecord(record) {
+      async jumpToRecord(record, optionsValue = {}) {
         if (!record) return false;
         if (typeof this.ensureIdVisible === "function") await this.ensureIdVisible(record);
         const inlineGroupId = Number(record.inlineOtherGroupId) || 0;
@@ -15733,8 +15773,9 @@ function compactExportRuntime(root) {
         const mainCompanion = record.kind === "other"
           ? navigationCompanionRecord(mainList.records, record.order, "main")
           : null;
-        mainList.setHighlight(record.kind === "main" ? record : null);
-        otherList?.setHighlight(record.kind === "other" ? record : null);
+        const transientHighlight = optionsValue?.transientHighlight === true;
+        if (transientHighlight) beginTransientNavigationHighlight(record);
+        else setPersistentNavigationHighlight(record);
         if (record.kind === "other" && win.matchMedia?.("(max-width: 700px), (hover: none) and (pointer: coarse)").matches) {
           scope.dispatchEvent(new CustomEvent("trpg-open-other", { bubbles: true }));
           await new Promise(resolve => win.setTimeout(resolve, 420));
@@ -15745,9 +15786,13 @@ function compactExportRuntime(root) {
         // 페이지 전환·접힌 잡담 해제·웹폰트 반영 뒤에도 같은 UID/순서의 행을 다시 맞춘다.
         await new Promise(resolve => win.requestAnimationFrame(() => win.requestAnimationFrame(resolve)));
         if (mainCompanion) mainList.jumpToIdentity(mainCompanion, "center");
-        return list.jumpToIdentity(record, "center");
+        const settled = list.jumpToIdentity(record, "center");
+        if (transientHighlight) scheduleTransientNavigationHighlightClear(2400);
+        return settled;
       },
       destroy() {
+        cancelTransientNavigationHighlightTimer();
+        scope.removeEventListener?.("pointerover", transientNavigationHighlightHover);
         scope.removeEventListener?.("click", inlineOtherToggleHandler);
         scope.removeEventListener?.("pointerover", inlineOtherRailEnter);
         scope.removeEventListener?.("pointerout", inlineOtherRailLeave);
@@ -16135,11 +16180,14 @@ function compactExportRuntime(root) {
     let sessionNavHovered = false;
     let sessionNavScrollbarDrag = false;
     let sessionNavManualExpanded = false;
+    let sessionNavAutoExpanded = false;
     const sessionNavTouchLike = !!win.matchMedia?.("(hover: none), (pointer: coarse)")?.matches;
     let sessionNavFastMs = 0;
     let sessionNavLastOffset = mainList.currentOffset();
     let sessionNavLastAt = win.performance?.now?.() || Date.now();
     let sessionNavLastActive = -1;
+    let sessionNavPreferredNumber = 0;
+    let sessionNavPreferredUntil = 0;
     const sessionForOrder = order => {
       if (!sessions.length) return null;
       let low = 0, high = sessions.length - 1, found = sessions[0];
@@ -16151,14 +16199,60 @@ function compactExportRuntime(root) {
       return found;
     };
     const currentSession = () => sessionForOrder(Number(mainList.currentIndices()?.order || 0));
-    const updateSessionNavigator = () => {
+    const preferredSession = () => {
+      const nowValue = win.performance?.now?.() || Date.now();
+      if (!sessionNavPreferredNumber || nowValue >= sessionNavPreferredUntil) {
+        sessionNavPreferredNumber = 0;
+        sessionNavPreferredUntil = 0;
+        return null;
+      }
+      return sessions[sessionNavPreferredNumber - 1] || null;
+    };
+    const preferSessionFeedback = (session, duration = 1500) => {
+      if (!session) return;
+      sessionNavPreferredNumber = session.number;
+      sessionNavPreferredUntil = (win.performance?.now?.() || Date.now()) + Math.max(500, duration);
+      sessionNavLastActive = -1;
+    };
+    const updateSessionNavigatorPosition = () => {
       if (!sessionNavigator) return;
-      const session = currentSession();
+      const viewport = mainList.viewport();
+      const viewportTop = Number.isFinite(viewport?.visibleTop) ? viewport.visibleTop : 0;
+      const viewportBottom = Number.isFinite(viewport?.visibleBottom)
+        ? viewport.visibleBottom
+        : (win.innerHeight || doc.documentElement.clientHeight || 1);
+      const visualTop = Number(win.visualViewport?.offsetTop) || 0;
+      const visualBottom = visualTop + (Number(win.visualViewport?.height) || win.innerHeight || doc.documentElement.clientHeight || 1);
+      const visibleTop = Math.max(viewportTop, visualTop);
+      const visibleBottom = Math.max(visibleTop + 1, Math.min(viewportBottom, visualBottom));
+      const viewportHeight = Math.max(1, viewport.end - viewport.start);
+      const totalHeight = Math.max(viewportHeight, Number(mainList.tree?.total?.()) || viewport.end || viewportHeight);
+      const maxOffset = Math.max(0, totalHeight - viewportHeight);
+      const progress = maxOffset > 0
+        ? Math.max(0, Math.min(1, mainList.currentOffset() / maxOffset))
+        : 0;
+      const edge = sessionNavTouchLike ? 8 : 12;
+      const availableHeight = Math.max(54, visibleBottom - visibleTop - edge * 2);
+      sessionNavigator.style.maxHeight = `${Math.round(availableHeight)}px`;
+      if (sessionNavList) sessionNavList.style.maxHeight = `${Math.max(20, Math.round(availableHeight - 36))}px`;
+      const navigatorHeight = Math.min(availableHeight, Math.max(34, sessionNavigator.offsetHeight || 34));
+      const minimumCenter = visibleTop + edge + navigatorHeight / 2;
+      const maximumCenter = visibleBottom - edge - navigatorHeight / 2;
+      const center = maximumCenter >= minimumCenter
+        ? minimumCenter + (maximumCenter - minimumCenter) * progress
+        : (visibleTop + visibleBottom) / 2;
+      sessionNavigator.style.setProperty("--trpg-session-nav-y", `${Math.round(center * 10) / 10}px`);
+    };
+    const sessionVisualViewportHandler = () => win.requestAnimationFrame(updateSessionNavigatorPosition);
+    const updateSessionNavigator = (explicitSession = null) => {
+      if (!sessionNavigator) return;
+      const lockedSession = explicitSession || preferredSession();
+      const session = lockedSession || currentSession();
       if (!session) return;
       if (sessionNavSummary) sessionNavSummary.textContent = `${session.label} · ${session.number}/${sessions.length}`;
       if (sessionNavClock) {
-        const indices = mainList.currentIndices();
-        const point = timelinePointAtOrder(Number(indices?.order || 0));
+        const indices = lockedSession ? null : mainList.currentIndices();
+        const point = timelinePointAtOrder(lockedSession ? session.startOrder : Number(indices?.order || 0));
         sessionNavClock.textContent = point ? timelineDisplayLabel(point) : (session.startTime || "");
       }
       if (sessionNavLastActive !== session.number) {
@@ -16167,10 +16261,26 @@ function compactExportRuntime(root) {
           button.classList.toggle("is-current", Number(button.dataset.sessionNumber) === session.number);
         });
       }
+      dayNavigator?.querySelectorAll?.("button[data-day-jump-index]").forEach(button => {
+        button.classList.toggle("is-current", Number(button.dataset.dayJumpIndex) === session.number - 1);
+      });
+      updateSessionNavigatorPosition();
     };
     const cancelSessionNavHide = () => {
       if (sessionNavHideTimer) win.clearTimeout(sessionNavHideTimer);
       sessionNavHideTimer = 0;
+    };
+    const dayNavigatorIsOpen = () => !!dayNavigator?.classList?.contains("is-open");
+    const hideSessionNavigatorForDayMenu = () => {
+      cancelSessionNavHide();
+      if (!sessionNavigator) return;
+      sessionNavigator.classList.remove("is-visible", "is-expanded");
+      sessionNavSummaryButton?.setAttribute("aria-expanded", "false");
+      sessionNavHovered = false;
+      sessionNavScrollbarDrag = false;
+      sessionNavManualExpanded = false;
+      sessionNavAutoExpanded = false;
+      sessionNavFastMs = 0;
     };
     const scheduleSessionNavHide = (delay = 950) => {
       cancelSessionNavHide();
@@ -16180,21 +16290,37 @@ function compactExportRuntime(root) {
         sessionNavigator.classList.remove("is-visible", "is-expanded");
         sessionNavSummaryButton?.setAttribute("aria-expanded", "false");
         sessionNavManualExpanded = false;
+        sessionNavAutoExpanded = false;
         sessionNavFastMs = 0;
       }, delay);
     };
     const showSessionNavigator = expanded => {
       if (!sessionNavigator) return;
+      if (dayNavigatorIsOpen()) {
+        hideSessionNavigatorForDayMenu();
+        return;
+      }
       updateSessionNavigator();
+      if (expanded) sessionNavAutoExpanded = true;
+      const shouldExpand = sessionNavAutoExpanded || sessionNavHovered || sessionNavScrollbarDrag || sessionNavManualExpanded;
       sessionNavigator.classList.add("is-visible");
-      sessionNavigator.classList.toggle("is-expanded", !!expanded || sessionNavHovered || sessionNavScrollbarDrag || sessionNavManualExpanded);
+      sessionNavigator.classList.toggle("is-expanded", shouldExpand);
       sessionNavSummaryButton?.setAttribute("aria-expanded", String(sessionNavigator.classList.contains("is-expanded")));
-      scheduleSessionNavHide(expanded ? (sessionNavTouchLike ? 1900 : 1100) : (sessionNavTouchLike ? 1300 : 900));
+      updateSessionNavigatorPosition();
+      scheduleSessionNavHide(shouldExpand ? (sessionNavTouchLike ? 1900 : 1100) : (sessionNavTouchLike ? 1300 : 900));
     };
     const sessionScrollHandler = () => {
       if (!sessionNavigator) return;
       const nowValue = win.performance?.now?.() || Date.now();
       const offset = mainList.currentOffset();
+      if (dayNavigatorIsOpen()) {
+        sessionNavLastOffset = offset;
+        sessionNavLastAt = nowValue;
+        sessionNavFastMs = 0;
+        hideSessionNavigatorForDayMenu();
+        updateSessionNavigator();
+        return;
+      }
       const delta = Math.abs(offset - sessionNavLastOffset);
       const dt = Math.max(1, nowValue - sessionNavLastAt);
       const viewport = Math.max(1, mainList.viewport().end - mainList.viewport().start);
@@ -16209,7 +16335,7 @@ function compactExportRuntime(root) {
       if (sessionNavigator.classList.contains("is-visible")) updateSessionNavigator();
     };
     const sessionPointerDown = event => {
-      if (!sessionNavigator || event.button !== 0 || sessionNavTouchLike) return;
+      if (!sessionNavigator || dayNavigatorIsOpen() || event.button !== 0 || sessionNavTouchLike) return;
       const viewport = mainList.viewport();
       const root = viewport.root;
       let nearScrollbar = false;
@@ -16251,9 +16377,11 @@ function compactExportRuntime(root) {
       sessionNavSummaryButton?.setAttribute("aria-expanded", "false");
       const toggleSessionNavigatorExpanded = () => {
         sessionNavManualExpanded = !sessionNavigator.classList.contains("is-expanded");
+        sessionNavAutoExpanded = false;
         sessionNavigator.classList.add("is-visible");
         sessionNavigator.classList.toggle("is-expanded", sessionNavManualExpanded);
         sessionNavSummaryButton?.setAttribute("aria-expanded", String(sessionNavManualExpanded));
+        updateSessionNavigatorPosition();
         if (sessionNavManualExpanded) {
           updateSessionNavigator();
           scheduleSessionNavHide(sessionNavTouchLike ? 2600 : 1800);
@@ -16272,10 +16400,13 @@ function compactExportRuntime(root) {
         if (!button) return;
         const session = sessions[Number(button.dataset.sessionNumber) - 1];
         if (!session?.jumpRecord) return;
-        await api.jumpToRecord(session.jumpRecord);
+        preferSessionFeedback(session);
+        updateSessionNavigator(session);
+        await api.jumpToRecord(session.jumpRecord, { transientHighlight: true });
+        preferSessionFeedback(session);
         sessionNavManualExpanded = false;
         sessionNavSummaryButton?.setAttribute("aria-expanded", "false");
-        updateSessionNavigator();
+        updateSessionNavigator(session);
         scheduleSessionNavHide(1050);
       });
       sessionNavigator.addEventListener("mouseenter", () => {
@@ -16283,11 +16414,13 @@ function compactExportRuntime(root) {
         cancelSessionNavHide();
         sessionNavigator.classList.add("is-visible", "is-expanded");
         sessionNavSummaryButton?.setAttribute("aria-expanded", "true");
+        updateSessionNavigatorPosition();
       });
       sessionNavigator.addEventListener("mouseleave", () => {
         sessionNavHovered = false;
-        if (!sessionNavScrollbarDrag && !sessionNavManualExpanded) sessionNavigator.classList.remove("is-expanded");
+        if (!sessionNavScrollbarDrag && !sessionNavManualExpanded && !sessionNavAutoExpanded) sessionNavigator.classList.remove("is-expanded");
         sessionNavSummaryButton?.setAttribute("aria-expanded", String(sessionNavigator.classList.contains("is-expanded")));
+        updateSessionNavigatorPosition();
         scheduleSessionNavHide(750);
       });
       sessionNavigator.addEventListener("pointerdown", () => cancelSessionNavHide());
@@ -16307,6 +16440,9 @@ function compactExportRuntime(root) {
       doc.addEventListener("pointerdown", sessionPointerDown, true);
       doc.addEventListener("pointerup", sessionPointerUp, true);
       doc.addEventListener("pointercancel", sessionPointerUp, true);
+      win.addEventListener("resize", sessionVisualViewportHandler, { passive: true });
+      win.visualViewport?.addEventListener?.("resize", sessionVisualViewportHandler, { passive: true });
+      win.visualViewport?.addEventListener?.("scroll", sessionVisualViewportHandler, { passive: true });
     }
 
     if (sessions.length >= 2) {
@@ -16324,6 +16460,10 @@ function compactExportRuntime(root) {
       const setOpen = open => {
         dayNavigator.classList.toggle("is-open", !!open);
         toggle?.setAttribute("aria-expanded", String(!!open));
+        sessionNavLastOffset = mainList.currentOffset();
+        sessionNavLastAt = win.performance?.now?.() || Date.now();
+        sessionNavFastMs = 0;
+        if (open) hideSessionNavigatorForDayMenu();
       };
       toggle?.addEventListener("click", event => {
         event.stopPropagation();
@@ -16334,14 +16474,18 @@ function compactExportRuntime(root) {
         if (!button) return;
         const session = sessions[Number(button.dataset.dayJumpIndex)];
         if (!session?.jumpRecord) return;
-        await api.jumpToRecord(session.jumpRecord);
-        setOpen(false);
+        preferSessionFeedback(session);
+        updateSessionNavigator(session);
+        await api.jumpToRecord(session.jumpRecord, { transientHighlight: true });
+        preferSessionFeedback(session);
+        updateSessionNavigator(session);
       });
       dayNavigatorOutsideHandler = event => {
         if (!dayNavigator?.contains(event.target)) setOpen(false);
       };
       doc.addEventListener("click", dayNavigatorOutsideHandler);
       scope.append(dayNavigator);
+      updateSessionNavigator();
     }
 
     const searchRoot = scope.querySelector("[data-trpg-search]");
@@ -16553,6 +16697,9 @@ function compactExportRuntime(root) {
       doc.removeEventListener("pointerdown", sessionPointerDown, true);
       doc.removeEventListener("pointerup", sessionPointerUp, true);
       doc.removeEventListener("pointercancel", sessionPointerUp, true);
+      win.removeEventListener("resize", sessionVisualViewportHandler);
+      win.visualViewport?.removeEventListener?.("resize", sessionVisualViewportHandler);
+      win.visualViewport?.removeEventListener?.("scroll", sessionVisualViewportHandler);
       sessionNavigator?.remove?.();
       if (dayNavigatorOutsideHandler) doc.removeEventListener("click", dayNavigatorOutsideHandler);
       dayNavigator?.remove?.();
@@ -16916,10 +17063,10 @@ body{background:#edf1f5;color:#172033}
 .trpg-day-jump-toggle,.trpg-day-jump-list{background:rgba(255,255,255,.96);border-color:rgba(15,23,42,.14);color:#253044;box-shadow:0 10px 30px rgba(15,23,42,.18)}
 .trpg-day-jump-toggle span{background:rgba(180,124,17,.1);color:#7a5100}
 .trpg-day-jump-list button{color:#334155}
-.trpg-day-jump-list button:hover{background:rgba(180,124,17,.1);color:#7a5100}
+.trpg-day-jump-list button:hover,.trpg-day-jump-list button.is-current{background:rgba(180,124,17,.1);color:#7a5100}
 .trpg-day-jump-list button span{color:rgba(15,23,42,.56)}
 .trpg-virtual-window .log-row:last-child{border-bottom-color:rgba(15,23,42,.1)}
-.log-row.is-search-target,.system-line.is-search-target,.other-row.is-search-target{outline-color:rgba(37,99,166,.92);background:rgba(37,99,166,.12)!important}
+.log-row.is-search-target,.system-line.is-search-target,.narrator-line.is-search-target,.other-row.is-search-target{outline-color:rgba(37,99,166,.92);background:rgba(37,99,166,.12)!important}
 .special-badge{color:rgba(15,23,42,.7);background:rgba(15,23,42,.04);border-color:rgba(15,23,42,.12)}
 .log-row.is-info-highlight{background:rgba(37,99,166,.065)}
 .narrator-line{background:rgba(15,23,42,.018);border-bottom-color:rgba(15,23,42,.08)}
@@ -17060,7 +17207,7 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .trpg-search input::placeholder{color:rgba(255,255,255,.42)}
 .trpg-search button{min-height:32px;padding:5px 9px;font-size:12px}
 .trpg-search-count{min-width:64px;color:var(--muted);font-size:12px;text-align:center;white-space:nowrap}
-.trpg-session-nav{position:fixed;right:14px;top:50%;z-index:52;display:grid;min-width:0;max-width:min(280px,calc(100vw - 28px));padding:0;border:1px solid var(--line);border-radius:10px;background:rgba(27,27,27,.94);color:#f1f1f1;box-shadow:0 10px 34px rgba(0,0,0,.34);backdrop-filter:blur(8px);opacity:0;visibility:hidden;pointer-events:none;transform:translate(8px,-50%) scale(.96);transform-origin:right center;transition:opacity .14s ease,transform .16s ease,visibility 0s linear .16s}
+.trpg-session-nav{position:fixed;right:14px;top:var(--trpg-session-nav-y,50%);z-index:52;display:grid;min-width:0;max-width:min(280px,calc(100vw - 28px));padding:0;border:1px solid var(--line);border-radius:10px;background:rgba(27,27,27,.94);color:#f1f1f1;box-shadow:0 10px 34px rgba(0,0,0,.34);backdrop-filter:blur(8px);opacity:0;visibility:hidden;pointer-events:none;transform:translate(8px,-50%) scale(.96);transform-origin:right center;will-change:top,opacity,transform;transition:opacity .14s ease,transform .16s ease,visibility 0s linear .16s}
 .trpg-session-nav.is-visible{opacity:.92;visibility:visible;pointer-events:auto;transform:translate(0,-50%) scale(1);transition-delay:0s}
 .trpg-session-nav.is-expanded{width:min(260px,calc(100vw - 28px));opacity:1}
 .trpg-session-nav-summary{display:flex;align-items:baseline;gap:7px;min-height:34px;padding:7px 10px;white-space:nowrap;cursor:pointer;touch-action:manipulation}
@@ -17084,7 +17231,7 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .trpg-day-jump-list{display:none;width:min(240px,calc(100vw - 28px));max-height:min(55vh,460px);margin-top:5px;padding:5px;overflow:auto;overscroll-behavior:contain;border:1px solid var(--line);border-radius:9px;background:rgba(27,27,27,.97);box-shadow:0 12px 36px rgba(0,0,0,.36);backdrop-filter:blur(8px)}
 .trpg-day-jump.is-open .trpg-day-jump-list{display:grid;gap:2px}
 .trpg-day-jump-list button{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:34px;padding:6px 8px;border:0;border-radius:6px;background:transparent;color:#eee;text-align:left}
-.trpg-day-jump-list button:hover{background:rgba(255,205,102,.1);color:#ffe6a3}
+.trpg-day-jump-list button:hover,.trpg-day-jump-list button.is-current{background:rgba(255,205,102,.1);color:#ffe6a3}
 .trpg-day-jump-list button strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
 .trpg-day-jump-list button span{color:var(--muted);font-size:9px;white-space:nowrap}
 .trpg-virtual-body{position:relative;width:100%;min-width:0;max-width:100%;min-height:1px;margin:0!important;padding:0!important;contain:layout style;overflow-anchor:none}
@@ -17106,7 +17253,8 @@ html.trpg-host-tistory .trpg-virtual-body,html.trpg-host-tistory .trpg-virtual-w
 .trpg-virtual-window .log-row.is-list-last{border-bottom:0}
 .log-row.is-odd{background:#313131}
 .log-row.is-even{background:#383838}
-.log-row.is-search-target,.system-line.is-search-target,.other-row.is-search-target{position:relative;z-index:1;outline:2px solid rgba(143,199,255,.92);outline-offset:-2px;background:rgba(143,199,255,.15)!important}
+.log-row,.system-line,.narrator-line,.other-row{outline:2px solid transparent;outline-offset:-2px;transition:background-color .42s ease,outline-color .42s ease}
+.log-row.is-search-target,.system-line.is-search-target,.narrator-line.is-search-target,.other-row.is-search-target{position:relative;z-index:1;outline-color:rgba(143,199,255,.92);background:rgba(143,199,255,.15)!important}
 .log-row.has-tab-color,.system-line.has-tab-color,.other-row.has-tab-color{box-shadow:inset 3px 0 0 var(--tab-accent,#8fc7ff)}
 .tag.tab-label-chip{color:var(--tab-accent,#8fc7ff);border:1px solid rgba(143,199,255,.24);border-radius:999px;padding:0 5px}
 .special-badge{display:inline-flex;align-items:center;min-height:18px;padding:1px 6px;border:1px solid rgba(255,255,255,.12);border-radius:999px;color:rgba(255,255,255,.72);background:rgba(255,255,255,.055);font-size:9px;font-weight:800;letter-spacing:.06em}
