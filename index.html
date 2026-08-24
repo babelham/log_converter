@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.40">
-<!-- v7.40: keep alternating row tones stable across boundaries, virtual rows, and separated other-tab lists. -->
+<meta name="trpg-app-version" content="7.45">
+<!-- v7.45: restore the light-mode main dialogue alternation to the cool-gray palette. -->
 <!-- Earlier patch details are preserved in the file's version history. -->
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
@@ -1007,6 +1007,27 @@ html[data-theme="light"] .narrator-text { color: rgba(15,23,42,.8); }
 .log-row.group-tone-a.is-continuation:hover { background: #313131; }
 .log-row.group-tone-b.has-continuation:hover,
 .log-row.group-tone-b.is-continuation:hover { background: #383838; }
+.log-row.is-other-tab:not(.has-tab-background):not(.is-search-target),
+.system-line.is-other-tab:not(.has-tab-background):not(.is-search-target),
+.narrator-line.is-other-tab:not(.has-tab-background):not(.is-search-target) { background: rgba(255,255,255,.018) !important; }
+.log-row.is-other-tab .message,
+.log-row.is-other-tab .avatar,
+.system-line.is-other-tab .system-text,
+.narrator-line.is-other-tab .narrator-text { opacity: .76; filter: saturate(.78); }
+.log-row.is-other-tab .message { font-size: max(11px, calc(var(--font-size) - 2px)); }
+.log-row.is-other-tab .name { font-size: 12px; }
+.log-row.is-other-tab .text { font-size: max(11px, calc(var(--font-size) - 2px)); line-height: 1.55; }
+.log-row.is-other-tab .tag,
+.log-row.is-other-tab .expr-tag { font-size: 10px; }
+.log-row.is-other-tab.has-tab-font-size .message,
+.system-line.is-other-tab.has-tab-font-size,
+.narrator-line.is-other-tab.has-tab-font-size { font-size: max(11px, calc(var(--font-size) - 2px)); }
+.system-line.is-other-tab .system-text,
+.narrator-line.is-other-tab .narrator-text { font-size: max(11px, calc(var(--font-size) - 2px)); line-height: 1.55; }
+.log-row.is-other-tab:hover .message,
+.log-row.is-other-tab:hover .avatar,
+.system-line.is-other-tab:hover .system-text,
+.narrator-line.is-other-tab:hover .narrator-text { opacity: .84; }
 .log-row.is-system {
   background: rgba(255,255,255,.035);
 }
@@ -2890,6 +2911,9 @@ html[data-theme="light"] .log-row.group-tone-a.has-continuation:hover,
 html[data-theme="light"] .log-row.group-tone-a.is-continuation:hover { background: #ffffff; }
 html[data-theme="light"] .log-row.group-tone-b.has-continuation:hover,
 html[data-theme="light"] .log-row.group-tone-b.is-continuation:hover { background: #f4f7f9; }
+html[data-theme="light"] .log-row.is-other-tab:not(.has-tab-background):not(.is-search-target),
+html[data-theme="light"] .system-line.is-other-tab:not(.has-tab-background):not(.is-search-target),
+html[data-theme="light"] .narrator-line.is-other-tab:not(.has-tab-background):not(.is-search-target) { background: #f4f7f9 !important; }
 html[data-theme="light"] .log-row.is-extra-tab { background: rgba(37,99,166,.045); border-left-color: rgba(37,99,166,.32); }
 html[data-theme="light"] .log-row.is-extra-tab:hover { background: rgba(37,99,166,.08); }
 html[data-theme="light"] .log-row.is-system,
@@ -8256,7 +8280,7 @@ function jumpToBgmChat(identity, options = {}) {
     el("hideEmpty").checked = false;
     filterChanged = true;
   }
-  if (el("hideSystem").checked && (!message.imgUrl || String(message.name || "").toLowerCase() === "system")) {
+  if (el("hideSystem").checked && String(message.name || "").toLowerCase() === "system") {
     el("hideSystem").checked = false;
     filterChanged = true;
   }
@@ -11212,7 +11236,7 @@ function filteredMessages() {
   const query = normalizeText(el("searchBox").value).toLowerCase();
   return state.messages.filter(m => {
     if (el("hideEmpty").checked && !m.text) return false;
-    if (el("hideSystem").checked && (!m.imgUrl || m.name.toLowerCase() === "system")) return false;
+    if (el("hideSystem").checked && m.name.toLowerCase() === "system") return false;
     if (!state.selectedTabs.has(m.tab || "main")) return false;
     if (!state.selectedChars.has(m.name || "system")) return false;
     if (query && !(m.searchText || "").includes(query)) return false;
@@ -11737,7 +11761,7 @@ function renderOtherRowsWithSplitBoundaries(rows) {
   for (let index = 0; index <= rows.length; index += 1) {
     (boundaryMap.get(index) || []).forEach(entry => output.push(splitBoundaryHtml(entry)));
     (dayMap.get(index) || []).forEach(entry => output.push(dayBoundaryHtml(entry)));
-    if (index < rows.length) output.push(renderOtherRow(rows[index], true, index));
+    if (index < rows.length) output.push(renderOtherRow(rows[index], true));
   }
   return output.join("");
 }
@@ -11801,21 +11825,19 @@ function compactOtherText(value) {
     .join("\n");
 }
 
-function renderOtherRow(message, interactive = false, toneOrdinal = null) {
+function renderOtherRow(message, interactive = false) {
   const bgmTrigger = bgmTriggerForMessage(message);
   const rowTag = interactive ? "article" : "div";
   const tabDecor = tabRowDecor(message.tab || "other");
-  const resolvedToneOrdinal = Number.isFinite(Number(toneOrdinal)) ? Number(toneOrdinal) : Number(messageRenderOrder(message) || 0);
-  const toneClass = tabDecor.hasBackground && Math.abs(resolvedToneOrdinal) % 2 ? " group-tone-b" : (tabDecor.hasBackground ? " group-tone-a" : "");
   const narrator = isNarratorMessage(message);
   const tabLabel = tabDecor.showLabel ? `<span class="tag tab-label-chip">${escapeHtml(message.tab || "other")}</span>` : "";
   if (narrator) {
-    return `<${rowTag} role="article" class="other-row narrator-line${tabDecor.className}${toneClass}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+    return `<${rowTag} role="article" class="other-row narrator-line${tabDecor.className}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
       ${interactive ? `<div class="other-actions${unifiedBoundaryForMessage(message) || isActiveAutomaticBoundaryMessage(message) ? " has-split" : ""}${messageHasManualEdit(message) ? " has-edit" : ""}">${messageEditButton(message)}${boundaryEditButton(message)}${bgmButton(message)}</div>` : ""}
       <div class="narrator-text">${tabLabel}${messageTextMarkup(compactOtherText(message.text))}${bgmTrigger ? ` ${bgmLink(bgmTrigger)}` : ""}</div>
     </${rowTag}>`;
   }
-  return `<${rowTag} role="article" class="other-row${tabDecor.className}${toneClass}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+  return `<${rowTag} role="article" class="other-row${tabDecor.className}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
     <strong class="other-name" style="${nameColorStyle(message.color)}">${escapeHtml(message.name)}</strong>
     ${tabLabel}
     ${bgmLink(bgmTrigger)}
@@ -11843,6 +11865,7 @@ function canGroupConsecutiveRows(previous, message) {
 
 function renderRow(message, previous, next, interactive = false, imageAssetIds = null, groupTone = 0) {
   const tab = normalizedTab(message.tab || "main");
+  const isOtherTab = tab === "other";
   const rowTag = interactive ? "article" : "div";
   const tabDecor = tabRowDecor(message.tab || "main");
   const rowToneClass = groupTone % 2 ? " group-tone-b" : " group-tone-a";
@@ -11850,14 +11873,14 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
   const tabTag = tabDecor.showLabel ? `<span class="tag tab-label-chip">${escapeHtml(message.tab || "main")}</span>` : "";
   if ((message.name || "").toLowerCase() === "system") {
     const bgmTrigger = bgmTriggerForMessage(message);
-    return `<${rowTag} role="article" class="system-line${tabDecor.className}${tabDecor.hasBackground ? rowToneClass : ""}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+    return `<${rowTag} role="article" class="system-line${isOtherTab ? " is-other-tab" : ""}${tabDecor.className}${!isOtherTab && tabDecor.hasBackground ? rowToneClass : ""}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
       <div class="system-text">${messageTextMarkup(message.text)}${bgmTrigger ? `<br>${bgmLink(bgmTrigger)}` : ""}</div>
       ${interactive ? rowActionButtons(message, "main") : ""}
     </${rowTag}>`;
   }
   const bgmTrigger = bgmTriggerForMessage(message);
   if (isNarratorMessage(message)) {
-    return `<${rowTag} role="article" class="narrator-line${tabDecor.className}${tabDecor.hasBackground ? rowToneClass : ""}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+    return `<${rowTag} role="article" class="narrator-line${isOtherTab ? " is-other-tab" : ""}${tabDecor.className}${!isOtherTab && tabDecor.hasBackground ? rowToneClass : ""}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
       ${interactive ? rowActionButtons(message, "main") : ""}
       <div class="narrator-text">${tabTag}${messageTextMarkup(message.text)}${bgmTrigger ? `<br>${bgmLink(bgmTrigger)}` : ""}</div>
     </${rowTag}>`;
@@ -11865,13 +11888,14 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
   const isExtraTab = tab !== "main" && tab !== "other";
   const grouped = !isExtraTab && canGroupConsecutiveRows(previous, message);
   const hasContinuation = !isExtraTab && canGroupConsecutiveRows(message, next);
-  const isSystem = !isExtraTab && (!message.imgUrl || message.name.toLowerCase() === "system");
+  // 이름이 있는 무이미지 화자는 탭 아바타를 쓰는 일반 화자다. system 행은 위에서 이미 별도로 반환했다.
+  const isSystem = false;
   const label = !isExtraTab && el("showExpression").checked ? expressionLabel(message) : "";
   const avatarIsHidden = avatarHiddenForTab(tab);
   const avatarHtml = avatarIsHidden
     ? ""
     : (grouped ? `<div class="avatar avatar-spacer" aria-hidden="true"></div>` : renderAvatar(message, imageAssetIds));
-  const toneClass = isExtraTab || isSystem || specialKind ? (tabDecor.hasBackground ? rowToneClass : "") : rowToneClass;
+  const toneClass = isOtherTab ? "" : (isExtraTab || isSystem || specialKind ? (tabDecor.hasBackground ? rowToneClass : "") : rowToneClass);
   const specialClass = specialKind === "info" ? " is-info-highlight" : "";
   const groupedLink = bgmLink(bgmTrigger);
   const contentHtml = grouped
@@ -11885,7 +11909,7 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
         ${bgmLink(bgmTrigger)}
       </div>
       <div class="text">${messageTextMarkup(message.text, specialKind)}</div>`;
-  return `<${rowTag} role="article" class="log-row${avatarIsHidden ? " is-avatar-hidden" : ""}${isSystem ? " is-system" : ""}${isExtraTab ? " is-extra-tab" : ""}${grouped ? " is-continuation" : ""}${hasContinuation ? " has-continuation" : ""}${specialClass}${tabDecor.className}${toneClass}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+  return `<${rowTag} role="article" class="log-row${avatarIsHidden ? " is-avatar-hidden" : ""}${isSystem ? " is-system" : ""}${isExtraTab ? " is-extra-tab" : ""}${isOtherTab ? " is-other-tab" : ""}${grouped ? " is-continuation" : ""}${hasContinuation ? " has-continuation" : ""}${specialClass}${tabDecor.className}${toneClass}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
     ${interactive ? rowActionButtons(message, "main") : ""}
     ${avatarHtml}
     <div class="message">${contentHtml}</div>
@@ -12029,8 +12053,7 @@ function buildPreviewOtherVirtualRecords(rows) {
       name: String(message.name || ""),
       isSystemLine: false,
       grouped: false,
-      hasContinuation: false,
-      groupTone: index % 2
+      hasContinuation: false
     });
   }
   return records;
@@ -12143,7 +12166,7 @@ function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, s
   const renderOtherRecord = (record, logicalIndex, isLast, highlighted, synced) => {
     const classes = [highlighted ? "is-search-target" : "", synced ? "is-sync-target" : "", record.virtualKey === activeJumpVirtualKey ? "is-bgm-jump-target" : ""];
     if (record.recordType === "boundary") return addPreviewVirtualIndex(record.boundaryType === "day" ? dayBoundaryHtml(record.entry) : splitBoundaryHtml(record.entry), logicalIndex, isLast, classes);
-    return addPreviewVirtualIndex(renderOtherRow(record.message, true, record.groupTone), logicalIndex, isLast, classes);
+    return addPreviewVirtualIndex(renderOtherRow(record.message, true), logicalIndex, isLast, classes);
   };
 
   class HeightTree {
@@ -14565,7 +14588,6 @@ function compactExportRuntime(root) {
     const otherRecords = [];
     let previousMain = null;
     let mainGroupOrdinal = -1;
-    let otherRowOrdinal = -1;
     let id = 0;
 
     for (let cursor = 0; cursor + 3 < encodedRows.length; cursor += 4) {
@@ -14597,9 +14619,9 @@ function compactExportRuntime(root) {
         && previousMain.name === name
         && previousMain.lowerTab === lowerTab
         && previousMain.expressionKey === expressionKey;
-      const isSystem = !isOther && !isSystemLine && !isExtraTab && (!image || name.toLowerCase() === "system");
-      if (isOther) otherRowOrdinal += 1;
-      else if (!grouped) mainGroupOrdinal += 1;
+      // system 이름은 isSystemLine으로 이미 분기된다. 이미지가 없다는 이유만으로 일반 화자를 system형으로 만들지 않는다.
+      const isSystem = false;
+      if (!isOther && !grouped) mainGroupOrdinal += 1;
       const recordKey = uid ? `uid:${uid}` : `order:${rowOrder}`;
       const record = {
         id, uid, order: rowOrder, recordKey, time, tab, lowerTab, name, color, lightColor, imageIndex, image, label, text,
@@ -14610,7 +14632,7 @@ function compactExportRuntime(root) {
         tabBackgroundColor: tabStyle.backgroundColor, tabBackgroundColorEnabled: tabStyle.backgroundColorEnabled,
         tabBackgroundAltColor: tabStyle.backgroundAltColor,
         avatarHidden: hiddenAvatarTabs.has(lowerTab),
-        groupTone: Math.max(0, isOther ? otherRowOrdinal : mainGroupOrdinal) % 2,
+        groupTone: Math.max(0, mainGroupOrdinal) % 2,
         hasContinuation: false,
         searchText: normalizeSearch(`${name}\n${tab}\n${text}`)
       };
@@ -14730,22 +14752,25 @@ function compactExportRuntime(root) {
       const tabTag = record.tabLabelVisible ? `<span class="tag tab-label-chip">${esc(record.tab || "main")}</span>` : "";
       if (record.isSystemLine) {
         const link = bgmLink(record.order + 1);
-        const toneClass = record.tabBackgroundColorEnabled ? (record.groupTone ? " group-tone-b" : " group-tone-a") : "";
-        return `<div role="article" class="system-line${tabClass}${toneClass}${railClass}${highlighted ? " is-search-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="system-text">${messageMarkup(record.text)}${link ? `<br>${link}` : ""}</div>${railButton}</div>`;
+        const inlineOtherTab = record.lowerTab === "other" && record.kind === "main";
+        const toneClass = !inlineOtherTab && record.tabBackgroundColorEnabled ? (record.groupTone ? " group-tone-b" : " group-tone-a") : "";
+        return `<div role="article" class="system-line${inlineOtherTab ? " is-other-tab" : ""}${tabClass}${toneClass}${railClass}${highlighted ? " is-search-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="system-text">${messageMarkup(record.text)}${link ? `<br>${link}` : ""}</div>${railButton}</div>`;
       }
       const link = bgmLink(record.order + 1);
       if (record.isNarrator) {
-        const toneClass = record.tabBackgroundColorEnabled ? (record.groupTone ? " group-tone-b" : " group-tone-a") : "";
-        return `<div role="article" class="narrator-line${tabClass}${toneClass}${railClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="narrator-text">${tabTag}${messageMarkup(record.text)}${link ? `<br>${link}` : ""}</div>${railButton}</div>`;
+        const inlineOtherTab = record.lowerTab === "other" && record.kind === "main";
+        const toneClass = !inlineOtherTab && record.tabBackgroundColorEnabled ? (record.groupTone ? " group-tone-b" : " group-tone-a") : "";
+        return `<div role="article" class="narrator-line${inlineOtherTab ? " is-other-tab" : ""}${tabClass}${toneClass}${railClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="narrator-text">${tabTag}${messageMarkup(record.text)}${link ? `<br>${link}` : ""}</div>${railButton}</div>`;
       }
       const expressionTag = !record.isExtraTab && record.label ? `<span class="expr-tag">${esc(record.label)}</span>` : "";
       const rowTone = record.groupTone ? " group-tone-b" : " group-tone-a";
-      const tone = record.isSystem || record.isExtraTab || record.specialKind ? (record.tabBackgroundColorEnabled ? rowTone : "") : rowTone;
+      const inlineOtherTab = record.lowerTab === "other" && record.kind === "main";
+      const tone = inlineOtherTab ? "" : (record.isSystem || record.isExtraTab || record.specialKind ? (record.tabBackgroundColorEnabled ? rowTone : "") : rowTone);
       const specialClass = record.specialKind === "info" ? " is-info-highlight" : "";
       const content = record.grouped
         ? `<div class="grouped-line"><div class="text">${messageMarkup(record.text)}</div>${link ? `<div class="grouped-line-tools">${link}</div>` : ""}</div>`
         : `<div class="meta"><strong class="name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${specialBadge(record.specialKind)}${expressionTag}${link}</div><div class="text">${messageMarkup(record.text, record.specialKind)}</div>`;
-      return `<div role="article" class="log-row${record.isSystem ? " is-system" : ""}${record.isExtraTab ? " is-extra-tab" : ""}${record.grouped ? " is-continuation" : ""}${record.hasContinuation ? " has-continuation" : ""}${record.avatarHidden ? " is-avatar-hidden" : ""}${specialClass}${tabClass}${tone}${railClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}">${renderAvatar(record)}<div class="message">${content}</div>${railButton}</div>`;
+      return `<div role="article" class="log-row${record.isSystem ? " is-system" : ""}${record.isExtraTab ? " is-extra-tab" : ""}${inlineOtherTab ? " is-other-tab" : ""}${record.grouped ? " is-continuation" : ""}${record.hasContinuation ? " has-continuation" : ""}${record.avatarHidden ? " is-avatar-hidden" : ""}${specialClass}${tabClass}${tone}${railClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}">${renderAvatar(record)}<div class="message">${content}</div>${railButton}</div>`;
     }
 
     function renderOtherRecord(record, logicalIndex, isLast, highlighted, synced) {
@@ -14753,11 +14778,9 @@ function compactExportRuntime(root) {
       const tabStyle = `--tab-accent:${esc(record.tabColor || "#8fc7ff")};--tab-font-scale:${Number(record.tabFontScale || 100)}%;--tab-text-color:${esc(record.tabTextColor || "#c7c7c7")};--tab-background-a:${esc(record.tabBackgroundColor || "#303030")};--tab-background-b:${esc(record.tabBackgroundAltColor || "#383838")}`;
       const tabTag = record.tabLabelVisible ? `<span class="tag tab-label-chip">${esc(record.tab || "other")}</span>` : "";
       if (record.isNarrator) {
-        const toneClass = record.tabBackgroundColorEnabled ? (record.groupTone ? " group-tone-b" : " group-tone-a") : "";
-        return `<div role="article" class="other-row narrator-line${tabClass}${toneClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="narrator-text">${tabTag}${messageMarkup(record.text)}${bgmLink(record.order + 1)}</div></div>`;
+        return `<div role="article" class="other-row narrator-line${tabClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="narrator-text">${tabTag}${messageMarkup(record.text)}${bgmLink(record.order + 1)}</div></div>`;
       }
-      const toneClass = record.tabBackgroundColorEnabled ? (record.groupTone ? " group-tone-b" : " group-tone-a") : "";
-      return `<div role="article" class="other-row${tabClass}${toneClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${bgmLink(record.order + 1)}<div class="other-text">${withBreaks(record.text)}</div></div>`;
+      return `<div role="article" class="other-row${tabClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${bgmLink(record.order + 1)}<div class="other-text">${withBreaks(record.text)}</div></div>`;
     }
 
     class HeightTree {
@@ -16856,6 +16879,7 @@ body{background:#edf1f5;color:#172033}
 .log-row.group-tone-b.has-continuation:not(.is-search-target),.log-row.group-tone-b.is-continuation:not(.is-search-target){background:#f4f7f9!important}
 .log-row.group-tone-a.has-continuation:hover,.log-row.group-tone-a.is-continuation:hover{background:#fff}
 .log-row.group-tone-b.has-continuation:hover,.log-row.group-tone-b.is-continuation:hover{background:#f4f7f9}
+.log-row.is-other-tab:not(.has-tab-background):not(.is-search-target),.system-line.is-other-tab:not(.has-tab-background):not(.is-search-target),.narrator-line.is-other-tab:not(.has-tab-background):not(.is-search-target){background:#f4f7f9!important}
 .log-row.is-system{background:rgba(15,23,42,.035)}
 .system-line{background:rgba(15,23,42,.03);border-bottom-color:rgba(15,23,42,.08)}
 .system-text{color:rgba(15,23,42,.6)}
@@ -16972,6 +16996,15 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .log-row.group-tone-b.has-continuation:not(.is-search-target),.log-row.group-tone-b.is-continuation:not(.is-search-target){background:#383838!important}
 .log-row.group-tone-a.has-continuation:hover,.log-row.group-tone-a.is-continuation:hover{background:#313131}
 .log-row.group-tone-b.has-continuation:hover,.log-row.group-tone-b.is-continuation:hover{background:#383838}
+.log-row.is-other-tab:not(.has-tab-background):not(.is-search-target),.system-line.is-other-tab:not(.has-tab-background):not(.is-search-target),.narrator-line.is-other-tab:not(.has-tab-background):not(.is-search-target){background:rgba(255,255,255,.018)!important}
+.log-row.is-other-tab .message,.log-row.is-other-tab .avatar,.system-line.is-other-tab .system-text,.narrator-line.is-other-tab .narrator-text{opacity:.76;filter:saturate(.78)}
+.log-row.is-other-tab .message{font-size:max(11px,calc(var(--font-size) - 2px))}
+.log-row.is-other-tab .name{font-size:12px}
+.log-row.is-other-tab .text{font-size:max(11px,calc(var(--font-size) - 2px));line-height:1.55}
+.log-row.is-other-tab .tag,.log-row.is-other-tab .expr-tag{font-size:10px}
+.log-row.is-other-tab.has-tab-font-size .message,.system-line.is-other-tab.has-tab-font-size,.narrator-line.is-other-tab.has-tab-font-size{font-size:max(11px,calc(var(--font-size) - 2px))}
+.system-line.is-other-tab .system-text,.narrator-line.is-other-tab .narrator-text{font-size:max(11px,calc(var(--font-size) - 2px));line-height:1.55}
+.log-row.is-other-tab:hover .message,.log-row.is-other-tab:hover .avatar,.system-line.is-other-tab:hover .system-text,.narrator-line.is-other-tab:hover .narrator-text{opacity:.84}
 .log-row:last-child{border-bottom:0}
 .log-row.is-system{background:rgba(255,255,255,.035)}
 .system-line{display:flex;justify-content:center;margin:0!important;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.025)}
@@ -17560,7 +17593,7 @@ function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
     previous = row;
     index += 1;
   }
-  const otherHtml = otherRows.map((row, index) => renderOtherRow(row, false, index)).join("");
+  const otherHtml = otherRows.map(row => renderOtherRow(row)).join("");
   const hasInlineOtherIndex = foldInlineOther && mainRows.some(row => normalizedTab(row.tab) === "other");
   const content = useSide
     ? `<div class="layout" role="group"><div class="ccfolia-wrap">${rowHtml}</div><div class="other-wrap">${otherHtml}</div></div>`
