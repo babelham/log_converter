@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.38">
-<!-- v7.38: reuse parsed import documents and compact payloads, remove repeated boundary normalization, and reduce full-log edit/summary scans. -->
+<meta name="trpg-app-version" content="7.40">
+<!-- v7.40: keep alternating row tones stable across boundaries, virtual rows, and separated other-tab lists. -->
 <!-- Earlier patch details are preserved in the file's version history. -->
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
@@ -994,7 +994,7 @@ html[data-theme="light"] .narrator-text { color: rgba(15,23,42,.8); }
   background: #313131;
 }
 
-.log-row:nth-child(even) { background: #383838; }
+.log-row:nth-child(even):not(.group-tone-a):not(.group-tone-b) { background: #383838; }
 .log-row.group-tone-a { background: #313131; }
 .log-row.group-tone-b { background: #383838; }
 .log-row.group-tone-a.has-continuation:not(.is-search-target),
@@ -2879,7 +2879,7 @@ html[data-theme="light"] .other-name {
 html[data-theme="light"] .empty-state { background: rgba(255,255,255,.72); }
 html[data-theme="light"] .log-row,
 html[data-theme="light"] .log-row.group-tone-a { background: #ffffff; border-bottom-color: rgba(15,23,42,.1); }
-html[data-theme="light"] .log-row:nth-child(even),
+html[data-theme="light"] .log-row:nth-child(even):not(.group-tone-a):not(.group-tone-b),
 html[data-theme="light"] .log-row.group-tone-b { background: #f4f7f9; }
 html[data-theme="light"] .log-row.group-tone-a.has-continuation:not(.is-search-target),
 html[data-theme="light"] .log-row.group-tone-a.is-continuation:not(.is-search-target) { background: #ffffff !important; }
@@ -10982,7 +10982,6 @@ function enhancementRuntime(root, options = {}) {
     if (virtual) {
       virtual.ensureIdVisible = async record => {
         if (!record) return;
-        if (record.kind === "other" && !paginateOtherRows) return;
         const targetScene = ranges.findIndex(range => rowInRange({ index: record.id, order: record.order }, range));
         if (targetScene >= 0 && targetScene !== sceneIndex) {
           applyScene(targetScene, false, false);
@@ -11738,7 +11737,7 @@ function renderOtherRowsWithSplitBoundaries(rows) {
   for (let index = 0; index <= rows.length; index += 1) {
     (boundaryMap.get(index) || []).forEach(entry => output.push(splitBoundaryHtml(entry)));
     (dayMap.get(index) || []).forEach(entry => output.push(dayBoundaryHtml(entry)));
-    if (index < rows.length) output.push(renderOtherRow(rows[index], true));
+    if (index < rows.length) output.push(renderOtherRow(rows[index], true, index));
   }
   return output.join("");
 }
@@ -11802,11 +11801,12 @@ function compactOtherText(value) {
     .join("\n");
 }
 
-function renderOtherRow(message, interactive = false) {
+function renderOtherRow(message, interactive = false, toneOrdinal = null) {
   const bgmTrigger = bgmTriggerForMessage(message);
   const rowTag = interactive ? "article" : "div";
   const tabDecor = tabRowDecor(message.tab || "other");
-  const toneClass = tabDecor.hasBackground && Number(messageRenderOrder(message) || 0) % 2 ? " group-tone-b" : (tabDecor.hasBackground ? " group-tone-a" : "");
+  const resolvedToneOrdinal = Number.isFinite(Number(toneOrdinal)) ? Number(toneOrdinal) : Number(messageRenderOrder(message) || 0);
+  const toneClass = tabDecor.hasBackground && Math.abs(resolvedToneOrdinal) % 2 ? " group-tone-b" : (tabDecor.hasBackground ? " group-tone-a" : "");
   const narrator = isNarratorMessage(message);
   const tabLabel = tabDecor.showLabel ? `<span class="tag tab-label-chip">${escapeHtml(message.tab || "other")}</span>` : "";
   if (narrator) {
@@ -12029,7 +12029,8 @@ function buildPreviewOtherVirtualRecords(rows) {
       name: String(message.name || ""),
       isSystemLine: false,
       grouped: false,
-      hasContinuation: false
+      hasContinuation: false,
+      groupTone: index % 2
     });
   }
   return records;
@@ -12142,7 +12143,7 @@ function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, s
   const renderOtherRecord = (record, logicalIndex, isLast, highlighted, synced) => {
     const classes = [highlighted ? "is-search-target" : "", synced ? "is-sync-target" : "", record.virtualKey === activeJumpVirtualKey ? "is-bgm-jump-target" : ""];
     if (record.recordType === "boundary") return addPreviewVirtualIndex(record.boundaryType === "day" ? dayBoundaryHtml(record.entry) : splitBoundaryHtml(record.entry), logicalIndex, isLast, classes);
-    return addPreviewVirtualIndex(renderOtherRow(record.message, true), logicalIndex, isLast, classes);
+    return addPreviewVirtualIndex(renderOtherRow(record.message, true, record.groupTone), logicalIndex, isLast, classes);
   };
 
   class HeightTree {
@@ -14564,6 +14565,7 @@ function compactExportRuntime(root) {
     const otherRecords = [];
     let previousMain = null;
     let mainGroupOrdinal = -1;
+    let otherRowOrdinal = -1;
     let id = 0;
 
     for (let cursor = 0; cursor + 3 < encodedRows.length; cursor += 4) {
@@ -14596,7 +14598,8 @@ function compactExportRuntime(root) {
         && previousMain.lowerTab === lowerTab
         && previousMain.expressionKey === expressionKey;
       const isSystem = !isOther && !isSystemLine && !isExtraTab && (!image || name.toLowerCase() === "system");
-      if (!isOther && !grouped) mainGroupOrdinal += 1;
+      if (isOther) otherRowOrdinal += 1;
+      else if (!grouped) mainGroupOrdinal += 1;
       const recordKey = uid ? `uid:${uid}` : `order:${rowOrder}`;
       const record = {
         id, uid, order: rowOrder, recordKey, time, tab, lowerTab, name, color, lightColor, imageIndex, image, label, text,
@@ -14607,7 +14610,7 @@ function compactExportRuntime(root) {
         tabBackgroundColor: tabStyle.backgroundColor, tabBackgroundColorEnabled: tabStyle.backgroundColorEnabled,
         tabBackgroundAltColor: tabStyle.backgroundAltColor,
         avatarHidden: hiddenAvatarTabs.has(lowerTab),
-        groupTone: Math.max(0, mainGroupOrdinal) % 2,
+        groupTone: Math.max(0, isOther ? otherRowOrdinal : mainGroupOrdinal) % 2,
         hasContinuation: false,
         searchText: normalizeSearch(`${name}\n${tab}\n${text}`)
       };
@@ -14750,10 +14753,10 @@ function compactExportRuntime(root) {
       const tabStyle = `--tab-accent:${esc(record.tabColor || "#8fc7ff")};--tab-font-scale:${Number(record.tabFontScale || 100)}%;--tab-text-color:${esc(record.tabTextColor || "#c7c7c7")};--tab-background-a:${esc(record.tabBackgroundColor || "#303030")};--tab-background-b:${esc(record.tabBackgroundAltColor || "#383838")}`;
       const tabTag = record.tabLabelVisible ? `<span class="tag tab-label-chip">${esc(record.tab || "other")}</span>` : "";
       if (record.isNarrator) {
-        const toneClass = record.tabBackgroundColorEnabled ? (record.order % 2 ? " group-tone-b" : " group-tone-a") : "";
+        const toneClass = record.tabBackgroundColorEnabled ? (record.groupTone ? " group-tone-b" : " group-tone-a") : "";
         return `<div role="article" class="other-row narrator-line${tabClass}${toneClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="narrator-text">${tabTag}${messageMarkup(record.text)}${bgmLink(record.order + 1)}</div></div>`;
       }
-      const toneClass = record.tabBackgroundColorEnabled ? (record.order % 2 ? " group-tone-b" : " group-tone-a") : "";
+      const toneClass = record.tabBackgroundColorEnabled ? (record.groupTone ? " group-tone-b" : " group-tone-a") : "";
       return `<div role="article" class="other-row${tabClass}${toneClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${bgmLink(record.order + 1)}<div class="other-text">${withBreaks(record.text)}</div></div>`;
     }
 
@@ -15602,6 +15605,19 @@ function compactExportRuntime(root) {
     win.addEventListener("resize", requestGlobalFrame, { passive: true });
     if (scope !== doc) scope.addEventListener?.("scroll", requestGlobalFrame, { passive: true });
 
+    function navigationCompanionRecord(records, targetOrder, kind = "main") {
+      const order = Number(targetOrder);
+      let previous = null;
+      for (const candidate of records || []) {
+        if (!candidate || candidate.kind !== kind) continue;
+        const candidateOrder = Number(candidate.order);
+        if (!Number.isFinite(candidateOrder)) continue;
+        if (!Number.isFinite(order) || candidateOrder >= order) return candidate;
+        previous = candidate;
+      }
+      return previous;
+    }
+
     const api = {
       stats: runtimeStats,
       mainRecords,
@@ -15691,16 +15707,21 @@ function compactExportRuntime(root) {
         }
         const list = record.kind === "other" ? otherList : mainList;
         if (!list) return false;
+        const mainCompanion = record.kind === "other"
+          ? navigationCompanionRecord(mainList.records, record.order, "main")
+          : null;
         mainList.setHighlight(record.kind === "main" ? record : null);
         otherList?.setHighlight(record.kind === "other" ? record : null);
         if (record.kind === "other" && win.matchMedia?.("(max-width: 700px), (hover: none) and (pointer: coarse)").matches) {
           scope.dispatchEvent(new CustomEvent("trpg-open-other", { bubbles: true }));
           await new Promise(resolve => win.setTimeout(resolve, 420));
         }
+        if (mainCompanion) mainList.jumpToIdentity(mainCompanion, "center");
         const jumped = list.jumpToIdentity(record, "center");
         if (!jumped) return false;
         // 페이지 전환·접힌 잡담 해제·웹폰트 반영 뒤에도 같은 UID/순서의 행을 다시 맞춘다.
         await new Promise(resolve => win.requestAnimationFrame(() => win.requestAnimationFrame(resolve)));
+        if (mainCompanion) mainList.jumpToIdentity(mainCompanion, "center");
         return list.jumpToIdentity(record, "center");
       },
       destroy() {
@@ -16830,7 +16851,7 @@ body{background:#edf1f5;color:#172033}
 .inline-other-summary-label{color:inherit!important;background:transparent!important;border:0!important}
 .inline-other-rail-hit{color:rgba(15,23,42,.62)!important;background:rgba(15,23,42,.035)!important;border-left-color:rgba(15,23,42,.065)!important}
 .log-row,.log-row.is-odd,.log-row.group-tone-a{background:#fff;border-bottom-color:rgba(15,23,42,.1)}
-.log-row:nth-child(even),.log-row.is-even,.log-row.group-tone-b{background:#f4f7f9}
+.log-row:nth-child(even):not(.group-tone-a):not(.group-tone-b),.log-row.is-even:not(.group-tone-a):not(.group-tone-b),.log-row.group-tone-b{background:#f4f7f9}
 .log-row.group-tone-a.has-continuation:not(.is-search-target),.log-row.group-tone-a.is-continuation:not(.is-search-target){background:#fff!important}
 .log-row.group-tone-b.has-continuation:not(.is-search-target),.log-row.group-tone-b.is-continuation:not(.is-search-target){background:#f4f7f9!important}
 .log-row.group-tone-a.has-continuation:hover,.log-row.group-tone-a.is-continuation:hover{background:#fff}
@@ -16944,7 +16965,7 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .inline-other-rail-collapse{flex:0 0 auto;margin-top:auto;opacity:.7}
 .is-inline-other-group-last .inline-other-rail-hit{padding-bottom:7px!important;border-radius:0 0 8px 0!important}
 .log-row{display:flex;gap:13px;align-items:flex-start;width:100%;margin:0!important;padding:13px 14px;border-bottom:1px solid rgba(255,255,255,.065);background:#313131}
-.log-row:nth-child(even){background:#383838}
+.log-row:nth-child(even):not(.group-tone-a):not(.group-tone-b){background:#383838}
 .log-row.group-tone-a{background:#313131}
 .log-row.group-tone-b{background:#383838}
 .log-row.group-tone-a.has-continuation:not(.is-search-target),.log-row.group-tone-a.is-continuation:not(.is-search-target){background:#313131!important}
@@ -17539,7 +17560,7 @@ function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
     previous = row;
     index += 1;
   }
-  const otherHtml = otherRows.map(row => renderOtherRow(row)).join("");
+  const otherHtml = otherRows.map((row, index) => renderOtherRow(row, false, index)).join("");
   const hasInlineOtherIndex = foldInlineOther && mainRows.some(row => normalizedTab(row.tab) === "other");
   const content = useSide
     ? `<div class="layout" role="group"><div class="ccfolia-wrap">${rowHtml}</div><div class="other-wrap">${otherHtml}</div></div>`
