@@ -4,37 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.34">
-<!-- v7.34: keep editor auto-day pagination independent from manual TOC boundaries while retaining custom labels on automatic days. -->
-<!-- v7.33: preserve the current preview page and scroll position when unified boundaries are saved or removed. -->
-<!-- v7.32: default new boundary TOC registration to enabled while preserving existing saved states. -->
-<!-- v7.31: remember the last saved file/page output choice and reuse it as the default for the next new manual boundary. -->
-<!-- v7.30: always expose the first day in the boundary manager, simplify its editor, and prioritize boundary naming and TOC controls over file/page output. -->
-<!-- v7.29: restore the scissors boundary action and add a unified boundary manager with jump, edit, delete, and confirmed bulk automatic-day deletion. -->
-<!-- v7.28: unify file, page, and TOC boundaries around start-message identities; add one boundary editor and migrate legacy split/day settings without duplication. -->
-<!-- v7.27: add one-click deletion for all automatic day boundaries and make the oldest message's day button rename the first TOC entry instead of creating a stray one-message day. -->
-<!-- v7.26: allow yellow day boundaries to be deleted; automatic boundaries store a durable exclusion while manual boundaries are removed directly. -->
-<!-- v7.25: show the editable yellow day-boundary control for automatic day splits as well as manual ones, while preserving automatic boundaries when a custom label is cleared. -->
-<!-- v7.24: keep exported BGM controls visible on mobile hosts whose responsive viewport settles after runtime initialization, and rehome the panel whenever the mobile media state changes. -->
-<!-- v7.23: make virtual inline-other rail segments share one group-wide hover/focus state so the expanded rail behaves like a single control. -->
-<!-- v7.22: disabling default inline-other folding now omits every fold wrapper, rail, count, and chevron instead of merely starting groups open. -->
-<!-- v7.21: hard-lock virtual inline-other controls against host button styles so counts and collapse arrows cannot enter the message flex row. -->
-<!-- v7.20: recognize touch-first mobile devices even when a host reports a desktop-sized layout viewport, and lock the expanded fold control to the bar center. -->
-<!-- v7.19: always expose the mobile web BGM controls and use in-flow horizontal folding controls for inline other groups on narrow screens. -->
-<!-- v7.18: remove expanded inline-other phantom records, keep the count on the first real row, and harden virtual-list restoration. -->
-<!-- v7.10: keep manual day boundaries separate from HTML splits, preserve day labels, and add a persistent day TOC button. -->
-<!-- v7.09: include named manual split points in navigation, fix main/other jumps, and add a top-right split-point menu. -->
-<!-- v7.08: reduce dice result emphasis to ordinary bold text only. -->
-<!-- v7.07: scale speaker names with tab text, preserve compact other sizing, widen number controls, and retain row tones on custom backgrounds. -->
-<!-- v7.06: clarify per-tab controls, add row backgrounds, and simplify system/dice result highlighting. -->
-<!-- v7.05: add per-tab body font sizing and text colors to previews, saved settings, and exported HTML. -->
-<!-- v7.04: remove dice badges and row tinting; emphasize only the trimmed final result with a neutral, centered marker. -->
-<!-- v7.03: clear search highlighting, normalize dice text, and re-run special-row detection when a converted HTML is imported. -->
-<!-- v7.02: apply compact grouping to the simulated mobile preview and preserve the avatar text column in narrow exports. -->
-<!-- v7.01: require an actual resolved result for dice highlighting; remove the repeated SYSTEM text badge. -->
-<!-- v7.00: keep grouped rows visually continuous in light mode and compact grouped spacing on mobile. -->
-<!-- v6.99: decouple side-OTHER export from session navigator state; make compact/static export grouping CSS match preview. -->
-<!-- v6.98: preview device modes, per-tab accent/labels, special log highlighting, narrator speakers. -->
+<meta name="trpg-app-version" content="7.38">
+<!-- v7.38: reuse parsed import documents and compact payloads, remove repeated boundary normalization, and reduce full-log edit/summary scans. -->
+<!-- Earlier patch details are preserved in the file's version history. -->
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
 <script>
@@ -3435,7 +3407,7 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
             <div class="status">페이지·파일·목차 여부는 이제 각 분할점에서 따로 지정합니다. 같은 위치에서 새 파일과 새 페이지를 동시에 만들 필요가 없어 둘 중 하나만 선택합니다.</div>
             <div class="check-row"><input id="inlineImages" type="checkbox"><label for="inlineImages">이미지를 HTML에 내장</label></div>
             <div class="check-row"><input id="sessionNavigator" type="checkbox" checked><label for="sessionNavigator">일차 목차·바로가기 포함 <small>(기본 ON)</small></label></div>
-            <div class="status">날짜·시간으로 감지한 자동 일차와 분할점에서 <strong>목차에 표시</strong>를 선택한 경계를 함께 표시합니다. 자동 경계와 같은 위치의 수동 경계는 하나로 합쳐집니다.</div>
+            <div class="status">처음 분석한 자동 일차와 분할점에서 <strong>목차에 표시</strong>를 선택한 경계를 함께 출력합니다. 삭제한 자동 일차는 편집 페이지와 출력 목차에서 모두 제외됩니다.</div>
             <div class="check-row"><input id="tistoryFallback" type="checkbox"><label for="tistoryFallback">티스토리 보호글 호환 본문 포함 <small>(보호글용 · 용량 증가)</small></label></div>
             <div class="status">제목만 보이고 로그 본문이 생성되지 않는 보호글·동적 스킨에서 사용합니다. 정상 실행되면 압축 로그로 자동 전환됩니다.</div>
             <div class="check-row"><input id="notionStatic" type="checkbox"><label for="notionStatic">노션 호환 정적 HTML로 내보내기 <small>(용량 크게 증가)</small></label></div>
@@ -3564,7 +3536,7 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
       </div>
     </div>
     <label id="boundaryEditScopeField" class="boundary-edit-field" hidden><span>적용 범위</span><select id="boundaryEditScope"><option value="all">전체 로그</option><option value="main">main</option><option value="other">other</option></select></label>
-    <div id="boundaryEditAutoNote" class="status" hidden>날짜·시간에서 감지한 자동 목차입니다. 목차 표시를 끄면 이 자동 경계가 제외됩니다.</div>
+    <div id="boundaryEditAutoNote" class="status" hidden>날짜·시간에서 감지한 자동 일차입니다. 처음에는 편집 페이지와 출력 목차에 모두 포함되며, 삭제하거나 목차 표시를 끄면 두 곳에서 함께 제외됩니다.</div>
   </div>
   <div class="boundary-edit-footer">
     <button id="boundaryEditDelete" type="button" class="soft-button boundary-delete">삭제</button>
@@ -3674,128 +3646,13 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
   </div>
 </dialog>
 
-<!-- v7.17 — zero-flow inline-other index anchors:
-     - virtual and closed static index markers no longer reserve an empty message-height row
-     - expanded virtual groups overlay the count tab on the first other row and keep collapse only at the bottom rail
-     - virtual height estimates match the zero-flow marker so long logs do not accumulate phantom gaps.
-     - index backgrounds are neutral gray and counts are plain text without a rounded badge.
--->
-<!-- v7.16 — outside inline-other index gutter:
-     - inline-other index tabs and expanded rails now occupy a dedicated gutter outside the main message body
-     - expanded other messages keep the same full body width as ordinary main messages instead of reserving rail space
-     - preview, virtual output, and static output mark their main container consistently for dark/light/mobile styling.
--->
-<!-- v7.15 — reversible BGM activation:
-     - pressing the active BGM button now pauses every player and returns the runtime to the inactive state
-     - preview and exported HTML share the same on/off behavior, including pending async playback cancellation
-     - button text, pressed accessibility state, and status copy stay synchronized after either transition.
--->
-<!-- v7.14 — right-edge index rail for inline other groups:
-     - collapsed groups appear as compact right-edge document index tabs with only right corners rounded
-     - expanded groups keep a clickable rail along the entire right edge, with the count at the top and collapse affordance at the bottom
-     - virtual preview/output rows carry matching rail segments so long groups can be collapsed without scrolling back to their start.
--->
-
-<!-- v7.13 — visible inline other bubble markers:
-     - folded other groups use a lightly indented translucent strip with rounded lower corners
-     - the message count sits inside an auto-width speech-bubble badge, so 1–4 digit counts remain readable
-     - a small right-side chevron keeps the fold action recognizable without adding visible labels.
--->
-
-<!-- v7.12 — compact inline other fold markers:
-     - repeated fold rows now show only the message count and a tiny chevron on a thin divider
-     - verbose visible action labels remain available as accessible button labels only
-     - desktop and mobile fold rows use substantially less vertical space.
--->
-
-<!-- v7.11 — inline other chat folding:
-     - consecutive other-tab messages remain in the main timeline when side separation is off, but can be folded into concise "잡담 N개" groups
-     - new exports start with every inline chat group collapsed by default; a saved setting can keep every group initially expanded
-     - search, BGM jumps, and timeline navigation automatically open a folded group before moving to its message
-     - compact virtual output, static/fallback output, and converter preview share the same folding behavior.
--->
-
-<!-- v6.97 — maintenance and bookmarklet UX:
-     - Jukebox automatic rounds use light DOM scans; deep framework/storage/IndexedDB scans run only at start, a checkpoint, completion, and manual rescan
-     - default BGM bookmarklet auto-dispatches between YouTube and Jukebox.today; dedicated helpers remain in troubleshooting help
-     - saved expression library stores only candidates absent from rendered messages; used portraits are rebuilt from saved rows
-     - one-time v6.97 bookmarklet update notice is dismissible and keyed by bookmarklet release, not ordinary app version changes
--->
-
-<!-- v6.90 — replace unstable React/data-index identity dedupe with conservative sequence-overlap collection:
-     - React props messageId is NOT treated as a persistent chat ID (observed to track virtual slots)
-     - data-index remains diagnostic only and never drives cross-viewport dedupe
-     - overlapping viewport message sequences are merged directionally; one-message coincidences are not enough
-     - explicit DOM data-message-id/data-chat-id remains usable when the site exposes one
-     - imported v6.88/v6.89 react-messageId metadata is ignored as an exact-match identity.
-     v6.89 — fix React messageId dedupe: scope React-props lookup to the nearest virtual row, reject rows exposing multiple message IDs, use React messageId as a global key independent of tab, and never poison an ID after a transient signature mismatch.
-     v6.88 — prefer Cocofolia React messageId for collector identity; virtual data-index is auxiliary only:
-     - read messageId from already-rendered React props (__reactProps$...) without network/API requests
-     - deduplicate by tab + React messageId first, then DOM message IDs, then conservative visual/context fallback
-     - data-index/virtuoso index is exported only as unstable diagnostic metadata and is never a stable dedupe/match key
-     - converter trusts collector index matching only when a future collector explicitly marks idxStable=true.
-     v6.87 — reduce bookmarklet duplicate collection with ancestor identity + visual-position fallback:
-     - climb virtual-list ancestors for data-index/messageId instead of checking only the inner message row
-     - use stable tab+index keys whenever Cocofolia exposes them, preserving legitimate repeated short messages
-     - for truly unkeyed rows, suppress re-captures by content + approximate absolute scroll position before viewport overlap matching
-     - show how many re-captured rows were skipped in the collector status/result.
-     v6.86 — recover repeated portraits without reintroducing global offset drift:
-     - repeated exact messages whose collected portraits are all identical now use that portrait safely
-     - anchor-bounded segments use monotonic local LCS, so extra collector duplicates are skipped instead of shifting later portraits
-     - truly ambiguous repeated portraits still fall back rather than guessing.
-     v6.85 — context-aware duplicate portrait matching:
-     - match priority: messageId/index → unique exact → context sequence → representative portrait
-     - align collector rows to HTML per tab with patience-style unique anchors and orientation detection
-     - repeated short messages no longer cycle portrait arrays when ambiguous; unresolved cases use representative portrait.
-     v6.84 — hide internal changelog from rendered converter UI.
-     v6.83 — conservative duplicate-time matching + robust mixed date/relative timeline:
-     - repeated exact-text matches no longer attach timestamps across different days
-     - ambiguous repeated messages keep only a shared day label, not an unsafe minute
-     - symbolic day-only labels (e.g. 先週 月曜日) participate in the timeline conservatively
-     - retains v6.82 mixed calendar/relative anchoring and manual day boundaries.
-     v6.82 — robust mixed date/relative timeline + manual day boundaries:
-     - capture Cocofolia timestamps even when appended to the speaker/name node
-     - old YYYY/MM/DD-only logs auto-split only when adjacent known dates are at least 2 days apart
-     - ambiguous consecutive sessions can be split manually with a per-message day-boundary button
-     - remove the previous 200-message heuristic; precise timestamps still use the 60-minute rule
-     - keep compact exports sparse by storing date labels and manual boundary starts only at change points
-
-     v6.79 — mobile/session-navigation controls:
-     session navigator is touch-friendly on mobile and uses UID/order jumps; exported logs may disable it.
-     When disabled, compact exports omit the sparse session timeline and create no navigator DOM/listeners. -->
-<!-- v6.96 — saved HTML expression-library recovery:
-     - rebuilds per-character portrait choices from avatars embedded in an imported saved HTML when no collector TXT is present.
-     - persists the compact collected expression library in new saved HTML settings so unused collected portraits remain editable after re-import.
-     - merges saved-HTML candidates with TXT candidates without using them as automatic match evidence. -->
-<!-- v6.95 — review-count consistency + per-message correction UI:
-     - portrait review count and queue now use the same fallback-message source; every counted item is navigable.
-     - fallback messages with no alternate portrait can still be explicitly accepted as reviewed.
-     - every preview message gets a pencil action for correcting source text and selecting another collected portrait.
-     - text/portrait edits persist in work drafts and exported converter settings; final HTML uses corrected content without changing stable UID/order.
--->
-<!-- v6.94 — conservative matching audit + portrait review UX:
-     - repeated two-line capture batches no longer become reliable solely because both rows match; ambiguous candidates require uniqueness/context/a clear score lead.
-     - collector overlap suppression ignores low-information short repeats such as ㅋ/ㅋ unless a stronger multi-row overlap exists.
-     - exact/shared portrait matches now verify occurrence coverage against the original HTML to avoid overconfidence on partially collected TXT files.
-     - adds compact analysis summary/diagnostics, collapsible sidebar sections, and a manual portrait review dialog persisted in drafts/export settings.
-     - collector TXT includes schema/version/capture timestamp metadata while remaining backward-compatible.
--->
-<!-- v6.93 — bookmarklet URL registration fix:
-     - restores the required javascript: scheme prefix on the copied Cocofolia portrait collector bookmarklet.
-     - no collector/matching behavior changes from v6.92.
--->
-<!-- v6.92 — direction-independent conservative batch stitching:
-     - collector UI hides internal duplicate-suppression counts/algorithm details.
-     - collector records captureId/capturePos/captureDirection for future exact batch reconstruction.
-     - converter reconstructs collector order by capture groups when available, or by local data-index runs for v6.90 files.
-     - only batch order is reversed when scrolling upward; row order inside each visible batch stays intact.
-     - candidate orientation is selected by unique-message monotonic anchors, preserving compatibility with older collector files. -->
-
 <script>
 const state = {
   orderText: "",
   otherText: "",
   jsonText: "",
+  orderDocument: null,
+  otherDocument: null,
   title: "TRPG Log",
   messages: [],
   visible: [],
@@ -3850,6 +3707,7 @@ const state = {
   lastAnalysis: null,
   importedConverterSettings: null,
   lastImportedBgmRestore: null,
+  lastImportedSplitRestore: null,
   collectedSequenceRows: [],
   manualPortraitOverrides: new Map(),
   autoPortraits: new Map(),
@@ -3861,7 +3719,7 @@ const state = {
   messageEditPortraitDraft: "",
   messageEditPortraitTouched: false,
   messageEditPortraitResetRequested: false,
-  stats: { messageId: 0, index: 0, exact: 0, shared: 0, context: 0, fallback: 0, system: 0 }
+  stats: { messageId: 0, index: 0, exact: 0, shared: 0, context: 0, embedded: 0, fallback: 0, system: 0 }
 };
 
 const el = id => document.getElementById(id);
@@ -3869,6 +3727,7 @@ const orderFile = el("orderFile");
 const otherFile = el("otherFile");
 const jsonFile = el("jsonFile");
 const APP_VERSION = document.querySelector('meta[name="trpg-app-version"]')?.content?.trim() || "dev";
+const COMPACT_LOG_DATA_VERSION = 17;
 const BOOKMARKLET_RELEASE = "portrait-6|bgm-2";
 const BOOKMARKLET_NOTICE_STORAGE_KEY = "trpg-log-converter:bookmarklet-notice";
 const BOOKMARKLET_NOTICE_APP_VERSION = "6.97";
@@ -4223,7 +4082,7 @@ function normalizeUnifiedBoundaryEntries(value) {
 }
 
 function unifiedBoundaryEntries() {
-  state.unifiedBoundaries = normalizeUnifiedBoundaryEntries(state.unifiedBoundaries);
+  if (!Array.isArray(state.unifiedBoundaries)) state.unifiedBoundaries = [];
   return state.unifiedBoundaries;
 }
 
@@ -4313,6 +4172,51 @@ function syncUnifiedBoundaryCountUi() {
   if (countNode) countNode.textContent = `현재 수동 분할점 ${count.toLocaleString("ko-KR")}개`;
   const clearButton = el("clearSplitsBtn");
   if (clearButton) clearButton.disabled = count === 0;
+}
+
+function strictMessageForSavedIdentity(entry) {
+  const index = ensureMessageIdentityIndex();
+  const uid = String(entry?.startUid || entry?.uid || "").trim();
+  // UID가 있는 새 형식은 UID가 일치할 때만 복원한다. 파일 분할본에 포함되지 않은
+  // 다른 파트의 분할점이 우연히 같은 order의 메시지에 붙는 것을 막는다.
+  if (uid) return index.byUid.get(uid) || null;
+  const rawOrder = entry?.startOrder ?? entry?.order;
+  if (rawOrder !== null && rawOrder !== undefined && rawOrder !== "") {
+    const order = Number(rawOrder);
+    if (Number.isFinite(order) && index.byOrder.has(order)) return index.byOrder.get(order);
+  }
+  const id = Number(entry?.startId ?? entry?.id);
+  return Number.isFinite(id) && id > 0 ? index.byId.get(id) || null : null;
+}
+
+function reconcileImportedSplitSettings() {
+  const result = { upgraded: 0, dropped: 0 };
+  const rewriteIdentity = (entry, row, unified = false) => {
+    result.upgraded += 1;
+    const identity = {
+      id: Number(row.id) || 0,
+      uid: String(row.uid || ""),
+      order: messageOrder(row)
+    };
+    return unified
+      ? { ...entry, startId: identity.id, startUid: identity.uid, startOrder: identity.order }
+      : { ...entry, ...identity };
+  };
+  const reconcileList = (value, unified = false) => (Array.isArray(value) ? value : []).flatMap(entry => {
+    const row = strictMessageForSavedIdentity(entry);
+    if (!row) {
+      result.dropped += 1;
+      return [];
+    }
+    return [rewriteIdentity(entry, row, unified)];
+  });
+
+  if (state.unifiedBoundariesLoaded) {
+    state.unifiedBoundaries = normalizeUnifiedBoundaryEntries(reconcileList(state.unifiedBoundaries, true));
+  }
+  state.manualDaySplits = normalizeManualDaySplitEntries(reconcileList(state.manualDaySplits));
+  state.ignoredAutoDaySplits = normalizeIgnoredAutoDaySplitEntries(reconcileList(state.ignoredAutoDaySplits));
+  return result;
 }
 
 function migrateLegacyBoundariesIfNeeded() {
@@ -4553,22 +4457,26 @@ function refreshMessageSearchText(message) {
   message.searchText = normalizeText(`${message.name || ""}\n${message.tab || "main"}\n${message.text || ""}`).toLowerCase();
 }
 
+function applyManualMessageEdit(message) {
+  if (!message) return;
+  const uid = String(message.uid || "");
+  const originalText = state.originalTexts.has(uid) ? state.originalTexts.get(uid) : String(message.text ?? "");
+  message.text = state.manualTextOverrides.has(uid) ? state.manualTextOverrides.get(uid) : originalText;
+  const auto = state.autoPortraits.get(uid);
+  const manualPortrait = state.manualPortraitOverrides.get(uid);
+  if (manualPortrait) {
+    message.imgUrl = manualPortrait;
+    message.match = "manual";
+  } else if (auto) {
+    message.imgUrl = auto.imgUrl;
+    message.match = auto.match;
+  }
+  refreshMessageSearchText(message);
+}
+
 function applyManualMessageEdits() {
   if (!state.messages.length) return;
-  state.messages.forEach(message => {
-    const originalText = state.originalTexts.has(message.uid) ? state.originalTexts.get(message.uid) : String(message.text ?? "");
-    message.text = state.manualTextOverrides.has(message.uid) ? state.manualTextOverrides.get(message.uid) : originalText;
-    const auto = state.autoPortraits.get(message.uid);
-    const manualPortrait = state.manualPortraitOverrides.get(message.uid);
-    if (manualPortrait) {
-      message.imgUrl = manualPortrait;
-      message.match = "manual";
-    } else if (auto) {
-      message.imgUrl = auto.imgUrl;
-      message.match = auto.match;
-    }
-    refreshMessageSearchText(message);
-  });
+  state.messages.forEach(applyManualMessageEdit);
 }
 
 function applyManualPortraitOverrides() {
@@ -4587,7 +4495,14 @@ function portraitReviewAllCandidates() {
 }
 
 function portraitReviewPendingCount() {
-  return portraitReviewAllCandidates().filter(message => !state.manualPortraitOverrides.has(message.uid)).length;
+  let pending = 0;
+  state.messages.forEach(message => {
+    const auto = state.autoPortraits.get(message.uid);
+    if (auto?.match === "fallback"
+        && String(message.name || "").toLowerCase() !== "system"
+        && !state.manualPortraitOverrides.has(message.uid)) pending += 1;
+  });
+  return pending;
 }
 
 function portraitChoicesForMessage(message) {
@@ -4614,12 +4529,22 @@ function updateAnalysisSummaryUi(extraNote = "") {
     if (diag) diag.hidden = true;
     return;
   }
-  const reviewCandidates = portraitReviewAllCandidates();
-  const pending = portraitReviewPendingCount();
-  const manualPortrait = state.messages.filter(message => message.match === "manual").length;
+  const reviewCandidates = [];
+  let pending = 0;
+  let manualPortrait = 0;
+  let confident = 0;
+  state.messages.forEach(message => {
+    const match = message.match || "system";
+    if (match === "manual") manualPortrait += 1;
+    if (match !== "fallback" && match !== "system") confident += 1;
+    const auto = state.autoPortraits.get(message.uid);
+    if (auto?.match === "fallback" && String(message.name || "").toLowerCase() !== "system") {
+      reviewCandidates.push(message);
+      if (!state.manualPortraitOverrides.has(message.uid)) pending += 1;
+    }
+  });
   const manualText = state.manualTextOverrides.size;
   const dayCount = Math.max(1, state.sessionPageRanges?.length || 1);
-  const confident = state.messages.filter(message => !["fallback", "system"].includes(message.match || "system")).length;
   const infoRows = Number(state.lastAnalysis.jsonRows || 0);
   const otherNote = state.lastAnalysis.otherRows ? ` · other ${state.lastAnalysis.otherRows.toLocaleString()}개 별도 병합` : "";
   const note = extraNote ? ` ${extraNote}` : "";
@@ -4634,7 +4559,7 @@ function updateAnalysisSummaryUi(extraNote = "") {
   }
   if (diag) {
     diag.textContent = infoRows
-      ? `이미지 정보 ${infoRows.toLocaleString()}행 · ID ${(state.stats.messageId || 0).toLocaleString()} · 인덱스 ${(state.stats.index || 0).toLocaleString()} · 고유대사 ${(state.stats.exact || 0).toLocaleString()} · 동일표정 ${(state.stats.shared || 0).toLocaleString()} · 문맥 ${(state.stats.context || 0).toLocaleString()} · 대표표정 ${(state.stats.fallback || 0).toLocaleString()} · 수동표정 ${manualPortrait.toLocaleString()} · 대사수정 ${manualText.toLocaleString()} · 시스템 ${(state.stats.system || 0).toLocaleString()}`
+      ? `이미지 정보 ${infoRows.toLocaleString()}행 · ID ${(state.stats.messageId || 0).toLocaleString()} · 인덱스 ${(state.stats.index || 0).toLocaleString()} · 고유대사 ${(state.stats.exact || 0).toLocaleString()} · 동일표정 ${(state.stats.shared || 0).toLocaleString()} · 문맥 ${(state.stats.context || 0).toLocaleString()} · 저장표정 ${(state.stats.embedded || 0).toLocaleString()} · 대표표정 ${(state.stats.fallback || 0).toLocaleString()} · 수동표정 ${manualPortrait.toLocaleString()} · 대사수정 ${manualText.toLocaleString()} · 시스템 ${(state.stats.system || 0).toLocaleString()}`
       : ((state.lastAnalysis.importedExpressionRows || state.lastAnalysis.savedExpressionRows)
         ? `저장 HTML에서 표정 후보를 복원했습니다. 사용 인장 ${Number(state.lastAnalysis.importedExpressionRows || 0).toLocaleString()}건 · 저장 후보 ${Number(state.lastAnalysis.savedExpressionRows || 0).toLocaleString()}건`
         : "이미지 정보 파일을 사용하지 않았습니다.");
@@ -4796,7 +4721,7 @@ function saveMessageEditor() {
     if (state.messageEditPortraitResetRequested || !chosen) state.manualPortraitOverrides.delete(uid);
     else state.manualPortraitOverrides.set(uid, chosen);
   }
-  applyManualMessageEdits();
+  applyManualMessageEdit(message);
   updateView();
   updateAnalysisSummaryUi();
   scheduleWorkDraftSave();
@@ -4945,7 +4870,7 @@ function boundaryPurposeText(entry) {
   if (entry.output === "file") parts.push("파일");
   if (entry.output === "page") parts.push("페이지");
   if (entry.toc) parts.push("목차");
-  if (entry.automatic) parts.push("자동");
+  if (entry.automatic) parts.push(entry.toc ? "자동" : "자동 일차");
   return parts.join(" · ") || "분할점";
 }
 
@@ -5519,6 +5444,21 @@ function parseJsonValueAt(source, startIndex = 0) {
   return null;
 }
 
+const compactDataScriptCache = new WeakMap();
+
+function parsedCompactDataScript(dataScript) {
+  if (!dataScript || typeof dataScript !== "object") return null;
+  if (compactDataScriptCache.has(dataScript)) return compactDataScriptCache.get(dataScript);
+  const rawData = dataScript.textContent || "";
+  let data = null;
+  if (rawData.trim()) {
+    try { data = JSON.parse(rawData); }
+    catch (error) { data = parseJsonValueAt(rawData, 0); }
+  }
+  compactDataScriptCache.set(dataScript, data && typeof data === "object" ? data : null);
+  return compactDataScriptCache.get(dataScript);
+}
+
 function parseCompactExportRows(doc) {
   // v6.16+ uses a unique script id for each embedded log. Older exports used
   // the fixed #trpg-log-data id. Read both forms so previously converted HTML
@@ -5533,16 +5473,14 @@ function parseCompactExportRows(doc) {
 
   for (const dataScript of dataScripts) {
     try {
-      const rawData = dataScript.textContent || "";
-      let data = null;
-      try { data = JSON.parse(rawData); }
-      catch (error) { data = parseJsonValueAt(rawData, 0); }
+      const data = parsedCompactDataScript(dataScript);
       if (!data || Number(data.v) < 3 || !Array.isArray(data.r) || !Array.isArray(data.p)) continue;
       const names = Array.isArray(data.n) ? data.n : [];
       const colors = Array.isArray(data.c) ? data.c : [];
       const images = Array.isArray(data.i) ? data.i : [];
       const tabs = Array.isArray(data.t) ? data.t : [];
       const texts = Array.isArray(data.x) ? data.x : [];
+      const labels = Array.isArray(data.l) ? data.l : [];
       const uids = Array.isArray(data.q) ? data.q : [];
       const times = Array.isArray(data.m) ? data.m : [];
       const timelinePoints = decodeSparseTimeline(Array.isArray(data.k) ? data.k : [], Array.isArray(data.d) ? data.d : []);
@@ -5570,7 +5508,9 @@ function parseCompactExportRows(doc) {
           name: String(names[Number(profile[0]) || 0] ?? "system"),
           text: String(texts[textIndex] ?? ""),
           color: safeCssColor(colors[Number(profile[1]) || 0] ?? "#dddddd"),
-          imgUrl: String(images[Number(profile[2]) || 0] ?? "")
+          imgUrl: String(images[Number(profile[2]) || 0] ?? ""),
+          embeddedPortraitTrusted: Boolean(images[Number(profile[2]) || 0]),
+          expressionLabel: Number(profile[3]) >= 0 ? String(labels[Number(profile[3])] || "") : ""
         });
       }
 
@@ -5588,7 +5528,9 @@ function parseCompactExportRows(doc) {
 }
 
 function parseTrpgSourceDocument(source) {
-  let doc = new DOMParser().parseFromString(String(source || ""), "text/html");
+  let doc = source?.nodeType === 9
+    ? source
+    : new DOMParser().parseFromString(String(source || ""), "text/html");
   const seen = new Set();
   for (let depth = 0; depth < 3; depth += 1) {
     const frame = doc.querySelector('iframe[data-trpg-tistory-embed-frame][srcdoc],iframe[data-trpg-tistory-embed][srcdoc]');
@@ -5636,7 +5578,9 @@ function parseExportedRows(doc) {
       name: isSystem ? "system" : cleanSpan(nameNode || document.createElement("span")) || "system",
       text,
       color: readNameColor(nameNode),
-      imgUrl: directSource || imageAssets.get(assetId) || ""
+      imgUrl: directSource || imageAssets.get(assetId) || "",
+      embeddedPortraitTrusted: Boolean(directSource || imageAssets.get(assetId)),
+      expressionLabel: cleanSpan(article.querySelector(".expr-tag:not(.preview-edit-tag)") || document.createElement("span"))
     });
   });
   return rows.sort((a, b) => {
@@ -5793,9 +5737,56 @@ function mergedConverterSettings(settingsList, runtimeOptions) {
   return base;
 }
 
+function compactDaySettingsFromDocument(doc) {
+  const recovered = [];
+  doc.querySelectorAll("[data-trpg-log-data],#trpg-log-data").forEach(dataScript => {
+    try {
+      const data = parsedCompactDataScript(dataScript);
+      if (!data || Number(data.v) < 3) return;
+      const uids = Array.isArray(data.q) ? data.q : [];
+      const manualDaySplits = (Array.isArray(data.w) ? data.w : []).map(entry => {
+        const startOrder = Number(Array.isArray(entry) ? entry[0] : entry?.startOrder ?? entry?.order);
+        if (!Number.isFinite(startOrder) || startOrder <= 0) return null;
+        // legacy manualDaySplits는 '이 메시지 뒤에서 시작'하는 앵커를 저장한다.
+        const anchorOrder = startOrder - 1;
+        return {
+          id: anchorOrder + 1,
+          uid: String(uids[anchorOrder] || ""),
+          order: anchorOrder,
+          label: String(Array.isArray(entry) ? entry[1] || "" : entry?.label || "").trim().slice(0, 80)
+        };
+      }).filter(Boolean);
+      const ignoredAutoDaySplits = (Array.isArray(data.z) ? data.z : []).map(entry => {
+        const startOrder = Number(Array.isArray(entry) ? entry[0] : entry?.order ?? entry);
+        if (!Number.isFinite(startOrder) || startOrder < 0) return null;
+        return {
+          id: startOrder + 1,
+          uid: String((Array.isArray(entry) ? entry[1] : entry?.uid) || uids[startOrder] || ""),
+          order: startOrder
+        };
+      }).filter(Boolean);
+      const firstDayLabel = String(data.y || "").trim().slice(0, 80);
+      if (manualDaySplits.length || ignoredAutoDaySplits.length || firstDayLabel) {
+        recovered.push({
+          kind: "trpg-log-converter-compact-recovery",
+          version: 0,
+          manualDaySplits,
+          ignoredAutoDaySplits,
+          firstDayLabel
+        });
+      }
+    } catch (error) {
+      console.warn("압축 로그의 일차 설정을 복구하지 못했습니다.", error);
+    }
+  });
+  return recovered;
+}
+
 function extractSavedConverterSettings(source) {
   const doc = parseTrpgSourceDocument(source);
-  const settingsList = [];
+  // 구버전 또는 게시 플랫폼 변형에서 설정 스크립트 일부가 사라져도,
+  // 압축 본문에 남아 있는 수동 일차·자동 일차 삭제 표식은 먼저 복구한다.
+  const settingsList = compactDaySettingsFromDocument(doc);
   doc.querySelectorAll("[data-trpg-converter-settings],#trpg-converter-settings").forEach(settingsScript => {
     if (!settingsScript?.textContent?.trim()) return;
     try {
@@ -5809,6 +5800,7 @@ function extractSavedConverterSettings(source) {
   // Tistory can serialize closing script tags inside post bodies as <\/script>.
   // In affected v6.58-era posts the compact JSON, renderer and settings become one
   // long application/json script. Recover the first settings object from that text.
+  const runtimeOptions = [];
   for (const script of doc.querySelectorAll("script")) {
     const text = script.textContent || "";
     const marker = "data-trpg-converter-settings>";
@@ -5818,11 +5810,7 @@ function extractSavedConverterSettings(source) {
       if (parsed && typeof parsed === "object") settingsList.push(parsed);
       cursor += marker.length;
     }
-  }
-
-  const runtimeOptions = [];
-  for (const script of doc.querySelectorAll("script")) {
-    runtimeOptions.push(...runtimeOptionsFromScript(script.textContent || ""));
+    runtimeOptions.push(...runtimeOptionsFromScript(text));
   }
   if (!settingsList.length && !runtimeOptions.length) return null;
   return mergedConverterSettings(settingsList, runtimeOptions);
@@ -6319,7 +6307,12 @@ function mergeExpressionLibraryFromRows(rows) {
   let added = 0;
   rows.forEach(row => {
     if (!row || normalizedCharacterName(row.name || "") === "system") return;
-    if (addExpressionCandidate(row.name, row.imgUrl, 1)) added += 1;
+    if (addExpressionCandidate(row.name, row.imgUrl, 1)) {
+      added += 1;
+      const label = String(row.expressionLabel || "").trim().slice(0, 80);
+      const url = String(row.imgUrl || "").trim();
+      if (label && url) state.expressionLabels.set(`${row.name}\u001f${url}`, label);
+    }
   });
   refreshExpressionLabels();
   return added;
@@ -7087,7 +7080,7 @@ function applyMatches(messages) {
     if (key) originalGlobalCounts.set(key, (originalGlobalCounts.get(key) || 0) + 1);
     if (scopedKey) originalScopedCounts.set(scopedKey, (originalScopedCounts.get(scopedKey) || 0) + 1);
   });
-  const stats = { messageId: 0, index: 0, exact: 0, shared: 0, context: 0, fallback: 0, system: 0 };
+  const stats = { messageId: 0, index: 0, exact: 0, shared: 0, context: 0, embedded: 0, fallback: 0, system: 0 };
   const matched = messages.map((message, index) => {
     const tab = message.tab || "main";
     const key = messageKey(message.name, message.text);
@@ -7144,6 +7137,15 @@ function applyMatches(messages) {
         || "";
     }
 
+    // 변환기가 출력한 HTML에는 메시지별 최종 초상이 이미 저장되어 있다.
+    // 새 이미지 정보 파일에서 더 정확한 매칭을 찾지 못한 경우 이 값을 그대로 신뢰하며,
+    // 대표 표정 fallback으로 분류해 검수 목록을 폭증시키지 않는다.
+    if (!imgUrl && message.embeddedPortraitTrusted && message.imgUrl) {
+      imgUrl = String(message.imgUrl);
+      stats.embedded += 1;
+      match = "embedded";
+    }
+
     const existingId = Number(message.id);
     const id = Number.isFinite(existingId) && existingId > 0 ? existingId : index + 1;
     if (!imgUrl) {
@@ -7172,7 +7174,7 @@ function applyMatches(messages) {
       searchText: normalizeText(`${message.name || ""}\n${tab}\n${message.text || ""}`).toLowerCase()
     };
   });
-  stats.highConfidence = stats.messageId + stats.index + stats.exact + stats.shared + stats.context;
+  stats.highConfidence = stats.messageId + stats.index + stats.exact + stats.shared + stats.context + stats.embedded;
   state.stats = stats;
   return matched;
 }
@@ -8322,6 +8324,10 @@ function jumpToBgmChat(identity, options = {}) {
   } else {
     requestAnimationFrame(() => alignJumpTarget({ highlight: true }));
   }
+  window.setTimeout(() => {
+    const settledVirtual = el("preview")?.__trpgVirtual;
+    if (!alignJumpTarget()) settledVirtual?.jumpToMessage?.(message, isOtherPanelTarget ? "other" : "main");
+  }, 160);
 }
 
 function legacyBgmTriggerRecords(value) {
@@ -8477,7 +8483,9 @@ function reconcileImportedBgmAfterAnalysis(settings = state.importedConverterSet
 function converterSettingsPayload() {
   return {
     kind: "trpg-log-converter-settings",
-    version: 2,
+    version: 3,
+    appVersion: APP_VERSION,
+    compactDataVersion: COMPACT_LOG_DATA_VERSION,
     bgmUrl: el("bgmUrl").value,
     bgmTriggers: el("bgmTriggers").value,
     bgmAutoplay: el("bgmAutoplay").checked,
@@ -8628,6 +8636,8 @@ function pageRangesFromUnifiedBoundaries(rows, kinds = new Set(["page"])) {
   return rangeStarts.map((start, index) => ({
     startId: start + 1,
     endId: index + 1 < rangeStarts.length ? rangeStarts[index + 1] + 1 : Infinity,
+    startOrder: start,
+    endOrder: index + 1 < rangeStarts.length ? rangeStarts[index + 1] : Infinity,
     label: start === 0 ? labelForCountRange(0) : (starts.get(start)?.label || labelForCountRange(index))
   }));
 }
@@ -10854,7 +10864,13 @@ function enhancementRuntime(root, options = {}) {
     if ((!options.scenePages && !Array.isArray(options.pageRanges)) || !mainEntries.length) return;
     let ranges = [];
     const explicitRanges = Array.isArray(options.pageRanges) ? options.pageRanges
-      .map(range => ({ startId: Number(range.startId), endId: Number(range.endId) || Infinity, label: String(range.label || "").trim() }))
+      .map(range => ({
+        startId: Number(range.startId),
+        endId: Number(range.endId) || Infinity,
+        startOrder: Number.isFinite(Number(range.startOrder)) ? Number(range.startOrder) : null,
+        endOrder: Number.isFinite(Number(range.endOrder)) ? Number(range.endOrder) : Infinity,
+        label: String(range.label || "").trim()
+      }))
       .filter(range => Number.isFinite(range.startId) && range.startId > 0) : [];
     if (explicitRanges.length) {
       ranges = explicitRanges;
@@ -10870,9 +10886,16 @@ function enhancementRuntime(root, options = {}) {
       }));
     }
     const paginateOtherRows = options.pageOtherRows === true;
+    const rowInRange = (entry, range) => {
+      const order = Number(entry?.order);
+      if (range.startOrder != null && Number.isFinite(order)) {
+        return order >= range.startOrder && order < range.endOrder;
+      }
+      return entry.index >= range.startId && entry.index < range.endId;
+    };
     ranges = ranges.filter(range => {
-      const hasMain = mainEntries.some(entry => entry.index >= range.startId && entry.index < range.endId);
-      const hasOther = paginateOtherRows && otherEntries.some(entry => entry.index >= range.startId && entry.index < range.endId);
+      const hasMain = mainEntries.some(entry => rowInRange(entry, range));
+      const hasOther = paginateOtherRows && otherEntries.some(entry => rowInRange(entry, range));
       return hasMain || hasOther;
     });
     if (ranges.length <= 1) return;
@@ -10892,10 +10915,6 @@ function enhancementRuntime(root, options = {}) {
     const nextButton = pager.querySelector("[data-scene-next]");
     const label = pager.querySelector("[data-scene-label]");
     let sceneIndex = 0;
-
-    function rowInRange(entry, range) {
-      return entry.index >= range.startId && entry.index < range.endId;
-    }
 
     function scrollLogToTop() {
       if (virtual) {
@@ -10964,7 +10983,7 @@ function enhancementRuntime(root, options = {}) {
       virtual.ensureIdVisible = async record => {
         if (!record) return;
         if (record.kind === "other" && !paginateOtherRows) return;
-        const targetScene = ranges.findIndex(range => record.id >= range.startId && record.id < range.endId);
+        const targetScene = ranges.findIndex(range => rowInRange({ index: record.id, order: record.order }, range));
         if (targetScene >= 0 && targetScene !== sceneIndex) {
           applyScene(targetScene, false, false);
           await new Promise(resolve => win.requestAnimationFrame(() => win.requestAnimationFrame(resolve)));
@@ -11344,7 +11363,7 @@ function normalizeIgnoredAutoDaySplitEntries(value) {
 }
 
 function ignoredAutoDaySplitEntries() {
-  state.ignoredAutoDaySplits = normalizeIgnoredAutoDaySplitEntries(state.ignoredAutoDaySplits);
+  if (!Array.isArray(state.ignoredAutoDaySplits)) state.ignoredAutoDaySplits = [];
   return state.ignoredAutoDaySplits;
 }
 
@@ -11401,7 +11420,7 @@ function resolvedDaySplitOrder(entry) {
 }
 
 function manualDaySplitEntries() {
-  state.manualDaySplits = normalizeManualDaySplitEntries(state.manualDaySplits);
+  if (!Array.isArray(state.manualDaySplits)) state.manualDaySplits = [];
   return state.manualDaySplits;
 }
 
@@ -11546,7 +11565,7 @@ function dayBoundaryEntries() {
       startUid: String(startRow?.uid || ""),
       startOrder: Number.isFinite(messageOrder(startRow)) ? messageOrder(startRow) : startOrder,
       output: "none",
-      toc: true,
+      toc: false,
       scope: "all",
       label: "",
       ...automaticMeta
@@ -11563,10 +11582,10 @@ function dayBoundaryHtml(entry) {
   const defaultLabel = String(entry.defaultLabel || "").trim();
   const labelText = label || defaultLabel || "목차";
   const outputBadge = entry.output === "file" ? `<span class="boundary-purpose-badge">파일</span>` : entry.output === "page" ? `<span class="boundary-purpose-badge">페이지</span>` : "";
-  return `<div class="day-boundary${entry.automatic ? " is-auto" : ""}" data-day-boundary-key="${escapeHtml(key)}" data-day-boundary-order="${Number.isFinite(order) ? order : ""}" role="separator" aria-label="${entry.automatic ? "자동" : "수동"} 일차 경계">
+  return `<div class="day-boundary${entry.automatic ? " is-auto" : ""}" data-day-boundary-key="${escapeHtml(key)}" data-day-boundary-order="${Number.isFinite(order) ? order : ""}" role="separator" aria-label="${entry.automatic && !entry.toc ? "자동 일차" : entry.automatic ? "자동 목차" : "수동 목차"} 경계">
     <span class="day-boundary-before">이전 구간</span>
     <span class="day-boundary-actions">
-      <button type="button" class="day-boundary-mark boundary-line-edit-button" data-boundary-start-id="${Number(entry.startId) || 0}" data-boundary-start-uid="${escapeHtml(entry.startUid || "")}" data-boundary-start-order="${Number.isFinite(order) ? order : ""}" title="이 분할점 편집">${outputBadge}<span class="boundary-purpose-badge">목차</span>${entry.automatic ? `<span class="boundary-purpose-badge">자동</span>` : ""}<strong>${escapeHtml(labelText)}</strong></button>
+      <button type="button" class="day-boundary-mark boundary-line-edit-button" data-boundary-start-id="${Number(entry.startId) || 0}" data-boundary-start-uid="${escapeHtml(entry.startUid || "")}" data-boundary-start-order="${Number.isFinite(order) ? order : ""}" title="이 분할점 편집">${outputBadge}${entry.toc ? `<span class="boundary-purpose-badge">목차</span>` : ""}${entry.automatic ? `<span class="boundary-purpose-badge">자동 일차</span>` : ""}<strong>${escapeHtml(labelText)}</strong></button>
     </span>
     <span class="day-boundary-after">다음 구간</span>
   </div>`;
@@ -14319,10 +14338,12 @@ function createCompactLogPayload(rows, useSide, includeSessionNavigator = sessio
 
   const sparseTimeline = includeSessionNavigator ? encodeSparseTimeline(rows) : null;
   const manualSessionMarkers = includeSessionNavigator ? manualDaySplitMarkersForRows(rows) : [];
-  const ignoredAutomaticDayStarts = includeSessionNavigator ? ignoredAutoDaySplitStartIndicesForRows(rows) : [];
+  const ignoredAutomaticDayMarkers = includeSessionNavigator
+    ? ignoredAutoDaySplitStartIndicesForRows(rows).map(startOrder => [startOrder, String(rows[startOrder]?.uid || "")])
+    : [];
 
   const payload = {
-    v: 16,
+    v: COMPACT_LOG_DATA_VERSION,
     s: useSide ? 1 : 0,
     f: !useSide && collapseInlineOtherEnabled() ? 1 : 0,
     o: OTHER_TAB_PATTERN_SOURCE,
@@ -14361,7 +14382,7 @@ function createCompactLogPayload(rows, useSide, includeSessionNavigator = sessio
     payload.k = sparseTimeline.values;
     if (sparseTimeline.dateLabels.length) payload.d = sparseTimeline.dateLabels;
     if (manualSessionMarkers.length) payload.w = manualSessionMarkers.map(entry => [entry.startOrder, entry.label]);
-    if (ignoredAutomaticDayStarts.length) payload.z = ignoredAutomaticDayStarts;
+    if (ignoredAutomaticDayMarkers.length) payload.z = ignoredAutomaticDayMarkers;
     const firstLabel = effectiveFirstDayLabel();
     if (firstLabel) payload.y = firstLabel;
   }
@@ -14436,9 +14457,7 @@ function compactExportRuntime(root) {
           };
         }).filter(Boolean)
       : [];
-    const ignoredAutomaticDayStarts = enableSessionNavigator && Array.isArray(data.z)
-      ? new Set(data.z.map(Number).filter(value => Number.isFinite(value) && value > 0))
-      : new Set();
+    const ignoredAutomaticDayMarkers = enableSessionNavigator && Array.isArray(data.z) ? data.z : [];
     const firstDayLabel = enableSessionNavigator ? String(data.y || "").trim().slice(0, 80) : "";
     const triggerValues = Array.isArray(data.u) ? data.u : [];
     let otherTabPattern;
@@ -15678,6 +15697,10 @@ function compactExportRuntime(root) {
           scope.dispatchEvent(new CustomEvent("trpg-open-other", { bubbles: true }));
           await new Promise(resolve => win.setTimeout(resolve, 420));
         }
+        const jumped = list.jumpToIdentity(record, "center");
+        if (!jumped) return false;
+        // 페이지 전환·접힌 잡담 해제·웹폰트 반영 뒤에도 같은 UID/순서의 행을 다시 맞춘다.
+        await new Promise(resolve => win.requestAnimationFrame(() => win.requestAnimationFrame(resolve)));
         return list.jumpToIdentity(record, "center");
       },
       destroy() {
@@ -15696,7 +15719,7 @@ function compactExportRuntime(root) {
     scope.__trpgVirtual = api;
 
     // 정확한 시각이 있으면 60분 공백, 날짜-only 정보뿐이면 최소 2일 차이를 자동 일차 경계로 본다.
-    // 수동 일차 경계(data.w)는 자동 판정과 합쳐 같은 목차를 만든다.
+    // 자동 일차는 편집 페이지와 출력 목차에 함께 사용하고, data.z의 삭제 표식은 UID를 우선해 제외한다.
     // v8부터는 모든 메시지의 원문 time 문자열을 싣지 않고, 분이 바뀐 지점만
     // [행 delta, 분 delta] 쌍으로 저장한 희소 타임라인(data.k)을 사용한다.
     const parseSessionClock = value => {
@@ -15997,6 +16020,15 @@ function compactExportRuntime(root) {
       const dateOnly = previous.precision === "date" || current.precision === "date";
       return gap >= (dateOnly ? SESSION_DATE_ONLY_AUTO_GAP_MINUTES : SESSION_PRECISE_AUTO_GAP_MINUTES);
     };
+    const ignoredAutomaticDayStarts = new Set();
+    ignoredAutomaticDayMarkers.forEach(marker => {
+      const legacyOrder = Number(Array.isArray(marker) ? marker[0] : marker);
+      const uid = Array.isArray(marker) ? String(marker[1] || "") : "";
+      const matched = uid ? allRecords.find(record => record.uid === uid) : null;
+      const resolvedOrder = Number(matched?.order);
+      if (Number.isFinite(resolvedOrder) && resolvedOrder > 0) ignoredAutomaticDayStarts.add(resolvedOrder);
+      else if (Number.isFinite(legacyOrder) && legacyOrder > 0) ignoredAutomaticDayStarts.add(legacyOrder);
+    });
     const navigationRecordFor = (order, endOrder = Infinity) => {
       return allRecords.find(record => record.order >= order && record.order < endOrder)
         || [...allRecords].reverse().find(record => record.order <= order)
@@ -16237,7 +16269,7 @@ function compactExportRuntime(root) {
       dayNavigator = doc.createElement("nav");
       dayNavigator.className = "trpg-day-jump";
       dayNavigator.setAttribute("aria-label", "일차 목차 바로가기");
-      dayNavigator.innerHTML = `<button type="button" class="trpg-day-jump-toggle" data-day-jump-toggle aria-expanded="false">☀ 목차 <span>${sessions.length}</span></button><div class="trpg-day-jump-list" data-day-jump-list></div>`;
+      dayNavigator.innerHTML = `<button type="button" class="trpg-day-jump-toggle" data-day-jump-toggle aria-expanded="false">목차 <span>${sessions.length}</span></button><div class="trpg-day-jump-list" data-day-jump-list></div>`;
       const toggle = dayNavigator.querySelector("[data-day-jump-toggle]");
       const list = dayNavigator.querySelector("[data-day-jump-list]");
       list.innerHTML = sessions.map((session, index) => {
@@ -18017,12 +18049,16 @@ async function createExportLinksFromRows(rows) {
 async function analyze() {
   try {
     setStatus("파일을 읽는 중입니다...");
-    const orderResult = parseOrderHtml(state.orderText, orderFile.files[0]?.name || "");
+    const orderSource = state.orderDocument || state.orderText;
+    state.orderDocument = null;
+    const orderResult = parseOrderHtml(orderSource, orderFile.files[0]?.name || "");
     if (!orderResult.rows.length) throw new Error("순서 기준 HTML에서 메시지를 찾지 못했습니다.");
     let combinedRows = orderResult.rows;
     let otherRows = [];
     if (state.otherText) {
-      const otherResult = parseOrderHtml(state.otherText, otherFile.files[0]?.name || "", "other");
+      const otherSource = state.otherDocument || state.otherText;
+      state.otherDocument = null;
+      const otherResult = parseOrderHtml(otherSource, otherFile.files[0]?.name || "", "other");
       otherRows = otherResult.rows;
       combinedRows = orderResult.rows
         .filter(row => normalizedTab(row.tab) !== "other")
@@ -18038,6 +18074,7 @@ async function analyze() {
     state.hasOtherMessages = state.messages.some(message => normalizedTab(message?.tab || "main") === "other");
     rebuildMessageIdentityIndex(state.messages);
     applyManualMessageEdits();
+    state.lastImportedSplitRestore = reconcileImportedSplitSettings();
     migrateLegacyBoundariesIfNeeded();
     rebuildSessionPageRanges();
     const importedBgmRestore = reconcileImportedBgmAfterAnalysis(state.importedConverterSettings);
@@ -18046,7 +18083,7 @@ async function analyze() {
     updateView();
     el("resetFiltersBtn").disabled = false;
     const otherNote = state.otherText ? `, other ${otherRows.length.toLocaleString()}개 별도 병합` : "";
-    const portraitMatches = (state.stats.messageId || 0) + (state.stats.index || 0) + state.stats.exact + (state.stats.shared || 0) + (state.stats.context || 0) + state.stats.fallback;
+    const portraitMatches = (state.stats.messageId || 0) + (state.stats.index || 0) + state.stats.exact + (state.stats.shared || 0) + (state.stats.context || 0) + (state.stats.embedded || 0) + state.stats.fallback;
     renderBgmTriggerList();
     state.lastAnalysis = {
       total: combinedRows.length,
@@ -18081,7 +18118,13 @@ async function analyze() {
   }
 }
 
+let orderFileReadSequence = 0;
+let otherFileReadSequence = 0;
+let jsonFileReadSequence = 0;
+
 orderFile.addEventListener("change", async () => {
+  const selectedFile = orderFile.files[0] || null;
+  const readSequence = ++orderFileReadSequence;
   state.inlineImageCache.clear();
   state.lastCompactStats = null;
   state.lastAnalysis = null;
@@ -18116,15 +18159,20 @@ orderFile.addEventListener("change", async () => {
   state.bgmTriggerByUid = new Map();
   state.importedConverterSettings = null;
   state.lastImportedBgmRestore = null;
+  state.lastImportedSplitRestore = null;
+  state.orderDocument = null;
   bgmTriggerMap = new Map();
-  state.orderText = await readFile(orderFile.files[0]);
+  const orderText = await readFile(selectedFile);
+  if (readSequence !== orderFileReadSequence || (orderFile.files[0] || null) !== selectedFile) return;
+  state.orderText = orderText;
+  state.orderDocument = state.orderText ? parseTrpgSourceDocument(state.orderText) : null;
   state.workKey = buildWorkKey(orderFile.files[0], state.orderText);
   state.pendingDraft = loadWorkDraft(state.workKey);
   state.draftDecisionPending = Boolean(state.pendingDraft);
   hideDraftRecovery();
   if (el("exportFilteredOnly")) el("exportFilteredOnly").checked = false;
   el("analyzeBtn").disabled = !state.orderText;
-  state.importedConverterSettings = extractSavedConverterSettings(state.orderText);
+  state.importedConverterSettings = extractSavedConverterSettings(state.orderDocument || state.orderText);
   const restored = applySavedConverterSettings(state.importedConverterSettings);
   const restoreNote = restored.length ? ` 저장된 ${restored.join(", ")}을 불러왔습니다.` : "";
   updateUploadCard(orderFile, "orderFileName");
@@ -18134,7 +18182,12 @@ orderFile.addEventListener("change", async () => {
 });
 
 otherFile.addEventListener("change", async () => {
-  state.otherText = await readFile(otherFile.files[0]);
+  const selectedFile = otherFile.files[0] || null;
+  const readSequence = ++otherFileReadSequence;
+  const otherText = await readFile(selectedFile);
+  if (readSequence !== otherFileReadSequence || (otherFile.files[0] || null) !== selectedFile) return;
+  state.otherText = otherText;
+  state.otherDocument = state.otherText ? parseTrpgSourceDocument(state.otherText) : null;
   state.lastAnalysis = null;
   el("analyzeBtn").disabled = !state.orderText;
   updateUploadCard(otherFile, "otherFileName");
@@ -18150,7 +18203,11 @@ otherFile.addEventListener("change", async () => {
 });
 
 jsonFile.addEventListener("change", async () => {
-  state.jsonText = await readFile(jsonFile.files[0]);
+  const selectedFile = jsonFile.files[0] || null;
+  const readSequence = ++jsonFileReadSequence;
+  const jsonText = await readFile(selectedFile);
+  if (readSequence !== jsonFileReadSequence || (jsonFile.files[0] || null) !== selectedFile) return;
+  state.jsonText = jsonText;
   state.collectedSequenceRows = [];
   state.lastAnalysis = null;
   el("analyzeBtn").disabled = !state.orderText;
@@ -18355,7 +18412,7 @@ el("clearSplitsBtn").addEventListener("click", () => {
   el("manualOtherSplits").value = "";
   state.splitOrderHints.clear();
   state.splitUidHints.clear();
-  refreshUnifiedBoundaries("모든 수동 분할점을 지웠습니다. 자동 목차는 유지됩니다.");
+  refreshUnifiedBoundaries("모든 수동 분할점을 지웠습니다. 자동 일차는 유지됩니다.");
 });
 el("clearDaySplitsBtn")?.addEventListener("click", () => {
   state.unifiedBoundaries = unifiedBoundaryEntries().flatMap(entry => {
@@ -18366,7 +18423,7 @@ el("clearDaySplitsBtn")?.addEventListener("click", () => {
   state.manualDaySplits = [];
   state.ignoredAutoDaySplits = [];
   state.firstDayLabel = "";
-  refreshUnifiedBoundaries("목차 편집을 초기화했습니다. 파일·페이지 속성은 유지하고 자동 목차를 복원했습니다.");
+  refreshUnifiedBoundaries("목차 편집을 초기화했습니다. 파일·페이지 속성은 유지하고 자동 일차를 복원했습니다.");
 });
 function clearAllAutomaticDayBoundaries({ confirmUser = true } = {}) {
   const rows = state.messages;
