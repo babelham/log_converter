@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="코코포리아 HTML·JSON 로그 변환기">
 <meta name="trpg-app-version" content="7.55">
-<!-- v7.55: simplify the legacy portrait copy and leave missing portraits visually blank. -->
+<!-- v7.55: add log design presets and detailed visual controls while preserving the converter workflow. -->
 <!-- Earlier patch details are preserved in the file's version history. -->
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
@@ -3226,6 +3226,77 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
   .preview-shell .split-boundary-mark,
   .preview-shell .day-boundary-actions { justify-self: center; }
 }
+
+/* v7.55 design controls — shared palette for the editor preview and exported log. */
+.design-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+.design-primary-card { display:grid; gap:9px; padding:10px; border:1px solid var(--line-soft); border-radius:9px; background:rgba(255,255,255,.022); }
+.design-primary-card .subsection-title { margin:0 0 1px; }
+.design-advanced { border:1px solid var(--line-soft); border-radius:9px; background:rgba(255,255,255,.015); overflow:hidden; }
+.design-advanced > summary { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px; min-height:39px; padding:9px 11px 9px 29px; color:var(--text); cursor:pointer; list-style:none; }
+.design-advanced > summary::-webkit-details-marker { display:none; }
+.design-advanced > summary::before { content:"▸"; position:absolute; left:12px; color:var(--quiet); transition:transform .15s ease; }
+.design-advanced[open] > summary::before { transform:rotate(90deg); }
+.design-advanced[open] > summary { border-bottom:1px solid var(--line-soft); }
+.design-advanced > summary strong { min-width:0; font-size:12px; }
+.design-advanced > summary small { color:var(--quiet); font-size:10px; font-weight:500; white-space:nowrap; }
+.design-advanced-body { display:grid; gap:12px; padding:11px; }
+.design-setting-group { display:grid; gap:8px; min-width:0; }
+.design-setting-group + .design-setting-group { padding-top:11px; border-top:1px solid var(--line-soft); }
+.design-setting-group .subsection-title { margin:0; }
+.design-setting-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+.design-color-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 8px; }
+.design-color-field { display:grid; grid-template-columns:minmax(0,1fr) 34px; align-items:center; gap:7px; min-width:0; padding:6px 7px; border:1px solid var(--line-soft); border-radius:7px; background:rgba(255,255,255,.022); }
+.design-color-field span { min-width:0; color:var(--muted); font-size:11px; line-height:1.25; }
+.design-color-field input[type="color"] { width:34px; min-width:34px; height:27px; min-height:27px; margin:0; padding:2px; border:1px solid var(--line); border-radius:5px; background:transparent; cursor:pointer; }
+.design-color-field input[type="color"]::-webkit-color-swatch-wrapper { padding:1px; }
+.design-color-field input[type="color"]::-webkit-color-swatch,.design-color-field input[type="color"]::-moz-color-swatch { border:0; border-radius:3px; }
+.style-display-heading { margin-top:2px; }
+.theme-picker { display:inline-flex; align-items:center; gap:8px; min-width:168px; white-space:nowrap; font-weight:700; padding:4px 8px; }
+.theme-picker-label { flex:0 0 auto; font-size:12px; color:inherit; }
+.theme-picker select { min-height:28px; padding:4px 26px 4px 8px; background:transparent; border:0; color:inherit; font-size:12px; font-weight:700; width:auto; max-width:140px; }
+.theme-picker select:focus { outline:none; }
+@media (max-width:420px) { .design-grid,.design-setting-grid,.design-color-grid { grid-template-columns:minmax(0,1fr); } .design-advanced > summary { grid-template-columns:minmax(0,1fr); } .design-advanced > summary small { white-space:normal; } }
+
+.preview-shell { font-family:var(--log-font-family,Arial,"Apple SD Gothic Neo","Malgun Gothic",sans-serif); background:var(--log-page-bg,#181818)!important; color:var(--log-text-color,#ededed); }
+.preview-shell .ccfolia-wrap { background-color:var(--log-panel-bg,#2c2c2c); border-color:var(--log-border-color,rgba(255,255,255,.1)); color:var(--log-text-color,#ededed); }
+.preview-shell .ccfolia-wrap.has-inline-other-index { background-color:transparent; background-image:linear-gradient(to right,var(--log-panel-bg,#2c2c2c) 0 calc(100% - var(--inline-other-index-width)),transparent calc(100% - var(--inline-other-index-width)) 100%); }
+.preview-shell .other-wrap { background:var(--log-panel-bg,#242424); border-color:var(--log-border-color,rgba(255,255,255,.1)); }
+.preview-shell .log-row:not(.group-tone-a):not(.group-tone-b):nth-child(odd):not(.has-tab-background) { background:var(--log-row-a,#313131); }
+.preview-shell .log-row:not(.group-tone-a):not(.group-tone-b):nth-child(even):not(.has-tab-background) { background:var(--log-row-b,#383838); }
+.preview-shell .log-row.group-tone-a:not(.has-tab-background),.preview-shell .log-row.group-tone-a.has-continuation:not(.has-tab-background),.preview-shell .log-row.group-tone-a.is-continuation:not(.has-tab-background) { background:var(--log-row-a,#313131)!important; }
+.preview-shell .log-row.group-tone-b:not(.has-tab-background),.preview-shell .log-row.group-tone-b.has-continuation:not(.has-tab-background),.preview-shell .log-row.group-tone-b.is-continuation:not(.has-tab-background) { background:var(--log-row-b,#383838)!important; }
+.preview-shell .text { color:var(--log-text-color,#ededed); }
+.preview-shell .other-text,.preview-shell .narrator-text { color:var(--log-text-soft,#c8c8c8); }
+.preview-shell .system-text,.preview-shell .is-system .text,.preview-shell .tag,.preview-shell .expr-tag { color:var(--log-muted-color,#909090); }
+.preview-shell .system-line,.preview-shell .narrator-line,.preview-shell .other-row { border-color:var(--log-border-color,rgba(255,255,255,.08)); }
+.preview-shell .system-line:not(.has-tab-background),.preview-shell .narrator-line:not(.has-tab-background),.preview-shell .other-row:not(.has-tab-background) { background:var(--log-special-bg,#292929); }
+.preview-shell .log-row.is-other-tab:not(.has-tab-background):not(.is-search-target),.preview-shell .system-line.is-other-tab:not(.has-tab-background):not(.is-search-target),.preview-shell .narrator-line.is-other-tab:not(.has-tab-background):not(.is-search-target) { background:var(--log-special-bg,#292929)!important; background-image:none!important; }
+.preview-shell .log-row.is-info-highlight:not(.has-tab-background) { background:var(--log-accent-soft,rgba(90,177,255,.075)); box-shadow:inset 3px 0 0 var(--log-accent-color,#67c5ff); }
+.preview-shell[data-preview-device="auto"] > .preview-layout,.preview-shell[data-preview-device="auto"] > .ccfolia-wrap,.preview-shell[data-preview-device="auto"] > .empty-state { width:min(var(--log-max-width,1240px),100%); max-width:var(--log-max-width,1240px); margin-left:auto; margin-right:auto; }
+.preview-shell[data-preview-device="pc"] > .preview-layout,.preview-shell[data-preview-device="pc"] > .ccfolia-wrap,.preview-shell[data-preview-device="pc"] > .empty-state { width:var(--log-max-width,1240px); }
+.preview-shell .ccfolia-wrap,.preview-shell .other-wrap { border-radius:var(--log-radius,8px); }
+.preview-shell .avatar:not(.tab-avatar) { border-radius:var(--avatar-shape-radius,6px); }
+.preview-shell .name { font-size:var(--speaker-name-size,14px); font-weight:var(--speaker-name-weight,700); }
+.preview-shell .other-wrap .other-name { font-size:max(10px,calc(var(--speaker-name-size,14px) - 2px)); font-weight:var(--speaker-name-weight,700); }
+.preview-shell .other-wrap .other-text { font-size:max(10px,calc(var(--font-size,15px) - 2px)); line-height:1.5; }
+.preview-shell .log-row { padding-top:var(--log-row-pad-y,13px); padding-bottom:var(--log-row-pad-y,13px); }
+.preview-shell .log-row.has-continuation { padding-bottom:0; }
+.preview-shell .log-row.is-continuation { padding-top:0; padding-bottom:0; }
+.preview-shell .log-row.is-continuation:not(.has-continuation) { padding-bottom:var(--log-row-pad-y,13px); }
+.preview-shell .system-line,.preview-shell .narrator-line,.preview-shell .other-row { padding-top:var(--log-row-aux-pad-y,9px); padding-bottom:var(--log-row-aux-pad-y,9px); }
+.preview-shell .inline-other-summary,.preview-shell .inline-other-details > summary,.preview-shell .inline-other-rail-hit { color:var(--log-muted-color,#909090)!important; background:var(--log-aux-control-bg,var(--log-special-bg,#292929))!important; border-color:var(--log-border-color,rgba(255,255,255,.1))!important; }
+.preview-shell .inline-other-summary:hover,.preview-shell .inline-other-details > summary:hover,.preview-shell .inline-other-rail-hit.is-group-hover { color:var(--log-text-color,#ededed)!important; background:var(--log-special-hover,var(--log-special-bg,#292929))!important; }
+@media (max-width:700px),(hover:none) and (pointer:coarse) { .preview-shell .ccfolia-wrap.has-inline-other-index { background-color:var(--log-panel-bg,#2c2c2c); background-image:none; } }
+
+html[data-theme] body { background:var(--bg)!important; color:var(--text)!important; }
+html[data-theme] .sidebar { background:var(--sidebar-bg)!important; border-color:var(--line)!important; }
+html[data-theme] .toolbar { background:var(--toolbar-bg)!important; border-color:var(--line)!important; }
+html[data-theme] .section,html[data-theme] .design-primary-card,html[data-theme] .design-advanced,html[data-theme] .design-setting-group,html[data-theme] .design-color-field { background:var(--panel)!important; border-color:var(--line-soft)!important; color:var(--text)!important; }
+html[data-theme] button:not(.primary-button),html[data-theme] .soft-button,html[data-theme] .secondary-button { background:var(--control-bg)!important; color:var(--text)!important; border-color:var(--line)!important; }
+html[data-theme] input[type="search"],html[data-theme] input[type="text"],html[data-theme] input[type="number"],html[data-theme] select,html[data-theme] textarea { background:var(--field-bg)!important; color:var(--text)!important; border-color:var(--line)!important; }
+html[data-theme] .theme-picker { background:var(--control-bg)!important; color:var(--text)!important; border-color:var(--line)!important; }
+html[data-theme] .theme-picker select { background:transparent!important; border:0!important; color:inherit!important; }
+html[data-theme] .design-color-field { background:var(--panel-2)!important; }
 </style>
 </head>
 <body>
@@ -3306,32 +3377,84 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
     </section>
 
     <section class="section" id="section-style">
-      <div class="section-title"><h2>스타일</h2></div>
+      <div class="section-title"><h2>디자인</h2></div>
       <div class="stack">
-        <div class="pair">
-          <label>폰트 크기
-            <input id="fontSize" type="number" min="12" max="22" value="15">
-          </label>
-          <label>행간
-            <input id="lineHeight" type="number" min="1.2" max="2.2" step="0.05" value="1.65">
-          </label>
+        <div class="design-primary-card">
+          <div class="subsection-title"><h3>기본 스타일</h3></div>
+          <div class="design-grid">
+            <label>테마
+              <select id="designPreset">
+                <option value="auto" hidden>자동 · 이전 설정 호환</option>
+                <option value="dark" selected>차콜 다크</option>
+                <option value="light">페이퍼 라이트</option>
+                <option value="warm">웜 페이퍼</option>
+                <option value="navy">딥 네이비</option>
+                <option value="custom" disabled>직접 조정됨</option>
+              </select>
+            </label>
+            <label>폰트
+              <select id="fontFamily">
+                <option value="system" selected>기본 고딕</option>
+                <option value="pretendard">Pretendard</option>
+                <option value="noto-sans">Noto Sans KR</option>
+                <option value="rounded">둥근 고딕</option>
+                <option value="serif">명조</option>
+                <option value="mono">고정폭</option>
+              </select>
+            </label>
+          </div>
+          <div class="pair">
+            <label>글자 크기<input id="fontSize" type="number" min="12" max="22" value="15"></label>
+            <label>줄 간격<input id="lineHeight" type="number" min="1.2" max="2.2" step="0.05" value="1.65"></label>
+          </div>
         </div>
-        <div class="pair">
-          <label>인장 크기
-            <input id="avatarSize" type="number" min="28" max="72" value="42">
-          </label>
-          <label>페이지 구분
-            <select id="pageSize">
-              <option value="auto" selected>자동 · 일차 우선</option>
-              <option value="50">50개씩</option>
-              <option value="100">100개씩</option>
-              <option value="200">200개씩</option>
-              <option value="500">500개씩</option>
-              <option value="1000">1000개씩</option>
-              <option value="0">전체 표시</option>
-            </select>
-          </label>
-        </div>
+
+        <details class="design-advanced">
+          <summary><strong>세부 디자인</strong><small>레이아웃·인장·화자명·색상</small></summary>
+          <div class="design-advanced-body">
+            <div class="design-setting-group">
+              <div class="subsection-title"><h3>레이아웃</h3></div>
+              <div class="design-setting-grid">
+                <label>로그 최대 폭<select id="logMaxWidth"><option value="900">좁게 (900px)</option><option value="1100">보통 (1100px)</option><option value="1240" selected>넉넉하게 (1240px)</option><option value="1440">와이드 (1440px)</option><option value="full">화면 폭에 맞춤</option></select></label>
+                <label>메시지 행 간격<select id="rowSpacing"><option value="compact">좁게</option><option value="normal" selected>보통</option><option value="roomy">넓게</option><option value="wide">아주 넓게</option></select></label>
+                <label>로그 모서리<select id="cornerRadius"><option value="0">각지게</option><option value="4">살짝</option><option value="8" selected>기본</option><option value="12">둥글게</option><option value="18">아주 둥글게</option></select></label>
+              </div>
+            </div>
+            <div class="design-setting-group">
+              <div class="subsection-title"><h3>인장</h3></div>
+              <div class="design-setting-grid">
+                <label>인장 크기<input id="avatarSize" type="number" min="28" max="72" value="42"></label>
+                <label>인장 형태<select id="avatarShape"><option value="square">사각</option><option value="rounded" selected>둥근 사각</option><option value="circle">원형</option></select></label>
+              </div>
+            </div>
+            <div class="design-setting-group">
+              <div class="subsection-title"><h3>화자명</h3></div>
+              <div class="design-setting-grid">
+                <label>화자명 크기<select id="speakerNameSize"><option value="12">작게 (12px)</option><option value="14" selected>기본 (14px)</option><option value="16">크게 (16px)</option><option value="18">아주 크게 (18px)</option></select></label>
+                <label>화자명 굵기<select id="speakerNameWeight"><option value="500">보통</option><option value="600">중간</option><option value="700" selected>굵게</option><option value="800">아주 굵게</option></select></label>
+              </div>
+            </div>
+            <div class="design-setting-group">
+              <div class="subsection-title"><h3>세부 색상</h3></div>
+              <label>보조 영역 밝기<select id="auxToneDirection" title="잡담과 접기 버튼의 밝기 진행 방향"><option value="darker" selected>점점 어둡게</option><option value="lighter">점점 밝게</option></select></label>
+              <div class="design-color-grid" aria-label="로그 색상">
+                <label class="design-color-field"><span>본문 글자</span><input id="logTextColor" type="color" value="#ededed"></label>
+                <label class="design-color-field"><span>바깥 배경</span><input id="logPageColor" type="color" value="#181818"></label>
+                <label class="design-color-field"><span>패널 배경</span><input id="logPanelColor" type="color" value="#2c2c2c"></label>
+                <label class="design-color-field"><span>기준 배경</span><input id="logRowColor" type="color" value="#313131"></label>
+                <label class="design-color-field"><span>강조색</span><input id="logAccentColor" type="color" value="#8fc7ff"></label>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <div class="subsection-title style-display-heading"><h3>로그 표시</h3></div>
+        <label>페이지 구분
+          <select id="pageSize">
+            <option value="auto" selected>자동 · 일차 우선</option>
+            <option value="50">50개씩</option><option value="100">100개씩</option><option value="200">200개씩</option><option value="500">500개씩</option><option value="1000">1000개씩</option><option value="0">전체 표시</option>
+          </select>
+        </label>
         <div class="manual-day-split-help">
           <span>미리보기 메시지의 <strong>✂</strong> 버튼에서 그 메시지부터 시작하는 경계를 만듭니다. 새 페이지·새 파일·목차 속성을 한곳에서 지정할 수 있습니다.</span>
         </div>
@@ -3485,9 +3608,15 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
           <button type="button" data-preview-device="mobile" aria-pressed="false">모바일</button>
         </div>
         <button id="resetFiltersBtn" disabled>필터 초기화</button>
-        <button id="themeToggleBtn" class="soft-button theme-toggle" type="button" aria-pressed="false" title="라이트 모드로 전환">
-          <span class="theme-toggle-icon" aria-hidden="true">☀</span><span class="theme-toggle-label">라이트</span>
-        </button>
+        <label class="soft-button theme-picker" aria-label="테마 선택"><span class="theme-picker-label">테마</span>
+          <select id="themePresetToolbar" title="테마 선택">
+            <option value="dark" selected>차콜 다크</option>
+            <option value="light">페이퍼 라이트</option>
+            <option value="warm">웜 페이퍼</option>
+            <option value="navy">딥 네이비</option>
+            <option value="custom" disabled>직접 조정됨</option>
+          </select>
+        </label>
         <button id="toolbarHelpBtn" class="soft-button" type="button" aria-label="도움말">?</button>
       </div>
     </div>
@@ -3767,12 +3896,13 @@ const BOOKMARKLET_NOTICE_STORAGE_KEY = "trpg-log-converter:bookmarklet-notice";
 const BOOKMARKLET_NOTICE_APP_VERSION = "6.97";
 const PREFERENCE_STORAGE_KEY = "trpg-log-converter:last-preferences";
 const THEME_STORAGE_KEY = "trpg-log-converter:theme";
-const PREFERENCE_SCHEMA_VERSION = 4;
+const PREFERENCE_SCHEMA_VERSION = 6;
 const DEFAULT_PAGE_SIZE = "auto";
 const WORK_DRAFT_SCHEMA_VERSION = 1;
 const WORK_DRAFT_PREFIX = "trpg-log-converter:work-draft:";
 const PREFERENCE_FIELDS = [
-  "fontSize", "lineHeight", "avatarSize", "pageSize",
+  "fontFamily", "designPreset", "auxToneDirection", "logTextColor", "logPageColor", "logPanelColor", "logRowColor", "logAccentColor",
+  "fontSize", "lineHeight", "logMaxWidth", "rowSpacing", "cornerRadius", "avatarSize", "avatarShape", "speakerNameSize", "speakerNameWeight", "pageSize",
   "groupRows", "sideOther", "collapseInlineOther", "showExpression", "hideEmpty", "hideSystem", "highlightSpecialRows", "narratorNames",
   "bgmAutoplay", "bgmScenePages", "splitSize", "generatedBoundaryKind", "lastBoundaryOutputKind", "splitAsPages", "splitOtherAsPages",
   "inlineImages", "sessionNavigator", "notionStatic", "tistoryFallback", "inlineImageSize", "inlineImageQuality"
@@ -3797,17 +3927,12 @@ function loadAppTheme() {
 }
 
 function syncThemeToggle(theme = document.documentElement.dataset.theme) {
-  const current = normalizeAppTheme(theme);
-  const button = el("themeToggleBtn");
-  if (!button) return;
-  const nextIsLight = current === "dark";
-  const icon = button.querySelector(".theme-toggle-icon");
-  const label = button.querySelector(".theme-toggle-label");
-  if (icon) icon.textContent = nextIsLight ? "☀" : "☾";
-  if (label) label.textContent = nextIsLight ? "라이트" : "다크";
-  button.setAttribute("aria-pressed", String(current === "light"));
-  button.setAttribute("aria-label", nextIsLight ? "라이트 모드로 전환" : "다크 모드로 전환");
-  button.title = nextIsLight ? "라이트 모드로 전환" : "다크 모드로 전환";
+  const select = el("themePresetToolbar");
+  if (!select) return;
+  const preset = String(el("designPreset")?.value || "dark");
+  let uiValue = preset === "auto" ? normalizeAppTheme(theme) : preset;
+  if (!["dark","light","warm","navy","custom"].includes(uiValue)) uiValue = normalizeAppTheme(theme);
+  if (select.value !== uiValue) select.value = uiValue;
 }
 
 function applyAppTheme(theme, { persist = false } = {}) {
@@ -3822,9 +3947,12 @@ function applyAppTheme(theme, { persist = false } = {}) {
 }
 
 function toggleAppTheme() {
-  const current = normalizeAppTheme(document.documentElement.dataset.theme);
-  const next = current === "dark" ? "light" : "dark";
-  applyAppTheme(next, { persist: true });
+  const select = el("themePresetToolbar");
+  if (!select) return applyAppTheme(normalizeAppTheme(document.documentElement.dataset.theme));
+  const next = select.value === "dark" ? "light" : "dark";
+  select.value = next;
+  if (el("designPreset")) el("designPreset").value = next;
+  updateStyleOnly();
   return next;
 }
 
@@ -3852,7 +3980,7 @@ function loadLastPreferences() {
     if (!saved || typeof saved !== "object") return;
 
     const savedSchemaVersion = Number(saved.__schemaVersion || 0);
-    const needsPageSizeMigration = savedSchemaVersion < PREFERENCE_SCHEMA_VERSION;
+    const needsPageSizeMigration = savedSchemaVersion < 4;
     if (needsPageSizeMigration && ["100", "1000"].includes(String(saved.pageSize || ""))) {
       // 과거 버전의 기본 페이지 값(100 → 1000)을 그대로 쓰던 사용자는
       // 새 기본값인 '일차 우선, 불가하면 1000개'로 한 번만 이관한다.
@@ -3860,8 +3988,13 @@ function loadLastPreferences() {
     }
 
     LAST_PREFERENCE_FIELDS.forEach(id => writeControlValue(el(id), saved[id]));
+    if (savedSchemaVersion < 6 && saved.designPreset == null) {
+      const migratedTheme = normalizeAppTheme(document.documentElement.dataset.theme);
+      el("designPreset").value = migratedTheme;
+      saved.designPreset = migratedTheme;
+    }
 
-    if (needsPageSizeMigration) {
+    if (savedSchemaVersion < PREFERENCE_SCHEMA_VERSION) {
       saved.__schemaVersion = PREFERENCE_SCHEMA_VERSION;
       saved.pageSize = readControlValue(el("pageSize")) || DEFAULT_PAGE_SIZE;
       delete saved.tistoryFallback;
@@ -6093,6 +6226,16 @@ function extractSavedConverterSettings(source) {
 function applySavedConverterSettings(settings) {
   if (!settings || typeof settings !== "object") return [];
   const restored = [];
+  const designControlIds = ["fontFamily","designPreset","auxToneDirection","logTextColor","logPageColor","logPanelColor","logRowColor","logAccentColor","fontSize","lineHeight","logMaxWidth","rowSpacing","cornerRadius","avatarSize","avatarShape","speakerNameSize","speakerNameWeight"];
+  designControlIds.forEach(id => {
+    if (settings[id] != null) writeControlValue(el(id), settings[id]);
+  });
+  const hasSavedDesign = designControlIds.some(id => settings[id] != null);
+  if (!hasSavedDesign && ["dark","light"].includes(String(settings.exportTheme)) && el("designPreset")) {
+    el("designPreset").value = String(settings.exportTheme);
+  }
+  if (hasSavedDesign) restored.push("디자인");
+  applyStyleControls();
   if (typeof settings.bgmUrl === "string") {
     el("bgmUrl").value = settings.bgmUrl;
     if (settings.bgmUrl.trim()) restored.push("플레이리스트");
@@ -8782,9 +8925,26 @@ function converterSettingsPayload(exportRows = null) {
   ]);
   return {
     kind: "trpg-log-converter-settings",
-    version: 3,
+    version: 6,
     appVersion: APP_VERSION,
     compactDataVersion: COMPACT_LOG_DATA_VERSION,
+    fontFamily: el("fontFamily")?.value || "system",
+    designPreset: el("designPreset")?.value || "auto",
+    auxToneDirection: currentAuxToneDirection(),
+    logTextColor: el("logTextColor")?.value || "#ededed",
+    logPageColor: el("logPageColor")?.value || "#181818",
+    logPanelColor: el("logPanelColor")?.value || "#2c2c2c",
+    logRowColor: el("logRowColor")?.value || "#313131",
+    logAccentColor: el("logAccentColor")?.value || "#8fc7ff",
+    fontSize: el("fontSize")?.value || "15",
+    lineHeight: el("lineHeight")?.value || "1.65",
+    logMaxWidth: el("logMaxWidth")?.value || "1240",
+    rowSpacing: el("rowSpacing")?.value || "normal",
+    cornerRadius: el("cornerRadius")?.value || "8",
+    avatarSize: el("avatarSize")?.value || "42",
+    avatarShape: el("avatarShape")?.value || "rounded",
+    speakerNameSize: el("speakerNameSize")?.value || "14",
+    speakerNameWeight: el("speakerNameWeight")?.value || "700",
     bgmUrl: el("bgmUrl").value,
     bgmTriggers: el("bgmTriggers").value,
     bgmAutoplay: el("bgmAutoplay").checked,
@@ -11550,10 +11710,123 @@ function otherVisibleRows() {
   return sideOtherEnabled() ? state.visibleOther : [];
 }
 
+const DESIGN_PRESETS = {
+  dark: { text:"#ededed", page:"#181818", panel:"#2c2c2c", row:"#313131", accent:"#8fc7ff" },
+  light: { text:"#273244", page:"#edf1f5", panel:"#ffffff", row:"#ffffff", accent:"#2563a6" },
+  warm: { text:"#40362d", page:"#eee7dc", panel:"#fffaf2", row:"#fffaf2", accent:"#95672d" },
+  navy: { text:"#e7eef8", page:"#101723", panel:"#172131", row:"#1d293b", accent:"#79b8ff" }
+};
+const FONT_FAMILY_STACKS = {
+  system: 'Arial,"Apple SD Gothic Neo","Malgun Gothic",sans-serif',
+  pretendard: '"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
+  "noto-sans": '"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
+  rounded: '"NanumSquareRound","NanumSquare Neo","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
+  serif: '"Noto Serif KR","AppleMyungjo","Batang",serif',
+  mono: '"D2Coding","SFMono-Regular",Consolas,"Liberation Mono",monospace'
+};
+function validHexColor(value, fallback = "#000000") {
+  const text = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(text) ? text.toLowerCase() : fallback;
+}
+function mixHexColors(a, b, amount = .5) {
+  const left = validHexColor(a), right = validHexColor(b);
+  const t = Math.min(1, Math.max(0, Number(amount) || 0));
+  const channel = (value, shift) => (parseInt(value.slice(1), 16) >> shift) & 255;
+  const l = [channel(left,16),channel(left,8),channel(left,0)];
+  const r = [channel(right,16),channel(right,8),channel(right,0)];
+  return "#" + l.map((v,i) => Math.round(v + (r[i]-v)*t).toString(16).padStart(2,"0")).join("");
+}
+function designPresetPalette(name = el("designPreset")?.value) {
+  const preset = String(name || "auto");
+  if (preset === "auto") return DESIGN_PRESETS[normalizeAppTheme(document.documentElement.dataset.theme)];
+  return DESIGN_PRESETS[preset] || null;
+}
+function isLightDesignColor(value) {
+  const hex = validHexColor(value, "#181818");
+  const rgb = [1,3,5].map(i => parseInt(hex.slice(i,i+2), 16));
+  return (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) >= 155000;
+}
+function currentLogTheme() {
+  const preset = String(el("designPreset")?.value || "auto");
+  if (preset === "auto") return normalizeAppTheme(document.documentElement.dataset.theme);
+  if (preset === "light" || preset === "warm") return "light";
+  if (preset === "dark" || preset === "navy") return "dark";
+  return isLightDesignColor(currentDesignPalette().panel) ? "light" : "dark";
+}
+function syncDesignPresetControls() {
+  const palette = designPresetPalette();
+  if (!palette) return;
+  if (el("logTextColor")) el("logTextColor").value = palette.text;
+  if (el("logPageColor")) el("logPageColor").value = palette.page;
+  if (el("logPanelColor")) el("logPanelColor").value = palette.panel;
+  if (el("logRowColor")) el("logRowColor").value = palette.row;
+  if (el("logAccentColor")) el("logAccentColor").value = palette.accent;
+}
+function currentDesignPalette() {
+  const preset = designPresetPalette();
+  if (preset) return { ...preset };
+  return {
+    text: validHexColor(el("logTextColor")?.value, "#ededed"),
+    page: validHexColor(el("logPageColor")?.value, "#181818"),
+    panel: validHexColor(el("logPanelColor")?.value, "#2c2c2c"),
+    row: validHexColor(el("logRowColor")?.value, "#313131"),
+    accent: validHexColor(el("logAccentColor")?.value, "#8fc7ff")
+  };
+}
+function currentFontFamilyStack() { return FONT_FAMILY_STACKS[String(el("fontFamily")?.value || "system")] || FONT_FAMILY_STACKS.system; }
+const ROW_SPACING_VALUES = { compact:9, normal:13, roomy:17, wide:21 };
+function currentRowSpacingPx() { return ROW_SPACING_VALUES[String(el("rowSpacing")?.value || "normal")] || ROW_SPACING_VALUES.normal; }
+function currentCornerRadiusPx() { const value = Number(el("cornerRadius")?.value ?? 8); return Math.min(24, Math.max(0, Number.isFinite(value) ? value : 8)); }
+function currentAvatarShapeRadius() { const shape = String(el("avatarShape")?.value || "rounded"); return shape === "square" ? "0px" : shape === "circle" ? "50%" : "8px"; }
+function currentSpeakerNameSizePx() { const value = Number(el("speakerNameSize")?.value ?? 14); return Math.min(22, Math.max(10, Number.isFinite(value) ? value : 14)); }
+function currentSpeakerNameWeight() { const value = Number(el("speakerNameWeight")?.value ?? 700); return [500,600,700,800].includes(value) ? value : 700; }
+function currentLogMaxWidthCss() { const value = String(el("logMaxWidth")?.value || "1240"); if (value === "full") return "100%"; const width = Number(value); return `${Math.min(1800, Math.max(720, Number.isFinite(width) ? width : 1240))}px`; }
+function boundedStyleNumber(id, fallback, min, max) { const raw = String(el(id)?.value ?? "").trim(); const value = raw === "" ? fallback : Number(raw); return Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback)); }
+function currentAuxToneDirection() { return String(el("auxToneDirection")?.value || "darker") === "lighter" ? "lighter" : "darker"; }
+function derivedDesignValues() {
+  const palette = currentDesignPalette();
+  const lightRow = isLightDesignColor(palette.row), lightPanel = isLightDesignColor(palette.panel);
+  const rowTone = lightRow ? "#000000" : "#ffffff", panelTone = lightPanel ? "#000000" : "#ffffff";
+  const auxDirection = currentAuxToneDirection();
+  let row = palette.row, special, auxControl;
+  if (auxDirection === "lighter") {
+    if (lightRow) { row = mixHexColors(palette.row,"#000000",.12); special = mixHexColors(palette.row,"#000000",.06); auxControl = palette.row; }
+    else { special = mixHexColors(palette.row,"#ffffff",.14); auxControl = mixHexColors(palette.row,"#ffffff",.22); }
+  } else {
+    special = mixHexColors(palette.row,"#000000",lightRow ? .10 : .14);
+    auxControl = mixHexColors(palette.row,"#000000",lightRow ? .18 : .28);
+  }
+  const rowAlt = auxDirection === "lighter" ? mixHexColors(row,special,.28) : mixHexColors(row,rowTone,lightRow ? .035 : .055);
+  const soft = mixHexColors(palette.text,palette.panel,lightPanel ? .18 : .22);
+  const muted = mixHexColors(palette.text,palette.panel,lightPanel ? .26 : .46);
+  const quiet = mixHexColors(palette.text,palette.panel,lightPanel ? .30 : .58);
+  const border = mixHexColors(palette.panel,panelTone,lightPanel ? .15 : .16);
+  const chrome = mixHexColors(palette.panel,panelTone,lightPanel ? .04 : .06);
+  return { ...palette,row,rowAlt,soft,muted,quiet,border,special,auxControl,
+    specialHover:mixHexColors(special,rowTone,.055),accentSoft:mixHexColors(palette.accent,palette.panel,.78),
+    accentHover:mixHexColors(palette.accent,panelTone,.14),chrome,chromeStrong:mixHexColors(palette.panel,panelTone,lightPanel ? .09 : .11),
+    field:mixHexColors(palette.panel,panelTone,lightPanel ? .015 : .035),scrollTrack:chrome,
+    scrollThumb:mixHexColors(palette.panel,panelTone,.34),scrollThumbHover:mixHexColors(palette.panel,panelTone,.48),auxDirection };
+}
 function applyStyleControls() {
-  document.documentElement.style.setProperty("--font-size", `${el("fontSize").value}px`);
-  document.documentElement.style.setProperty("--line-height", el("lineHeight").value);
-  document.documentElement.style.setProperty("--avatar-size", `${el("avatarSize").value}px`);
+  if (el("designPreset")?.value !== "custom") syncDesignPresetControls();
+  const design = derivedDesignValues();
+  const uiTheme = currentLogTheme();
+  const preview = el("preview");
+  if (preview) preview.dataset.logTheme = uiTheme;
+  applyAppTheme(uiTheme, { persist: true });
+  const root = document.documentElement.style;
+  root.setProperty("--bg",design.page); root.setProperty("--panel",design.panel); root.setProperty("--panel-2",design.chrome); root.setProperty("--panel-3",design.chromeStrong);
+  root.setProperty("--line",design.border); root.setProperty("--line-soft",mixHexColors(design.border,design.panel,.45)); root.setProperty("--text",design.text); root.setProperty("--muted",design.muted); root.setProperty("--quiet",design.quiet);
+  root.setProperty("--accent",design.accent); root.setProperty("--ui-accent-contrast",isLightDesignColor(design.accent) ? "#18202a" : "#ffffff"); root.setProperty("--ui-accent-hover",design.accentHover);
+  root.setProperty("--control-bg",design.chrome); root.setProperty("--control-hover",design.chromeStrong); root.setProperty("--field-bg",design.field); root.setProperty("--sidebar-bg",design.panel); root.setProperty("--toolbar-bg",design.panel);
+  const themeMeta = el("themeColorMeta"); if (themeMeta) themeMeta.setAttribute("content",design.page);
+  root.setProperty("--font-size",`${boundedStyleNumber("fontSize",15,12,22)}px`); root.setProperty("--line-height",String(boundedStyleNumber("lineHeight",1.65,1.2,2.2))); root.setProperty("--avatar-size",`${boundedStyleNumber("avatarSize",42,28,72)}px`);
+  const rowPad = currentRowSpacingPx();
+  root.setProperty("--log-row-pad-y",`${rowPad}px`); root.setProperty("--log-row-aux-pad-y",`${Math.max(6,rowPad-4)}px`); root.setProperty("--log-radius",`${currentCornerRadiusPx()}px`); root.setProperty("--avatar-shape-radius",currentAvatarShapeRadius());
+  root.setProperty("--speaker-name-size",`${currentSpeakerNameSizePx()}px`); root.setProperty("--speaker-name-weight",String(currentSpeakerNameWeight())); root.setProperty("--log-max-width",currentLogMaxWidthCss()); root.setProperty("--log-font-family",currentFontFamilyStack());
+  root.setProperty("--log-text-color",design.text); root.setProperty("--log-page-bg",design.page); root.setProperty("--log-panel-bg",design.panel); root.setProperty("--log-row-a",design.row); root.setProperty("--log-row-b",design.rowAlt); root.setProperty("--log-text-soft",design.soft); root.setProperty("--log-muted-color",design.muted); root.setProperty("--log-border-color",design.border); root.setProperty("--log-special-bg",design.special); root.setProperty("--log-special-hover",design.specialHover); root.setProperty("--log-aux-control-bg",design.auxControl); root.setProperty("--log-accent-color",design.accent); root.setProperty("--log-accent-soft",design.accentSoft); root.setProperty("--log-chrome",design.chrome); root.setProperty("--log-chrome-strong",design.chromeStrong); root.setProperty("--log-scroll-track",design.scrollTrack); root.setProperty("--log-scroll-thumb",design.scrollThumb); root.setProperty("--log-scroll-thumb-hover",design.scrollThumbHover);
+  syncThemeToggle(uiTheme);
 }
 
 const scheduleStyleLayoutRefresh = debounce(() => {
@@ -17286,14 +17559,13 @@ function hostCompatibilityScript() {
 }
 
 function currentExportTheme() {
-  return normalizeAppTheme(document.documentElement.dataset.theme || "dark");
+  return currentLogTheme();
 }
 
 function exportThemePalette(theme = currentExportTheme()) {
   const normalized = normalizeAppTheme(theme);
-  return normalized === "light"
-    ? { theme: "light", background: "#edf1f5", themeColor: "#edf1f5" }
-    : { theme: "dark", background: "#181818", themeColor: "#181818" };
+  const background = currentDesignPalette().page;
+  return { theme: normalized, background, themeColor: background };
 }
 
 function exportLightCssRaw() {
@@ -17369,10 +17641,63 @@ body{background:#edf1f5;color:#172033}
 @media(max-width:700px),(hover:none) and (pointer:coarse){.scene-pager{background:rgba(237,241,245,.94)}.ccfolia-wrap.has-inline-other-index{background-color:#fff;background-image:none;border-right-color:rgba(15,23,42,.12)}.inline-other-summary-row .inline-other-summary,.inline-other-details>summary,.is-inline-other-group-last.has-inline-other-rail .inline-other-rail-hit{background:rgba(15,23,42,.035)!important;border-color:rgba(15,23,42,.07)!important}}`;
 }
 
+function customExportDesignCssRaw() {
+  const d = derivedDesignValues();
+  const font = currentFontFamilyStack();
+  const rowPad = currentRowSpacingPx();
+  const auxPad = Math.max(6, rowPad - 4);
+  const radius = currentCornerRadiusPx();
+  const avatarRadius = currentAvatarShapeRadius();
+  const speakerSize = currentSpeakerNameSizePx();
+  const speakerWeight = currentSpeakerNameWeight();
+  const maxWidth = currentLogMaxWidthCss();
+  return `:root{--log-text:${d.text};--log-page:${d.page};--log-panel:${d.panel};--log-row-a:${d.row};--log-row-b:${d.rowAlt};--log-soft:${d.soft};--log-muted:${d.muted};--log-border:${d.border};--log-special:${d.special};--log-special-hover:${d.specialHover};--log-aux-control:${d.auxControl};--log-accent:${d.accent};--log-accent-soft:${d.accentSoft};--log-chrome:${d.chrome};--log-chrome-strong:${d.chromeStrong};--log-scroll-track:${d.scrollTrack};--log-scroll-thumb:${d.scrollThumb};--log-scroll-thumb-hover:${d.scrollThumbHover};--log-radius:${radius}px;--avatar-shape-radius:${avatarRadius};--speaker-name-size:${speakerSize}px;--speaker-name-weight:${speakerWeight};--log-row-pad-y:${rowPad}px;--log-row-aux-pad-y:${auxPad}px;--log-max-width:${maxWidth}}
+body{background:var(--log-page);color:var(--log-text);font-family:${font}}
+.trpg-log-app{color:var(--log-text);font-family:${font}}
+.page{max-width:var(--log-max-width)}
+.page,.title{color:var(--log-text)}
+.ccfolia-wrap{background-color:var(--log-panel);border-color:var(--log-border);color:var(--log-text)}
+.ccfolia-wrap.has-inline-other-index{background-color:transparent;background-image:linear-gradient(to right,var(--log-panel) 0 calc(100% - var(--inline-other-index-width)),transparent calc(100% - var(--inline-other-index-width)) 100%)}
+.other-wrap{background:var(--log-panel);border-color:var(--log-border)}
+.log-row.is-odd:not(.has-tab-background),.log-row.group-tone-a:not(.has-tab-background),.log-row.group-tone-a.has-continuation:not(.has-tab-background),.log-row.group-tone-a.is-continuation:not(.has-tab-background){background:var(--log-row-a)!important}
+.log-row.is-even:not(.has-tab-background),.log-row.group-tone-b:not(.has-tab-background),.log-row.group-tone-b.has-continuation:not(.has-tab-background),.log-row.group-tone-b.is-continuation:not(.has-tab-background){background:var(--log-row-b)!important}
+.log-row.is-other-tab:not(.has-tab-background):not(.is-search-target),.system-line.is-other-tab:not(.has-tab-background):not(.is-search-target),.narrator-line.is-other-tab:not(.has-tab-background):not(.is-search-target){background:var(--log-special)!important;background-image:none!important}
+.text{color:var(--log-text)}.other-text,.narrator-text{color:var(--log-soft)}
+.system-text,.is-system .text,.tag,.expr-tag,.scene-pager-label,.bgm-note{color:var(--log-muted)}
+.system-line:not(.has-tab-background),.narrator-line:not(.has-tab-background),.other-row:not(.has-tab-background){background:var(--log-special);border-color:var(--log-border)}
+.tag.tab-label-chip{color:var(--tab-accent,var(--log-accent))}
+.ccfolia-wrap,.other-wrap{border-radius:var(--log-radius)}
+.avatar:not(.tab-avatar){border-radius:var(--avatar-shape-radius)}
+.name{font-size:var(--speaker-name-size);font-weight:var(--speaker-name-weight)}
+.other-wrap .other-name{font-size:max(10px,calc(var(--speaker-name-size) - 2px));font-weight:var(--speaker-name-weight)}
+.other-wrap .other-text{font-size:max(10px,calc(var(--font-size) - 2px));line-height:1.5}
+.log-row{padding-top:var(--log-row-pad-y);padding-bottom:var(--log-row-pad-y)}
+.log-row.has-continuation{padding-bottom:0}.log-row.is-continuation{padding-top:0;padding-bottom:0}.log-row.is-continuation:not(.has-continuation){padding-bottom:var(--log-row-pad-y)}
+.system-line,.narrator-line,.other-row{padding-top:var(--log-row-aux-pad-y);padding-bottom:var(--log-row-aux-pad-y)}
+.log-row.is-search-target,.system-line.is-search-target,.narrator-line.is-search-target,.other-row.is-search-target{outline-color:var(--log-accent)}
+.trpg-session-nav,.trpg-day-jump-toggle,.trpg-day-jump-list,.trpg-search,.bgm-panel,.bgm-now{background:var(--log-chrome);border-color:var(--log-border);color:var(--log-text)}
+.trpg-session-nav-summary,.trpg-session-nav button,.trpg-day-jump-toggle,.trpg-day-jump-list button,.trpg-search button{color:var(--log-text)}
+.trpg-session-nav-meta,.trpg-session-nav-clock,.trpg-day-jump-list button span,.trpg-search-count,.bgm-note{color:var(--log-muted)}
+.trpg-session-nav-rail{background:var(--log-border)}.trpg-session-nav-dot{background:var(--log-chrome);border-color:var(--log-accent)}.trpg-session-nav button.is-current .trpg-session-nav-dot{background:var(--log-accent);border-color:var(--log-accent)}
+.trpg-day-jump-toggle span{background:var(--log-accent-soft);color:var(--log-accent)}
+.trpg-search input{background:var(--log-row-a);color:var(--log-text);border-color:var(--log-border)}.trpg-search input::placeholder{color:var(--log-muted)}
+.trpg-search button,.bgm-panel button,.scene-pager button{border-color:var(--log-border);background:var(--log-chrome);color:var(--log-text)}
+.trpg-search button:hover,.bgm-panel button:hover,.scene-pager button:hover,.bgm-panel:hover,.bgm-panel:focus-within,.bgm-now:hover{background:var(--log-chrome-strong);color:var(--log-text)}
+.bgm-frame{background:var(--log-row-a)}.bgm-tag,.bgm-link,.bgm-now{color:var(--log-accent)}
+.trpg-session-nav button:hover,.trpg-session-nav button.is-current,.trpg-day-jump-list button:hover,.trpg-day-jump-list button.is-current{background:var(--log-accent-soft);color:var(--log-text)}
+.inline-other-summary,.inline-other-details>summary,.inline-other-rail-hit{color:var(--log-text)!important;background:var(--log-aux-control)!important;border:0!important;box-shadow:none!important}
+.inline-other-summary:hover,.inline-other-details>summary:hover,.inline-other-rail-hit.is-group-hover{color:var(--log-accent)!important;background:var(--log-accent-soft)!important}
+.ccfolia-wrap,.other-wrap,.trpg-session-nav-list,.trpg-day-jump-list,.trpg-search,.bgm-panel{scrollbar-width:thin;scrollbar-color:var(--log-scroll-thumb) var(--log-scroll-track)}
+.ccfolia-wrap::-webkit-scrollbar,.other-wrap::-webkit-scrollbar,.trpg-session-nav-list::-webkit-scrollbar,.trpg-day-jump-list::-webkit-scrollbar,.trpg-search::-webkit-scrollbar,.bgm-panel::-webkit-scrollbar{width:10px;height:10px}
+.ccfolia-wrap::-webkit-scrollbar-track,.other-wrap::-webkit-scrollbar-track{background:var(--log-scroll-track)}
+.ccfolia-wrap::-webkit-scrollbar-thumb,.other-wrap::-webkit-scrollbar-thumb{background:var(--log-scroll-thumb);border:2px solid var(--log-scroll-track);border-radius:999px}
+@media(max-width:700px),(hover:none) and (pointer:coarse){.ccfolia-wrap.has-inline-other-index{background-color:var(--log-panel);background-image:none}.scene-pager{background:${mixHexColors(d.page,d.panel,.25)}f0}}`;
+}
+
 function exportCssRaw(theme = currentExportTheme()) {
-  const fontSize = Number(el("fontSize").value);
-  const lineHeight = Number(el("lineHeight").value);
-  const avatarSize = Number(el("avatarSize").value);
+  const fontSize = boundedStyleNumber("fontSize", 15, 12, 22);
+  const lineHeight = boundedStyleNumber("lineHeight", 1.65, 1.2, 2.2);
+  const avatarSize = boundedStyleNumber("avatarSize", 42, 28, 72);
   return `:root{color-scheme:dark;--avatar-size:${avatarSize}px;--font-size:${fontSize}px;--line-height:${lineHeight};--line:rgba(255,255,255,.1);--muted:rgba(255,255,255,.56);--radius:8px}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -17573,7 +17898,7 @@ html.trpg-host-tistory .trpg-virtual-body,html.trpg-host-tistory .trpg-virtual-w
 .log-row.has-tab-background.group-tone-a.has-continuation:not(.is-search-target),.log-row.has-tab-background.group-tone-a.is-continuation:not(.is-search-target){background:var(--tab-background-a)!important}
 .log-row.has-tab-background.group-tone-b.has-continuation:not(.is-search-target),.log-row.has-tab-background.group-tone-b.is-continuation:not(.is-search-target){background:var(--tab-background-b)!important}
 @media(max-width:700px),(hover:none) and (pointer:coarse){.layout.is-other-split .log-row.has-tab-font-size .message{font-size:min(var(--font-size),11px)}.layout.is-other-split .log-row.has-tab-font-size .meta{font-size:11px}.layout.is-other-split .system-line.has-tab-font-size{font-size:10px}.layout.is-other-split .other-row.has-tab-font-size{font-size:10px}}
-@media(max-width:700px),(hover:none) and (pointer:coarse){.trpg-search-shell{top:6px}.trpg-search{grid-template-columns:minmax(90px,1fr) auto auto auto;width:calc(100vw - 16px);padding:5px}.trpg-search-count{grid-column:1/3;min-height:15px;text-align:left}.trpg-search button{min-height:29px;padding:3px 7px}.trpg-search input{height:30px}.trpg-session-nav{right:8px;max-width:calc(100vw - 16px)}.trpg-session-nav.is-expanded{width:min(230px,calc(100vw - 16px))}.trpg-session-nav-summary{min-height:42px;padding:9px 11px}.trpg-session-nav-list{max-height:52vh}.trpg-session-nav button{min-height:44px;padding:7px 8px;touch-action:manipulation}.trpg-day-jump{right:8px;top:8px;max-width:calc(100vw - 16px)}.trpg-day-jump-toggle{min-height:36px}.trpg-day-jump-list{width:min(220px,calc(100vw - 16px));max-height:52vh}.trpg-day-jump-list button{min-height:42px;touch-action:manipulation}.trpg-virtual-body{contain:layout style}}${normalizeAppTheme(theme) === "light" ? exportLightCssRaw() : ""}`;
+@media(max-width:700px),(hover:none) and (pointer:coarse){.trpg-search-shell{top:6px}.trpg-search{grid-template-columns:minmax(90px,1fr) auto auto auto;width:calc(100vw - 16px);padding:5px}.trpg-search-count{grid-column:1/3;min-height:15px;text-align:left}.trpg-search button{min-height:29px;padding:3px 7px}.trpg-search input{height:30px}.trpg-session-nav{right:8px;max-width:calc(100vw - 16px)}.trpg-session-nav.is-expanded{width:min(230px,calc(100vw - 16px))}.trpg-session-nav-summary{min-height:42px;padding:9px 11px}.trpg-session-nav-list{max-height:52vh}.trpg-session-nav button{min-height:44px;padding:7px 8px;touch-action:manipulation}.trpg-day-jump{right:8px;top:8px;max-width:calc(100vw - 16px)}.trpg-day-jump-toggle{min-height:36px}.trpg-day-jump-list{width:min(220px,calc(100vw - 16px));max-height:52vh}.trpg-day-jump-list button{min-height:42px;touch-action:manipulation}.trpg-virtual-body{contain:layout style}}${normalizeAppTheme(theme) === "light" ? exportLightCssRaw() : ""}${customExportDesignCssRaw()}`;
 }
 
 function scopeExportCss(css, scope = "#trpg-log-app") {
@@ -17675,7 +18000,21 @@ function exportCssCacheKey(theme) {
     normalizeAppTheme(theme),
     el("fontSize")?.value || "",
     el("lineHeight")?.value || "",
-    el("avatarSize")?.value || ""
+    el("avatarSize")?.value || "",
+    el("logMaxWidth")?.value || "1240",
+    el("rowSpacing")?.value || "normal",
+    el("cornerRadius")?.value || "8",
+    el("avatarShape")?.value || "rounded",
+    el("speakerNameSize")?.value || "14",
+    el("speakerNameWeight")?.value || "700",
+    el("fontFamily")?.value || "system",
+    el("designPreset")?.value || "auto",
+    currentAuxToneDirection(),
+    el("logTextColor")?.value || "",
+    el("logPageColor")?.value || "",
+    el("logPanelColor")?.value || "",
+    el("logRowColor")?.value || "",
+    el("logAccentColor")?.value || ""
   ].join("|");
 }
 
@@ -18829,7 +19168,11 @@ document.addEventListener("keydown", event => {
     openAppDialog("helpDialog", "helpQuick");
   }
 });
-el("themeToggleBtn")?.addEventListener("click", toggleAppTheme);
+el("themePresetToolbar")?.addEventListener("change", event => {
+  const value = String(event.target?.value || "dark");
+  if (el("designPreset")) el("designPreset").value = value;
+  updateStyleOnly();
+});
 el("portraitReviewBtn")?.addEventListener("click", openPortraitReview);
 el("analysisDiagBtn")?.addEventListener("click", () => {
   const box = el("analysisDiagnostics");
@@ -18923,9 +19266,27 @@ document.querySelectorAll("[data-copy-bgm-playlist-bookmarklet]").forEach(button
 document.querySelectorAll("[data-copy-youtube-playlist-bookmarklet]").forEach(button => button.addEventListener("click", copyPlaylistHelperBookmarklet));
 document.querySelectorAll("[data-copy-jukebox-playlist-bookmarklet]").forEach(button => button.addEventListener("click", copyJukeboxPlaylistHelperBookmarklet));
 initBookmarkletUpdateNotice();
+el("fontFamily")?.addEventListener("change", updateStyleOnly);
+el("designPreset")?.addEventListener("change", () => { syncDesignPresetControls(); syncThemeToggle(currentLogTheme()); updateStyleOnly(); });
+el("auxToneDirection")?.addEventListener("change", updateStyleOnly);
+["logTextColor","logPageColor","logPanelColor","logRowColor","logAccentColor"].forEach(id => {
+  el(id)?.addEventListener("input", () => {
+    if (el("designPreset")?.value !== "custom") el("designPreset").value = "custom";
+    syncThemeToggle(currentLogTheme());
+    updateStyleOnly();
+  });
+});
 el("fontSize").addEventListener("input", updateStyleOnly);
 el("lineHeight").addEventListener("input", updateStyleOnly);
 el("avatarSize").addEventListener("input", updateStyleOnly);
+[["fontSize",15,12,22],["lineHeight",1.65,1.2,2.2],["avatarSize",42,28,72]].forEach(([id,fallback,min,max]) => {
+  el(id)?.addEventListener("change", () => {
+    el(id).value = String(boundedStyleNumber(id,fallback,min,max));
+    updateStyleOnly();
+    scheduleLastPreferencesSave();
+  });
+});
+["logMaxWidth","rowSpacing","cornerRadius","avatarShape","speakerNameSize","speakerNameWeight"].forEach(id => el(id)?.addEventListener("change", updateStyleOnly));
 el("pageSize").addEventListener("change", () => { state.page = 1; updateView(); });
 el("groupRows").addEventListener("change", updateView);
 el("sideOther").addEventListener("change", () => { state.page = 1; updateView(); });
