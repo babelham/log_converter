@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="코코포리아 HTML 로그 변환기">
-<meta name="trpg-app-version" content="7.51">
-<!-- v7.51: keep an auto-expanded scroll summary open until its current display cycle ends. -->
+<meta name="description" content="코코포리아 HTML·JSON 로그 변환기">
+<meta name="trpg-app-version" content="7.55">
+<!-- v7.55: simplify the legacy portrait copy and leave missing portraits visually blank. -->
 <!-- Earlier patch details are preserved in the file's version history. -->
 <meta id="themeColorMeta" name="theme-color" content="#181818">
 <title>TRPG 로그 변환기</title>
@@ -1089,6 +1089,12 @@ html[data-theme="light"] .narrator-text { color: rgba(15,23,42,.8); }
   color: var(--quiet);
   font-size: 11px;
   font-weight: 700;
+}
+
+.avatar.avatar-empty {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .avatar img {
@@ -2922,6 +2928,7 @@ html[data-theme="light"] .system-text,
 html[data-theme="light"] .is-system .text { color: rgba(15,23,42,.62); }
 html[data-theme="light"] .is-extra-tab .text { color: rgba(15,23,42,.78); }
 html[data-theme="light"] .avatar { background: rgba(15,23,42,.07); border-color: rgba(15,23,42,.12); }
+html[data-theme="light"] .avatar.avatar-empty { background: transparent; border-color: transparent; }
 html[data-theme="light"] .tab-avatar { color: #245a8b; background: rgba(37,99,166,.09); border-color: rgba(37,99,166,.2); }
 html[data-theme="light"] .expr-tag { color: rgba(15,23,42,.58); background: rgba(15,23,42,.045); border-color: rgba(15,23,42,.1); }
 html[data-theme="light"] .split-button { color: rgba(15,23,42,.62); background: rgba(255,255,255,.88); border-color: rgba(15,23,42,.14); }
@@ -3245,18 +3252,18 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
     </div>
 
     <section class="section" id="section-files">
-      <div class="section-title"><h2>파일 업로드</h2><span class="section-badge required">HTML 필수 · TXT 권장</span></div>
+      <div class="section-title"><h2>파일 업로드</h2><span class="section-badge required">공식 JSON 또는 HTML</span></div>
       <details id="fileUploadDetails" class="file-upload-details" open>
-        <summary><span id="fileUploadSummary">HTML과 이미지 정보 TXT/JSON을 선택하세요</span><small>열기 / 접기</small></summary>
+        <summary><span id="fileUploadSummary">공식 JSON 또는 로그 HTML을 선택하세요</span><small>열기 / 접기</small></summary>
         <div class="file-upload-body">
           <div id="fileDropZone" class="file-drop-zone" tabindex="0" role="button" aria-label="파일을 끌어놓거나 선택">
             <strong>파일을 여기에 끌어놓으세요</strong>
           </div>
           <div class="stack upload-stack">
         <label class="upload-card" for="orderFile">
-          <input id="orderFile" type="file" accept=".html,text/html">
+          <input id="orderFile" type="file" accept=".html,.json,.zip,text/html,application/json,application/zip">
           <span class="upload-icon">①</span>
-          <span class="upload-copy"><strong>순서 기준 HTML</strong><small>가능하면 코코포리아 all 로그</small><em id="orderFileName">선택 안 함</em></span>
+          <span class="upload-copy"><strong>로그 JSON / HTML·ZIP</strong><small>룸 마스터는 공식 JSON 하나만 권장 · 플레이어는 탭 HTML</small><em id="orderFileName">선택 안 함</em></span>
           <span class="upload-button">선택</span>
         </label>
         <details id="otherUploadDetails" class="advanced-upload">
@@ -3274,7 +3281,7 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
         <label class="upload-card" for="jsonFile">
           <input id="jsonFile" type="file" accept=".txt,.json,application/json,text/plain">
           <span class="upload-icon">☺</span>
-          <span class="upload-copy"><strong>이미지 정보 JSON/TXT</strong><small>권장 · 메시지별 표정과 인장을 정확히 매칭</small><em id="jsonFileName">선택 안 함</em></span>
+          <span class="upload-copy"><strong>구형 로그용 표정 보완</strong><small>선택 사항 · 로그 HTML은 위에, 북마크릿 TXT만 이곳에</small><em id="jsonFileName">선택 안 함</em></span>
           <span class="upload-button">선택</span>
         </label>
         <button id="analyzeBtn" class="primary-button full-button" disabled>로그 분석하기</button>
@@ -3430,6 +3437,7 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
             <div class="check-row"><input id="splitOtherAsPages" type="checkbox"><label for="splitOtherAsPages">페이지 나누기에서 other도 함께 나누기</label></div>
             <div class="status">페이지·파일·목차 여부는 이제 각 분할점에서 따로 지정합니다. 같은 위치에서 새 파일과 새 페이지를 동시에 만들 필요가 없어 둘 중 하나만 선택합니다.</div>
             <div class="check-row"><input id="inlineImages" type="checkbox"><label for="inlineImages">이미지를 HTML에 내장</label></div>
+            <div class="status">공식 JSON·HTML·ZIP에 이미 들어 있는 표정은 이 선택과 관계없이 아래 크기·품질로 한 번만 최적화해 저장합니다.</div>
             <div class="check-row"><input id="sessionNavigator" type="checkbox" checked><label for="sessionNavigator">일차 목차·바로가기 포함 <small>(기본 ON)</small></label></div>
             <div class="status">처음 분석한 자동 일차와 분할점에서 <strong>목차에 표시</strong>를 선택한 경계를 함께 출력합니다. 삭제한 자동 일차는 편집 페이지와 출력 목차에서 모두 제외됩니다.</div>
             <div class="check-row"><input id="tistoryFallback" type="checkbox"><label for="tistoryFallback">티스토리 보호글 호환 본문 포함 <small>(보호글용 · 용량 증가)</small></label></div>
@@ -3487,7 +3495,7 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
       <div class="empty-state enhanced-empty">
         <span class="empty-icon">LOG</span>
         <h2>로그 파일을 선택해 주세요</h2>
-        <p>순서 기준 HTML과 표정 수집 TXT/JSON을 선택한 뒤 <b>로그 분석하기</b>를 누르세요.</p>
+        <p>룸 마스터는 공식 JSON 하나를, 플레이어는 저장한 탭 HTML을 선택한 뒤 <b>로그 분석하기</b>를 누르세요.</p>
         <button id="emptyHelpBtn" class="soft-button" type="button">사용법 보기</button>
       </div>
     </section>
@@ -3586,17 +3594,15 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
       <section id="helpQuick" class="help-page is-active">
         <h3>빠른 시작</h3>
         <ol class="tutorial-steps">
-          <li><span>1</span><div><strong>코코포리아에서 HTML 로그 저장</strong><p>main과 other의 순서 연동이 필요하면 가능한 한 <b>all 로그</b>를 사용합니다.</p></div></li>
-          <li><span>2</span><div><strong>표정 수집 북마크릿 준비</strong><p>변환기의 <b>표정 수집 북마크릿 복사</b>를 누르고 새 북마크의 URL 칸에 등록합니다. <b>북마크 등록은 최초 한 번만 하면 되며, 다음 로그부터는 같은 북마크를 계속 사용할 수 있습니다.</b> 처음이라면 왼쪽의 <b>표정 수집</b> 도움말에서 등록 과정을 먼저 확인하세요.</p></div></li>
-          <li><span>3</span><div><strong>코코포리아에서 표정 정보 수집</strong><p>룸 채팅 화면에서 북마크릿을 <b>한 번만 실행</b>합니다. 원하는 채팅 탭을 직접 누르고 각 탭의 로그를 위로 스크롤하면, 패널이 현재 탭 이름을 감지해 결과를 계속 누적합니다. 끝나면 <b>완료 → TXT 다운로드</b>를 누릅니다.</p></div></li>
-          <li><span>4</span><div><strong>HTML과 이미지 정보 파일 선택</strong><p><b>순서 기준 HTML</b>에는 저장한 로그를, <b>이미지 정보 JSON/TXT</b>에는 표정 수집 결과를 넣습니다. 표정과 인장을 정확히 반영하려면 두 파일을 함께 사용하는 것이 정식 절차입니다.</p></div></li>
-          <li><span>5</span><div><strong>로그 분석 및 설정</strong><p><b>로그 분석하기</b>를 누른 뒤 필터와 스타일을 조정하면서 오른쪽 미리보기를 확인합니다.</p></div></li>
-          <li><span>6</span><div><strong>복사 또는 저장</strong><p>티스토리는 <b>HTML 복사</b>, 개인 보관·웹호스팅은 <b>HTML 파일 저장</b>을 사용합니다.</p></div></li>
+          <li><span>1</span><div><strong>코코포리아에서 로그 내보내기</strong><p>룸 마스터는 표정과 전체 탭 순서가 담긴 <b>JSON</b>을 선택하세요. 플레이어는 필요한 탭의 <b>HTML</b>을 선택합니다.</p></div></li>
+          <li><span>2</span><div><strong>파일 선택</strong><p><b>로그 JSON / HTML</b>에 파일 하나를 넣습니다. 공식 JSON에는 표정 이미지와 주사위 결과가 이미 들어 있어 별도 표정 파일이 필요하지 않습니다.</p></div></li>
+          <li><span>3</span><div><strong>로그 분석 및 설정</strong><p><b>로그 분석하기</b>를 누른 뒤 필터와 스타일을 조정하면서 오른쪽 미리보기를 확인합니다.</p></div></li>
+          <li><span>4</span><div><strong>복사 또는 저장</strong><p>티스토리는 <b>HTML 복사</b>, 개인 보관·웹호스팅은 <b>HTML 파일 저장</b>을 사용합니다.</p></div></li>
         </ol>
       </section>
       <section id="helpImages" class="help-page">
         <h3>메시지별 표정 자동 매칭</h3>
-        <p>코코포리아의 모든 채팅 탭에 표시되는 메시지 인장 주소를 수집해, 탭별로 같은 대사에 어떤 표정이 사용됐는지 연결하는 과정입니다. 아래 설명은 Chrome·Edge 기준입니다.</p>
+        <p>룸 마스터용 공식 JSON은 메시지별 표정 이미지를 직접 포함하므로 별도 수집이 필요하지 않습니다. 아래 북마크릿 방식은 예전 HTML 등 공식 JSON을 사용할 수 없는 경우를 위한 호환 기능입니다.</p>
         <button id="copyHelperCodeGuideBtn" class="soft-button full-button help-copy-bookmarklet" data-copy-helper-bookmarklet type="button">표정 수집 북마크릿 복사</button>
         <ol class="tutorial-steps">
           <li><span>1</span><div><strong>북마크릿 코드 복사</strong><p>바로 위 또는 파일 업로드 영역 아래의 <b>표정 수집 북마크릿 복사</b>를 누릅니다. 버튼이 <b>✓ 북마크릿 복사 완료</b>로 바뀌면 복사된 것입니다.</p></div></li>
@@ -3675,6 +3681,10 @@ const state = {
   orderText: "",
   otherText: "",
   jsonText: "",
+  orderOfficialJson: null,
+  jsonOfficialJson: null,
+  orderEffectiveName: "",
+  orderArchiveInfo: null,
   orderDocument: null,
   otherDocument: null,
   title: "TRPG Log",
@@ -4570,9 +4580,12 @@ function updateAnalysisSummaryUi(extraNote = "") {
   const manualText = state.manualTextOverrides.size;
   const dayCount = Math.max(1, state.sessionPageRanges?.length || 1);
   const infoRows = Number(state.lastAnalysis.jsonRows || 0);
+  const officialSource = /^official-/.test(String(state.lastAnalysis.sourceKind || ""));
+  const officialImages = Number(state.lastAnalysis.officialImageCount || 0);
   const otherNote = state.lastAnalysis.otherRows ? ` · other ${state.lastAnalysis.otherRows.toLocaleString()}개 별도 병합` : "";
   const note = extraNote ? ` ${extraNote}` : "";
-  if (infoRows) setStatus(`${state.messages.length.toLocaleString()}개 메시지 · ${dayCount.toLocaleString()}일차 · 표정 ${confident.toLocaleString()}개 매칭 · 확인 필요 ${pending.toLocaleString()}개${otherNote}.${note}`);
+  if (officialSource) setStatus(`${state.messages.length.toLocaleString()}개 메시지 · ${dayCount.toLocaleString()}일차 · 공식 내보내기 · 표정 ${confident.toLocaleString()}개 적용${officialImages ? ` · 이미지 ${officialImages.toLocaleString()}종` : ""}${otherNote}.${note}`);
+  else if (infoRows) setStatus(`${state.messages.length.toLocaleString()}개 메시지 · ${dayCount.toLocaleString()}일차 · 표정 ${confident.toLocaleString()}개 매칭 · 확인 필요 ${pending.toLocaleString()}개${otherNote}.${note}`);
   else if (state.lastAnalysis.importedExpressionRows || state.lastAnalysis.savedExpressionRows) setStatus(`${state.messages.length.toLocaleString()}개 메시지 · ${dayCount.toLocaleString()}일차 · 저장 HTML 표정 후보 복원${otherNote}.${note}`);
   else setStatus(`${state.messages.length.toLocaleString()}개 메시지 · ${dayCount.toLocaleString()}일차 · 이미지 정보 없음${otherNote}.${note}`);
   if (actions) actions.hidden = false;
@@ -4582,7 +4595,9 @@ function updateAnalysisSummaryUi(extraNote = "") {
     reviewButton.disabled = !reviewCandidates.length;
   }
   if (diag) {
-    diag.textContent = infoRows
+    diag.textContent = officialSource
+      ? `코코포리아 공식 ${state.lastAnalysis.sourceKind === "official-json" ? "JSON" : "HTML"} · 메시지 ${state.messages.length.toLocaleString()}개 · 내장 이미지 ${officialImages.toLocaleString()}종 · 적용 인장 ${confident.toLocaleString()}개 · 구조화된 판정 ${state.messages.filter(message => message.officialRoll).length.toLocaleString()}개 · 시스템 ${(state.stats.system || 0).toLocaleString()}개`
+      : infoRows
       ? `이미지 정보 ${infoRows.toLocaleString()}행 · ID ${(state.stats.messageId || 0).toLocaleString()} · 인덱스 ${(state.stats.index || 0).toLocaleString()} · 고유대사 ${(state.stats.exact || 0).toLocaleString()} · 동일표정 ${(state.stats.shared || 0).toLocaleString()} · 문맥 ${(state.stats.context || 0).toLocaleString()} · 저장표정 ${(state.stats.embedded || 0).toLocaleString()} · 대표표정 ${(state.stats.fallback || 0).toLocaleString()} · 수동표정 ${manualPortrait.toLocaleString()} · 대사수정 ${manualText.toLocaleString()} · 시스템 ${(state.stats.system || 0).toLocaleString()}`
       : ((state.lastAnalysis.importedExpressionRows || state.lastAnalysis.savedExpressionRows)
         ? `저장 HTML에서 표정 후보를 복원했습니다. 사용 인장 ${Number(state.lastAnalysis.importedExpressionRows || 0).toLocaleString()}건 · 저장 후보 ${Number(state.lastAnalysis.savedExpressionRows || 0).toLocaleString()}건`
@@ -5218,18 +5233,85 @@ function messageKey(name, text) {
   return `${normalizedCharacterName(name)}\u001f${normalizedMessageText(text)}`;
 }
 
-function initials(name) {
-  if (!name || name.toLowerCase() === "system") return "SYS";
-  const cleaned = name.replace(/["'˝“”‘’]/g, "").trim();
-  const parts = cleaned.split(/\s+/).filter(Boolean);
-  if (!parts.length) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts.at(-2)[0] + parts.at(-1)[0]).toUpperCase();
-}
-
 async function readFile(file) {
   if (!file) return "";
   return await file.text();
+}
+
+function zipEntryName(bytes) {
+  return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+}
+
+async function inflateZipEntry(bytes, method) {
+  if (method === 0) return bytes;
+  if (method !== 8) throw new Error(`지원하지 않는 ZIP 압축 방식입니다. (${method})`);
+  if (typeof DecompressionStream !== "function") throw new Error("이 브라우저는 ZIP 압축 해제를 지원하지 않습니다. 압축을 푼 HTML 또는 공식 JSON을 선택해 주세요.");
+  let stream;
+  try {
+    stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  } catch (error) {
+    throw new Error("이 브라우저에서는 ZIP을 직접 열 수 없습니다. 압축을 푼 HTML 또는 공식 JSON을 선택해 주세요.");
+  }
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function readOfficialHtmlZip(file) {
+  const buffer = await file.arrayBuffer();
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  const minimumEocd = 22;
+  let eocd = -1;
+  for (let offset = Math.max(0, bytes.length - 65557); offset <= bytes.length - minimumEocd; offset += 1) {
+    if (view.getUint32(offset, true) === 0x06054b50) eocd = offset;
+  }
+  if (eocd < 0) throw new Error("ZIP의 중앙 디렉터리를 찾지 못했습니다.");
+  const totalEntries = view.getUint16(eocd + 10, true);
+  const centralOffset = view.getUint32(eocd + 16, true);
+  if (!totalEntries || totalEntries > 10000 || centralOffset >= bytes.length) throw new Error("ZIP의 파일 목록이 올바르지 않습니다.");
+  const htmlEntries = [];
+  let cursor = centralOffset;
+  for (let index = 0; index < totalEntries; index += 1) {
+    if (cursor + 46 > bytes.length || view.getUint32(cursor, true) !== 0x02014b50) throw new Error("ZIP 파일 목록이 손상되었습니다.");
+    const method = view.getUint16(cursor + 10, true);
+    const compressedSize = view.getUint32(cursor + 20, true);
+    const uncompressedSize = view.getUint32(cursor + 24, true);
+    const nameLength = view.getUint16(cursor + 28, true);
+    const extraLength = view.getUint16(cursor + 30, true);
+    const commentLength = view.getUint16(cursor + 32, true);
+    const localOffset = view.getUint32(cursor + 42, true);
+    const nameEnd = cursor + 46 + nameLength;
+    if (nameEnd > bytes.length) throw new Error("ZIP 파일명이 손상되었습니다.");
+    const name = zipEntryName(bytes.slice(cursor + 46, nameEnd));
+    if (/\.html?$/i.test(name) && !/(?:^|\/)__MACOSX\//i.test(name)) {
+      htmlEntries.push({ name, method, compressedSize, uncompressedSize, localOffset });
+    }
+    cursor = nameEnd + extraLength + commentLength;
+  }
+  if (!htmlEntries.length) throw new Error("ZIP 안에서 HTML 로그를 찾지 못했습니다.");
+  const allPattern = /\[(?:すべて|all|전체)\]/i;
+  htmlEntries.sort((left, right) => Number(allPattern.test(right.name)) - Number(allPattern.test(left.name)) || right.uncompressedSize - left.uncompressedSize);
+  const selected = htmlEntries[0];
+  if (selected.uncompressedSize > 120 * 1024 * 1024) throw new Error("ZIP 안의 HTML이 너무 큽니다. 압축을 풀어 필요한 로그 파일을 직접 선택해 주세요.");
+  const local = selected.localOffset;
+  if (local + 30 > bytes.length || view.getUint32(local, true) !== 0x04034b50) throw new Error("ZIP의 HTML 항목이 손상되었습니다.");
+  const localNameLength = view.getUint16(local + 26, true);
+  const localExtraLength = view.getUint16(local + 28, true);
+  const dataStart = local + 30 + localNameLength + localExtraLength;
+  const dataEnd = dataStart + selected.compressedSize;
+  if (dataEnd > bytes.length) throw new Error("ZIP의 HTML 데이터가 손상되었습니다.");
+  const inflated = await inflateZipEntry(bytes.slice(dataStart, dataEnd), selected.method);
+  if (selected.uncompressedSize && inflated.byteLength !== selected.uncompressedSize) throw new Error("ZIP 압축 해제 결과의 크기가 일치하지 않습니다.");
+  return {
+    text: new TextDecoder("utf-8", { fatal: false }).decode(inflated),
+    effectiveName: selected.name.split("/").pop() || selected.name,
+    archiveInfo: { selectedName: selected.name, htmlCount: htmlEntries.length }
+  };
+}
+
+async function readPrimaryLogFile(file) {
+  if (!file) return { text: "", effectiveName: "", archiveInfo: null };
+  if (/\.zip$/i.test(file.name) || /(?:application\/zip|application\/x-zip-compressed)/i.test(file.type || "")) return await readOfficialHtmlZip(file);
+  return { text: await file.text(), effectiveName: file.name, archiveInfo: null };
 }
 
 function setStatus(text) {
@@ -5239,23 +5321,31 @@ function setStatus(text) {
   status.hidden = !status.textContent;
 }
 
+function hasPrimaryLogSource() {
+  return Boolean(state.orderText || state.orderOfficialJson || state.jsonOfficialJson);
+}
+
 function updateFileUploadSummary(mode = "idle") {
   const summary = el("fileUploadSummary");
   const details = el("fileUploadDetails");
   if (!summary || !details) return;
-  const orderName = orderFile?.files?.[0]?.name || "순서 기준 HTML";
-  const hasInfo = Boolean(jsonFile?.files?.[0] || state.jsonText);
+  const orderName = orderFile?.files?.[0]?.name || (state.jsonOfficialJson ? jsonFile?.files?.[0]?.name : "") || "로그 JSON / HTML";
+  const hasInfo = Boolean(state.orderOfficialJson || state.jsonOfficialJson || jsonFile?.files?.[0] || state.jsonText);
   if (mode === "analyzed" && state.lastAnalysis) {
     const info = state.lastAnalysis;
-    summary.textContent = `✓ 분석 완료 · ${orderName} · ${info.total.toLocaleString()}개${info.jsonRows ? ` · 이미지 정보 ${info.jsonRows.toLocaleString()}행 · 포트레이트 ${(info.portraitMatches || 0).toLocaleString()}개 적용` : " · 이미지 정보 없음"}`;
+    const sourceNote = info.sourceKind === "official-json" ? " · 공식 JSON" : info.sourceKind === "official-html" ? " · 공식 HTML" : "";
+    summary.textContent = `✓ 분석 완료 · ${orderName}${sourceNote} · ${info.total.toLocaleString()}개${info.jsonRows ? ` · 보조 이미지 정보 ${info.jsonRows.toLocaleString()}행 · 포트레이트 ${(info.portraitMatches || 0).toLocaleString()}개 적용` : ""}`;
     details.classList.add("is-analyzed");
     return;
   }
   details.classList.remove("is-analyzed");
-  if (state.orderText || orderFile?.files?.length) {
-    summary.textContent = `${orderName} 선택됨${hasInfo ? " · 이미지 정보 포함" : " · 이미지 정보 추가 권장"}`;
+  if (hasPrimaryLogSource() || orderFile?.files?.length) {
+    const detail = state.orderOfficialJson || state.jsonOfficialJson
+      ? " · 표정·판정 포함"
+      : hasInfo ? " · 이미지 정보 포함" : " · 이미지 정보 추가 선택";
+    summary.textContent = `${orderName} 선택됨${detail}`;
   } else {
-    summary.textContent = "HTML과 이미지 정보 TXT/JSON을 선택하세요";
+    summary.textContent = "공식 JSON 또는 로그 HTML을 선택하세요";
   }
 }
 
@@ -5266,7 +5356,7 @@ function syncStickyActions(analyzed = Boolean(state.messages.length)) {
   const sticky = el("stickyActions");
   const analyzeButton = el("stickyAnalyzeBtn");
   const exportActions = el("stickyExportActions");
-  const hasFile = Boolean(state.orderText || orderFile?.files?.length);
+  const hasFile = Boolean(hasPrimaryLogSource() || orderFile?.files?.length);
   const ready = analyzed;
   const hasExportRows = ready && currentExportRows().length > 0;
   const canExport = hasExportRows && !state.exportBusy;
@@ -5359,13 +5449,23 @@ function assignFileToInput(input, file) {
 function classifyDroppedFiles(fileList) {
   const files = [...fileList];
   const htmlFiles = files.filter(file => /\.html?$/i.test(file.name) || file.type === "text/html");
+  const zipFiles = files.filter(file => /\.zip$/i.test(file.name) || /(?:application\/zip|application\/x-zip-compressed)/i.test(file.type || ""));
   const infoFiles = files.filter(file => /\.(json|txt)$/i.test(file.name) || /json|text\/plain/i.test(file.type));
-  if (htmlFiles[0]) assignFileToInput(orderFile, htmlFiles[0]);
-  if (infoFiles[0]) assignFileToInput(jsonFile, infoFiles[0]);
+  if (zipFiles[0]) {
+    assignFileToInput(orderFile, zipFiles[0]);
+    if (infoFiles[0]) assignFileToInput(jsonFile, infoFiles[0]);
+  } else if (htmlFiles[0]) {
+    assignFileToInput(orderFile, htmlFiles[0]);
+    if (infoFiles[0]) assignFileToInput(jsonFile, infoFiles[0]);
+  } else if (infoFiles[0] && /\.json$/i.test(infoFiles[0].name)) {
+    assignFileToInput(orderFile, infoFiles[0]);
+  } else if (infoFiles[0]) {
+    assignFileToInput(jsonFile, infoFiles[0]);
+  }
   if (htmlFiles.length > 1) {
     setStatus("HTML이 여러 개 감지됐습니다. 첫 파일만 순서 기준 HTML로 넣었습니다. other 별도 병합은 고급 항목을 열어 직접 선택해 주세요.");
-  } else if (!htmlFiles.length && !infoFiles.length) {
-    setStatus("지원하는 HTML·JSON·TXT 파일을 찾지 못했습니다.");
+  } else if (!htmlFiles.length && !zipFiles.length && !infoFiles.length) {
+    setStatus("지원하는 HTML·JSON·ZIP·TXT 파일을 찾지 못했습니다.");
   }
 }
 
@@ -5422,13 +5522,15 @@ function readNameColor(node) {
   const style = node?.getAttribute("style") || "";
   const custom = style.match(/--name-color\s*:\s*([^;]+)/i);
   if (custom) return safeCssColor(custom[1]);
+  const speaker = style.match(/--speaker-color\s*:\s*([^;]+)/i);
+  if (speaker) return safeCssColor(speaker[1]);
   const color = style.match(/color\s*:\s*([^;]+)/i);
   return safeCssColor(color ? color[1] : "#dddddd");
 }
 
 function exportedImageAssetMap(doc) {
   const assets = new Map();
-  doc.querySelectorAll("#trpg-image-assets symbol[id]").forEach(symbol => {
+  doc.querySelectorAll("[data-trpg-image-assets] symbol[id], #trpg-image-assets symbol[id]").forEach(symbol => {
     const image = symbol.querySelector("image");
     const source = image?.getAttribute("href") || image?.getAttribute("xlink:href") || "";
     if (source) assets.set(symbol.id, source);
@@ -5659,8 +5761,156 @@ function extractOrderMessageTime(node, spans = []) {
   return "";
 }
 
+function officialExportTitle(value, filename = "") {
+  const raw = normalizeText(value || filename || "TRPG Log").replace(/\s+/g, " ").trim();
+  return raw
+    .replace(/\s*\[(?:すべて|all|전체|메인|main|メイン|잡담|other|雑談|その他|정보|info|情報)[^\]]*\]\s*$/i, "")
+    .replace(/(?:_log)?\.(?:html?|json)$/i, "")
+    .replace(/_log$/i, "")
+    .trim() || "TRPG Log";
+}
+
+function officialCcfJsonPayload(source) {
+  const text = String(source || "").replace(/^\uFEFF/, "").trim();
+  if (!text || text[0] !== "{") return null;
+  try {
+    const payload = JSON.parse(text);
+    if (!payload || !Array.isArray(payload.messages) || !payload.images || typeof payload.images !== "object" || Array.isArray(payload.images)) return null;
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
+
+function officialRollResult(message) {
+  const result = message?.extend?.roll?.result;
+  return typeof result === "string" ? normalizeText(result) : "";
+}
+
+function combinedOfficialMessageText(message) {
+  const text = normalizeText(message?.text || "");
+  const rollResult = officialRollResult(message);
+  if (!rollResult || text.includes(rollResult)) return text;
+  return [text, rollResult].filter(Boolean).join("\n");
+}
+
+function parseOfficialCcfJson(source, filename = "") {
+  const payload = typeof source === "object" && source?.messages ? source : officialCcfJsonPayload(source);
+  if (!payload) return null;
+  const images = payload.images || {};
+  const tabIndices = new Map();
+  const colorCache = new Map();
+  const rows = [];
+  payload.messages.forEach((message, index) => {
+    if (!message || typeof message !== "object") return;
+    const rawTab = normalizeText(message.channelName || message.channel || "main") || "main";
+    const tabKey = normalizedTab(rawTab);
+    const sourceIndex = tabIndices.get(tabKey) || 0;
+    tabIndices.set(tabKey, sourceIndex + 1);
+    const isSystem = String(message.type || "").toLowerCase() === "system";
+    const createdAt = message.createdAt === "" || message.createdAt == null ? NaN : Number(message.createdAt);
+    const createdDate = Number.isFinite(createdAt) ? new Date(createdAt) : null;
+    const hasValidCreatedAt = Boolean(createdDate && Number.isFinite(createdDate.getTime()));
+    const time = hasValidCreatedAt ? createdDate.toISOString() : normalizeText(message.createdAt || "");
+    const imageKey = String(message.iconImage || "").trim();
+    const imgUrl = /^data:image\//i.test(imageKey)
+      ? imageKey
+      : imageKey && typeof images[imageKey] === "string" ? images[imageKey] : "";
+    const rollResult = officialRollResult(message);
+    const name = isSystem ? "system" : normalizeText(message.name || "") || "system";
+    const text = combinedOfficialMessageText(message);
+    const rawColor = String(message.color || "#dddddd").trim() || "#dddddd";
+    if (!colorCache.has(rawColor)) colorCache.set(rawColor, safeCssColor(rawColor));
+    rows.push({
+      uid: `ccf-${hasValidCreatedAt ? createdAt.toString(36) : index.toString(36)}-${stableTextHash(`${rawTab}\u001f${name}\u001f${text}`)}`,
+      messageId: hasValidCreatedAt ? `ccfolia-${createdAt}` : "",
+      sourceIndex,
+      time,
+      tab: rawTab,
+      name,
+      text,
+      color: colorCache.get(rawColor),
+      imgUrl,
+      embeddedPortraitTrusted: Boolean(imgUrl),
+      requiresImageOptimization: Boolean(imgUrl && /^data:image\//i.test(imgUrl)),
+      officialRoll: Boolean(rollResult),
+      rollResult
+    });
+  });
+  return {
+    rows,
+    title: officialExportTitle("", filename),
+    sourceKind: "official-json",
+    imageCount: Object.keys(images).length
+  };
+}
+
+function officialHtmlAvatarMap(doc) {
+  const assets = new Map();
+  doc.querySelectorAll("style").forEach(styleNode => {
+    const css = styleNode.textContent || "";
+    const rulePattern = /\.avatar-image-([a-z0-9_-]+)\s*\{([^}]*)\}/gi;
+    let rule;
+    while ((rule = rulePattern.exec(css))) {
+      const url = rule[2].match(/background-image\s*:\s*url\(\s*["']?([^"')]+)["']?\s*\)/i)?.[1] || "";
+      if (url) assets.set(`avatar-image-${rule[1]}`, url);
+    }
+  });
+  return assets;
+}
+
+function parseOfficialCcfHtml(doc, filename = "", forcedTab = "") {
+  const articles = [...doc.querySelectorAll("article.message")];
+  if (!articles.length || !articles.some(article => article.querySelector(".message-text"))) return null;
+  const avatarAssets = officialHtmlAvatarMap(doc);
+  const lastAvatarBySpeaker = new Map();
+  const tabIndices = new Map();
+  const rows = [];
+  articles.forEach((article, index) => {
+    const channelLabel = cleanSpan(article.querySelector(".channel-name") || document.createElement("span"))
+      .replace(/^\[/, "").replace(/\]$/, "").trim();
+    const rawTab = forcedTab || channelLabel || article.dataset.channel || "main";
+    const tabKey = normalizedTab(rawTab);
+    const sourceIndex = tabIndices.get(tabKey) || 0;
+    tabIndices.set(tabKey, sourceIndex + 1);
+    const isSystem = article.classList.contains("system");
+    const speakerNode = article.querySelector(".speaker");
+    const name = isSystem ? "system" : cleanSpan(speakerNode || document.createElement("span")) || "system";
+    const messageText = cleanSpan(article.querySelector(".message-text") || document.createElement("span"));
+    const rollResult = cleanSpan(article.querySelector(".roll-result") || document.createElement("span"));
+    const text = rollResult && !messageText.includes(rollResult) ? [messageText, rollResult].filter(Boolean).join("\n") : messageText;
+    const timeNode = article.querySelector("time.timestamp, time[datetime]");
+    const time = timeNode?.getAttribute("datetime") || cleanSpan(timeNode || document.createElement("span"));
+    const avatar = article.querySelector(".avatar");
+    const avatarClass = avatar ? [...avatar.classList].find(className => className.startsWith("avatar-image-")) : "";
+    let imgUrl = avatarClass ? avatarAssets.get(avatarClass) || "" : "";
+    const avatarScope = `${tabKey}\u001f${normalizedCharacterName(name)}`;
+    if (!imgUrl && article.querySelector(".avatar-spacer")) imgUrl = lastAvatarBySpeaker.get(avatarScope) || "";
+    if (imgUrl) lastAvatarBySpeaker.set(avatarScope, imgUrl);
+    rows.push({
+      uid: `ccf-html-${time ? stableTextHash(time) : index.toString(36)}-${stableTextHash(`${rawTab}\u001f${name}\u001f${text}`)}`,
+      messageId: time ? `ccfolia-${time}` : "",
+      sourceIndex,
+      time,
+      tab: rawTab,
+      name,
+      text,
+      color: readNameColor(speakerNode),
+      imgUrl,
+      embeddedPortraitTrusted: Boolean(imgUrl),
+      requiresImageOptimization: Boolean(imgUrl && /^data:image\//i.test(imgUrl)),
+      officialRoll: Boolean(rollResult),
+      rollResult
+    });
+  });
+  const titleNode = doc.querySelector(".log-title")?.textContent || doc.querySelector("title")?.textContent || "";
+  return { rows, title: officialExportTitle(titleNode, filename), sourceKind: "official-html", imageCount: avatarAssets.size };
+}
+
 function parseOrderHtml(source, filename, forcedTab = "") {
   const doc = parseTrpgSourceDocument(source);
+  const officialResult = parseOfficialCcfHtml(doc, filename, forcedTab);
+  if (officialResult) return officialResult;
   const rows = [];
   const tabIndices = new Map();
   doc.querySelectorAll("p").forEach(p => {
@@ -5688,7 +5938,7 @@ function parseOrderHtml(source, filename, forcedTab = "") {
   })));
   const embeddedTitle = (doc.querySelector(".page > .title")?.textContent || doc.querySelector("h1.title")?.textContent || "").trim();
   const title = embeddedTitle || (filename ? filename.replace(/\[(?:main|all|other)\].*$/i, "").replace(/\.html$/i, "").trim() : "TRPG Log");
-  return { rows, title };
+  return { rows, title, sourceKind: "legacy-html" };
 }
 
 function trailingJsonArgument(scriptText, marker) {
@@ -6079,7 +6329,9 @@ function looksLikeDiceMessage(message) {
     .replace(/\u00A0/g, " ");
   const hasDiceCommand = /(?:^|[^A-Z0-9_])(?:(?:\d+(?:[+\-*/]\d+)*)|\([^\r\n)]+\))DX\d*(?=$|[^A-Z0-9_])/i.test(text)
     || /(?:^|[^A-Z0-9_])CC\s*(?:<=|>=|<|>)\s*\d+/i.test(text)
+    || /(?:^|[\r\n])\s*C\([^\r\n)]+\)/i.test(text)
     || /(?:^|[^A-Z0-9_])\d+D\d+(?:\s*[+\-*/]\s*\d+)*(?:\s*(?:<=|>=|<|>)\s*\d+)?(?=$|[^A-Z0-9_])/i.test(text);
+  if (/(?:^|[\r\n])\s*choice(?:\s|\[|\()/i.test(text) && /(?:＞|\s>\s)\s*\S/.test(text)) return true;
   if (!hasDiceCommand) return false;
   return /(?:^|[^<=>])(?:>|→|⇒)\s*(?=(?:[-+]?\d+(?:\[[^\]\r\n]*\])?|대?성공|대?실패|성공|실패|critical|fumble|success|failure|成功|失敗))/i.test(text);
 }
@@ -6088,6 +6340,8 @@ function specialMessageKind(message) {
   if (!el("highlightSpecialRows")?.checked || !message) return "";
   if (String(message.name || "").toLowerCase() === "system") return "system";
   if (normalizedTab(message.tab || "main") === "info") return "info";
+  // 공식 JSON/HTML의 구조화된 roll 필드는 문자열 추측보다 우선한다.
+  if (message.officialRoll || message.rollResult) return "dice";
   if (looksLikeDiceMessage(message)) return "dice";
   return "";
 }
@@ -8504,7 +8758,28 @@ function reconcileImportedBgmAfterAnalysis(settings = state.importedConverterSet
   return state.lastImportedBgmRestore;
 }
 
-function converterSettingsPayload() {
+function converterSettingsPayload(exportRows = null) {
+  const exportedUids = Array.isArray(exportRows)
+    ? new Set(exportRows.map(row => String(row?.uid || "")).filter(Boolean))
+    : null;
+  const remappedImages = new Map();
+  if (Array.isArray(exportRows)) {
+    exportRows.forEach(row => {
+      const source = String(row?.sourceImgUrl || "").trim();
+      const output = String(row?.imgUrl || "").trim();
+      if (source && output && source !== output) remappedImages.set(source, output);
+    });
+  }
+  const exportImageUrl = value => remappedImages.get(String(value || "")) || String(value || "");
+  const portraitOverrides = [...state.manualPortraitOverrides.entries()]
+    .filter(([uid]) => !exportedUids || exportedUids.has(String(uid || "")))
+    .map(([uid, url]) => [uid, exportImageUrl(url)]);
+  const textOverrides = [...state.manualTextOverrides.entries()]
+    .filter(([uid]) => !exportedUids || exportedUids.has(String(uid || "")));
+  const expressionLibrary = savedExpressionLibraryPayload().map(([name, portraits]) => [
+    name,
+    portraits.map(exportImageUrl)
+  ]);
   return {
     kind: "trpg-log-converter-settings",
     version: 3,
@@ -8522,9 +8797,9 @@ function converterSettingsPayload() {
     ignoredAutoDaySplits: state.ignoredAutoDaySplits.map(entry => ({ ...entry })),
     firstDayLabel: state.firstDayLabel,
     unifiedBoundaries: unifiedBoundaryEntries().map(entry => ({ ...entry })),
-    portraitOverrides: [...state.manualPortraitOverrides.entries()],
-    textOverrides: [...state.manualTextOverrides.entries()],
-    expressionLibrary: savedExpressionLibraryPayload(),
+    portraitOverrides,
+    textOverrides,
+    expressionLibrary,
     tabStyles: [...state.tabStyles.entries()],
     narratorNames: el("narratorNames")?.value || "",
     highlightSpecialRows: !!el("highlightSpecialRows")?.checked,
@@ -11336,7 +11611,7 @@ function renderAvatar(message, imageAssetIds = null) {
   if (tab !== "main" && tab !== "other") {
     return `<div class="avatar tab-avatar">${escapeHtml(message.tab || "tab")}</div>`;
   }
-  return `<div class="avatar">${escapeHtml(initials(message.name))}</div>`;
+  return `<div class="avatar avatar-empty" aria-hidden="true"></div>`;
 }
 
 function normalizeManualDaySplitEntries(value) {
@@ -11895,7 +12170,7 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
   const avatarHtml = avatarIsHidden
     ? ""
     : (grouped ? `<div class="avatar avatar-spacer" aria-hidden="true"></div>` : renderAvatar(message, imageAssetIds));
-  const toneClass = isOtherTab ? "" : (isExtraTab || isSystem || specialKind ? (tabDecor.hasBackground ? rowToneClass : "") : rowToneClass);
+  const toneClass = isOtherTab ? "" : (isExtraTab || isSystem || specialKind === "info" ? (tabDecor.hasBackground ? rowToneClass : "") : rowToneClass);
   const specialClass = specialKind === "info" ? " is-info-highlight" : "";
   const groupedLink = bgmLink(bgmTrigger);
   const contentHtml = grouped
@@ -13597,7 +13872,12 @@ function inlineImageQuality() {
 }
 
 function inlineImageCacheKey(url, maxSize = inlineImageMaxSize(), quality = inlineImageQuality()) {
-  return `${url}\u001f${maxSize}\u001f${quality}`;
+  const source = String(url || "");
+  // Base64 전체를 Map 키에 한 번 더 복제하지 않는다.
+  const identity = source.startsWith("data:")
+    ? `data:${source.length}:${stableTextHash(source)}`
+    : source;
+  return `${identity}\u001f${maxSize}\u001f${quality}`;
 }
 
 function canvasBlob(canvas, type, quality) {
@@ -13698,26 +13978,33 @@ async function compressedImageDataUrl(blob) {
 }
 
 async function inlineImageUrl(url) {
-  if (!url || url.startsWith("data:")) return url;
+  if (!url) return url;
   const cacheKey = inlineImageCacheKey(url);
   if (state.inlineImageCache.has(cacheKey)) return state.inlineImageCache.get(cacheKey);
   try {
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
-    let response;
-    try {
-      response = await fetch(url, {
-        credentials: "omit",
-        referrerPolicy: "no-referrer",
-        signal: controller.signal
-      });
-    } finally {
-      window.clearTimeout(timeoutId);
+    let blob;
+    if (String(url).startsWith("data:")) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("내장 이미지를 읽지 못했습니다.");
+      blob = await response.blob();
+    } else {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 20000);
+      let response;
+      try {
+        response = await fetch(url, {
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
+          signal: controller.signal
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const declaredSize = Number(response.headers.get("content-length")) || 0;
+      if (declaredSize > 20 * 1024 * 1024) throw new Error("이미지 파일이 20MB를 초과합니다.");
+      blob = await response.blob();
     }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const declaredSize = Number(response.headers.get("content-length")) || 0;
-    if (declaredSize > 20 * 1024 * 1024) throw new Error("이미지 파일이 20MB를 초과합니다.");
-    const blob = await response.blob();
     if (blob.size > 20 * 1024 * 1024) throw new Error("이미지 파일이 20MB를 초과합니다.");
     const dataUrl = await compressedImageDataUrl(blob);
     state.inlineImageCache.set(cacheKey, dataUrl);
@@ -13730,16 +14017,22 @@ async function inlineImageUrl(url) {
 }
 
 async function prepareRowsForExport(rows, onProgress = null) {
-  if (!inlineImagesEnabled()) {
+  const forcedDataUrls = [...new Set(rows
+    .filter(row => row?.requiresImageOptimization && String(row.imgUrl || "").startsWith("data:image/"))
+    .map(row => row.imgUrl))];
+  if (!inlineImagesEnabled() && !forcedDataUrls.length) {
     state.lastImageAssetStats = null;
     return rows;
   }
-  const urls = [...new Set(rows.map(row => row.imgUrl).filter(url => url && !url.startsWith("data:")))];
+  const urls = inlineImagesEnabled()
+    ? [...new Set(rows.map(row => row.imgUrl).filter(Boolean))]
+    : forcedDataUrls;
   if (!urls.length) {
     state.lastImageAssetStats = { requested: 0, embedded: 0, failed: 0 };
     return rows;
   }
-  setStatus(`이미지 ${urls.length.toLocaleString()}개를 HTML에 내장하는 중입니다...`);
+  const forcedCount = forcedDataUrls.length;
+  setStatus(`이미지 ${urls.length.toLocaleString()}개를 출력용으로 최적화하는 중입니다...`);
   onProgress?.(`이미지 0 / ${urls.length.toLocaleString()} 처리 중`);
   let cursor = 0;
   let completed = 0;
@@ -13756,17 +14049,23 @@ async function prepareRowsForExport(rows, onProgress = null) {
   const quality = inlineImageQuality();
   const results = urls.map(url => state.inlineImageCache.get(inlineImageCacheKey(url, maxSize, quality)) || url);
   const embedded = results.filter(value => String(value).startsWith("data:")).length;
+  const optimized = results.reduce((count, value, index) => count + (value && value !== urls[index] ? 1 : 0), 0);
   state.lastImageAssetStats = {
     requested: urls.length,
     embedded,
-    failed: Math.max(0, urls.length - embedded)
+    optimized,
+    forced: forcedCount,
+    failed: Math.max(0, urls.length - optimized)
   };
   return rows.map(row => {
     if (!row.imgUrl) return row;
+    const replacement = state.inlineImageCache.get(inlineImageCacheKey(row.imgUrl, maxSize, quality));
+    if (!replacement) return row;
     return {
       ...row,
       sourceImgUrl: row.sourceImgUrl || row.imgUrl,
-      imgUrl: state.inlineImageCache.get(inlineImageCacheKey(row.imgUrl, maxSize, quality)) || row.imgUrl
+      imgUrl: replacement,
+      requiresImageOptimization: false
     };
   });
 }
@@ -14536,7 +14835,9 @@ function compactExportRuntime(root) {
         .replace(/\u00A0/g, " ");
       const hasDiceCommand = /(?:^|[^A-Z0-9_])(?:(?:\d+(?:[+\-*/]\d+)*)|\([^\r\n)]+\))DX\d*(?=$|[^A-Z0-9_])/i.test(text)
         || /(?:^|[^A-Z0-9_])CC\s*(?:<=|>=|<|>)\s*\d+/i.test(text)
+        || /(?:^|[\r\n])\s*C\([^\r\n)]+\)/i.test(text)
         || /(?:^|[^A-Z0-9_])\d+D\d+(?:\s*[+\-*/]\s*\d+)*(?:\s*(?:<=|>=|<|>)\s*\d+)?(?=$|[^A-Z0-9_])/i.test(text);
+      if (/(?:^|[\r\n])\s*choice(?:\s|\[|\()/i.test(text) && /(?:＞|\s>\s)\s*\S/.test(text)) return true;
       if (!hasDiceCommand) return false;
       return /(?:^|[^<=>])(?:>|→|⇒)\s*(?=(?:[-+]?\d+(?:\[[^\]\r\n]*\])?|대?성공|대?실패|성공|실패|critical|fumble|success|failure|成功|失敗))/i.test(text);
     };
@@ -14569,13 +14870,6 @@ function compactExportRuntime(root) {
       return `${withBreaks(head)}<span class="dice-final${resultClass}">${withBreaks(tail)}</span>`;
     };
     const normalizeSearch = value => String(value || "").normalize?.("NFKC").toLocaleLowerCase?.() || String(value || "").toLowerCase();
-    const initials = value => {
-      const cleaned = String(value || "").replace(/["'˝“”‘’]/g, "").trim();
-      const parts = cleaned.split(/\s+/).filter(Boolean);
-      if (!parts.length) return "?";
-      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-      return (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase();
-    };
     const bgmLink = id => {
       const url = triggerMap.get(id);
       return url
@@ -14721,7 +15015,7 @@ function compactExportRuntime(root) {
         return `<div class="avatar" data-avatar-index="${record.imageIndex}"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="${esc(record.name)}" onerror="this.remove()"></div>`;
       }
       if (record.isExtraTab) return `<div class="avatar tab-avatar">${esc(record.tab || "tab")}</div>`;
-      return `<div class="avatar">${esc(initials(record.name))}</div>`;
+      return '<div class="avatar avatar-empty" aria-hidden="true"></div>';
     }
 
     function inlineOtherRailClass(record) {
@@ -14765,7 +15059,7 @@ function compactExportRuntime(root) {
       const expressionTag = !record.isExtraTab && record.label ? `<span class="expr-tag">${esc(record.label)}</span>` : "";
       const rowTone = record.groupTone ? " group-tone-b" : " group-tone-a";
       const inlineOtherTab = record.lowerTab === "other" && record.kind === "main";
-      const tone = inlineOtherTab ? "" : (record.isSystem || record.isExtraTab || record.specialKind ? (record.tabBackgroundColorEnabled ? rowTone : "") : rowTone);
+      const tone = inlineOtherTab ? "" : (record.isSystem || record.isExtraTab || record.specialKind === "info" ? (record.tabBackgroundColorEnabled ? rowTone : "") : rowTone);
       const specialClass = record.specialKind === "info" ? " is-info-highlight" : "";
       const content = record.grouped
         ? `<div class="grouped-line"><div class="text">${messageMarkup(record.text)}</div>${link ? `<div class="grouped-line-tools">${link}</div>` : ""}</div>`
@@ -17033,6 +17327,7 @@ body{background:#edf1f5;color:#172033}
 .log-row.is-extra-tab{background:rgba(37,99,166,.045);border-left-color:rgba(37,99,166,.32)}
 .log-row.is-extra-tab:hover{background:rgba(37,99,166,.08)}
 .avatar{background:rgba(15,23,42,.07);border-color:rgba(15,23,42,.12);color:rgba(15,23,42,.38)}
+.avatar.avatar-empty{background:transparent;border-color:transparent;box-shadow:none}
 .tab-avatar{color:#245a8b;background:rgba(37,99,166,.09);border-color:rgba(37,99,166,.2)}
 .name{color:var(--light-name-color,var(--name-color,#334155))}
 .tag{color:rgba(15,23,42,.42)}
@@ -17163,6 +17458,7 @@ body{margin:0;background:#181818;color:#f1f1f1;font-family:Arial,"Apple SD Gothi
 .log-row.is-continuation:not(.has-continuation){padding-bottom:13px}
 .log-row.is-continuation:not(.has-continuation):not(:last-child){border-bottom:1px solid rgba(255,255,255,.065)}
 .avatar{width:var(--avatar-size);height:var(--avatar-size);flex:0 0 var(--avatar-size);border-radius:6px;overflow:hidden;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.34);font-size:11px;font-weight:700}
+.avatar.avatar-empty{background:transparent;border-color:transparent;box-shadow:none}
 .avatar img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
 .avatar-use{width:100%;height:100%;display:block}
 .trpg-image-assets{position:absolute!important;left:-99999px!important;top:-99999px!important;width:0!important;height:0!important;overflow:hidden!important;pointer-events:none!important}
@@ -17445,9 +17741,9 @@ function exportEnhancementScript(rows, exportOptions = {}) {
   return `<script>(()=>{const script=document.currentScript;const app=script?.closest?.("[data-trpg-log-app]")||document.getElementById("trpg-log-app")||document;const dataNode=app.querySelector?.("[data-trpg-log-data],#trpg-log-data");const run=()=>(${exportRuntimeSource("enhancement", enhancementRuntime)})(app,${escapeScriptJson(options)});if(dataNode&&!app.classList?.contains("trpg-log-ready")){app.addEventListener("trpg-log-ready",run,{once:true});}else{run();}})();<\/script>`;
 }
 
-function exportConverterSettingsScript(instanceId = "") {
+function exportConverterSettingsScript(instanceId = "", exportRows = null) {
   const id = instanceId ? ` id="${escapeHtml(instanceId)}-settings"` : "";
-  return `<script type="application/json"${id} data-trpg-converter-settings>${escapeScriptJson(converterSettingsPayload())}<\/script>`;
+  return `<script type="application/json"${id} data-trpg-converter-settings>${escapeScriptJson(converterSettingsPayload(exportRows))}<\/script>`;
 }
 
 
@@ -17702,7 +17998,27 @@ async function runExportTask(kind, worker) {
   }
 }
 
-function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
+function buildStaticImageAssets(rows, instanceId, useSide) {
+  const imageAssetIds = new Map();
+  const symbols = [];
+  rows.forEach(row => {
+    const tab = normalizedTab(row?.tab || "main");
+    if ((useSide && tab === "other") || avatarHiddenForTab(tab)) return;
+    const url = String(row?.imgUrl || "").trim();
+    if (!url || imageAssetIds.has(url)) return;
+    const assetId = `${instanceId}-portrait-${imageAssetIds.size + 1}`;
+    imageAssetIds.set(url, assetId);
+    symbols.push(`<symbol id="${assetId}" viewBox="0 0 1 1" preserveAspectRatio="xMidYMid slice"><image href="${escapeHtml(url)}" width="1" height="1" preserveAspectRatio="xMidYMid slice"></image></symbol>`);
+  });
+  return {
+    imageAssetIds,
+    markup: symbols.length
+      ? `<svg class="trpg-image-assets" data-trpg-image-assets aria-hidden="true">${symbols.join("")}</svg>`
+      : ""
+  };
+}
+
+function buildStaticRowsBody(rows, useSide, { fallback = false, imageAssetIds = null } = {}) {
   let mainRows = rows;
   const otherRows = [];
   const foldInlineOther = !useSide && collapseInlineOtherEnabled();
@@ -17723,7 +18039,7 @@ function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
         const otherRow = mainRows[cursor];
         const grouped = canGroupConsecutiveRows(previous, otherRow);
         if (!grouped) groupTone += 1;
-        groupHtml += renderRow(otherRow, previous, mainRows[cursor + 1] || null, false, null, groupTone);
+        groupHtml += renderRow(otherRow, previous, mainRows[cursor + 1] || null, false, imageAssetIds, groupTone);
         previous = otherRow;
       }
       if (foldInlineOther) {
@@ -17737,7 +18053,7 @@ function buildStaticRowsBody(rows, useSide, { fallback = false } = {}) {
     }
     const grouped = canGroupConsecutiveRows(previous, row);
     if (!grouped) groupTone += 1;
-    rowHtml += renderRow(row, previous, mainRows[index + 1] || null, false, null, groupTone);
+    rowHtml += renderRow(row, previous, mainRows[index + 1] || null, false, imageAssetIds, groupTone);
     previous = row;
     index += 1;
   }
@@ -17758,8 +18074,9 @@ function buildStaticExportMarkup(rows, titleSuffix = "", exportOptions = {}, fra
   const scopeSelector = `#${instanceId}`;
   const exportTheme = currentExportTheme();
   const themePalette = exportThemePalette(exportTheme);
-  const body = buildStaticRowsBody(rows, useSide);
-  const app = `<div id="${instanceId}" class="trpg-log-app" data-trpg-log-app data-theme="${exportTheme}" data-trpg-export-count="${rows.length}"><div class="page" role="main"><h1 class="title">${escapeHtml(title)}</h1>${body}</div>${hostCompatibilityScript()}${exportConverterSettingsScript(instanceId)}${exportEnhancementScript(rows, exportOptions)}</div>`;
+  const assets = buildStaticImageAssets(rows, instanceId, useSide);
+  const body = buildStaticRowsBody(rows, useSide, { imageAssetIds: assets.imageAssetIds });
+  const app = `<div id="${instanceId}" class="trpg-log-app" data-trpg-log-app data-theme="${exportTheme}" data-trpg-export-count="${rows.length}">${assets.markup}<div class="page" role="main"><h1 class="title">${escapeHtml(title)}</h1>${body}</div>${hostCompatibilityScript()}${exportConverterSettingsScript(instanceId, rows)}${exportEnhancementScript(rows, exportOptions)}</div>`;
   state.lastCompactStats = {
     mode: "static",
     rows: rows.length,
@@ -17799,8 +18116,8 @@ function imageOptimizationStatusText() {
   const stats = state.lastCompactStats;
   if (!stats) return "압축 데이터 정보 없음";
   const imageStats = state.lastImageAssetStats;
-  const inlineNote = inlineImagesEnabled() && imageStats?.requested > 0
-    ? `, 이미지 내장 ${imageStats.embedded.toLocaleString()}/${imageStats.requested.toLocaleString()}개${imageStats.failed ? ` (실패 ${imageStats.failed.toLocaleString()}개)` : ""}`
+  const inlineNote = imageStats?.requested > 0
+    ? `, 이미지 최적화 ${(imageStats.optimized || 0).toLocaleString()}/${imageStats.requested.toLocaleString()}개${imageStats.forced ? ` (공식 내장 이미지 ${imageStats.forced.toLocaleString()}개)` : ""}${imageStats.failed ? ` · 실패 ${imageStats.failed.toLocaleString()}개` : ""}`
     : "";
   if (stats.mode === "static") return `노션 호환 정적 HTML, 메시지 ${stats.rows.toLocaleString()}개, 고유 이미지 ${stats.images.toLocaleString()}개${inlineNote}`;
   const fallbackNote = stats.mode === "compact-fallback"
@@ -17821,10 +18138,15 @@ function utf8ByteLength(value) {
 function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment = false) {
   rows = normalizeRowsForExportRuntime(rows);
   const useSide = sideOtherEnabled(rows);
+  const instanceId = createExportInstanceId();
+  const scopeSelector = `#${instanceId}`;
   const payload = createCompactLogPayload(rows, useSide, sessionNavigatorExportEnabled());
   const payloadJson = escapeScriptJson(payload);
   const includeFallback = tistoryFallbackExportEnabled();
-  const fallbackMarkup = includeFallback ? buildStaticRowsBody(rows, useSide, { fallback: true }) : "";
+  const fallbackAssets = includeFallback ? buildStaticImageAssets(rows, instanceId, useSide) : { imageAssetIds: null, markup: "" };
+  const fallbackMarkup = includeFallback
+    ? `${fallbackAssets.markup}${buildStaticRowsBody(rows, useSide, { fallback: true, imageAssetIds: fallbackAssets.imageAssetIds })}`
+    : "";
   const payloadBytes = utf8ByteLength(payloadJson);
   const fallbackBytes = includeFallback ? utf8ByteLength(fallbackMarkup) : 0;
   const imageCount = payload.i.reduce((count, value) => count + (value ? 1 : 0), 0);
@@ -17838,14 +18160,12 @@ function buildExportMarkup(rows, titleSuffix = "", exportOptions = {}, fragment 
     texts: payload.x.length
   };
   const title = state.title + titleSuffix;
-  const instanceId = createExportInstanceId();
-  const scopeSelector = `#${instanceId}`;
   const dataId = `${instanceId}-data`;
   const exportTheme = currentExportTheme();
   const themePalette = exportThemePalette(exportTheme);
   const bootMode = includeFallback ? "fallback" : "compact";
   const fallbackInsidePage = includeFallback ? fallbackMarkup : "";
-  const app = `<div id="${instanceId}" class="trpg-log-app" data-trpg-log-app data-theme="${exportTheme}" data-trpg-export-count="${rows.length}" data-trpg-boot-state="pending" data-trpg-boot-mode="${bootMode}"><div class="page" role="main"><h1 class="title">${escapeHtml(title)}</h1>${fallbackInsidePage}<div data-trpg-log-root data-trpg-boot-state="pending"${includeFallback ? " hidden" : ""}></div></div>${hostCompatibilityScript()}<script type="application/json" id="${dataId}" data-trpg-log-data>${payloadJson}<\/script>${compactRendererScript()}${exportConverterSettingsScript(instanceId)}${exportEnhancementScript(rows, exportOptions)}</div>`;
+  const app = `<div id="${instanceId}" class="trpg-log-app" data-trpg-log-app data-theme="${exportTheme}" data-trpg-export-count="${rows.length}" data-trpg-boot-state="pending" data-trpg-boot-mode="${bootMode}"><div class="page" role="main"><h1 class="title">${escapeHtml(title)}</h1>${fallbackInsidePage}<div data-trpg-log-root data-trpg-boot-state="pending"${includeFallback ? " hidden" : ""}></div></div>${hostCompatibilityScript()}<script type="application/json" id="${dataId}" data-trpg-log-data>${payloadJson}<\/script>${compactRendererScript()}${exportConverterSettingsScript(instanceId, rows)}${exportEnhancementScript(rows, exportOptions)}</div>`;
   const styleCss = fragment ? exportCss(scopeSelector, exportTheme) : exportDocumentCss(exportTheme);
   const style = `<style>${styleCss}</style>`;
   if (fragment) return `${style}${app}`;
@@ -18190,11 +18510,12 @@ function buildDistributionGuideText() {
 - 문제가 있는 곡은 다른 링크로 바꾸거나 BGM 링크를 직접 열어 주세요.
 
 5. 제작용 파일
-- 순서 기준 HTML은 가능하면 코코포리아 all 로그를 사용합니다.
-- all 로그가 아니면 main과 other의 원래 순서를 알 수 없어 자동 연동이 덜 정확할 수 있습니다.
-- 이미지 정보 TXT/JSON 없이도 변환할 수 있지만, 메시지별 표정과 인장을 정확히 반영하려면 함께 사용하는 것을 권장합니다.
+- 룸 마스터는 코코포리아 공식 JSON 하나를 사용하는 것이 가장 정확합니다. 전체 탭 순서·표정 이미지·주사위 결과가 함께 들어 있습니다.
+- 공식 HTML ZIP도 바로 넣을 수 있으며, 압축 안의 all/すべて/전체 HTML을 자동 선택합니다.
+- 플레이어는 코코포리아에서 저장한 탭 HTML을 사용합니다. 여러 탭을 따로 저장하면 탭 사이의 원래 시간순서는 복원할 수 없습니다.
 
-6. 이미지 정보 만들기
+6. 이전 HTML의 이미지 정보 만들기
+- 공식 JSON을 쓸 수 있으면 이 단계는 필요하지 않습니다.
 - 변환기의 ‘표정 수집 북마크릿 복사’를 누릅니다.
 - 브라우저 북마크를 새로 만들고 URL 칸에 복사한 코드를 붙여넣습니다.
 - 코코포리아 룸 채팅 화면에서 북마크를 실행합니다.
@@ -18253,11 +18574,17 @@ async function analyze() {
     setStatus("파일을 읽는 중입니다...");
     const orderSource = state.orderDocument || state.orderText;
     state.orderDocument = null;
-    const orderResult = parseOrderHtml(orderSource, orderFile.files[0]?.name || "");
-    if (!orderResult.rows.length) throw new Error("순서 기준 HTML에서 메시지를 찾지 못했습니다.");
+    const orderName = state.orderEffectiveName || orderFile.files[0]?.name || jsonFile.files[0]?.name || "";
+    let orderResult = state.orderOfficialJson
+      ? parseOfficialCcfJson(state.orderOfficialJson, orderName)
+      : (orderSource ? parseOrderHtml(orderSource, orderName) : null);
+    // 보조 칸에 새 공식 JSON을 선택한 경우에도 이를 완전한 원본으로 승격한다.
+    // 공식 JSON은 HTML보다 시간·표정·주사위 결과가 더 정확하므로 함께 있으면 JSON을 우선한다.
+    if (state.jsonOfficialJson && !state.orderOfficialJson) orderResult = parseOfficialCcfJson(state.jsonOfficialJson, jsonFile.files[0]?.name || orderName);
+    if (!orderResult?.rows?.length) throw new Error("공식 JSON 또는 로그 HTML에서 메시지를 찾지 못했습니다.");
     let combinedRows = orderResult.rows;
     let otherRows = [];
-    if (state.otherText) {
+    if (state.otherText && orderResult.sourceKind !== "official-json") {
       const otherSource = state.otherDocument || state.otherText;
       state.otherDocument = null;
       const otherResult = parseOrderHtml(otherSource, otherFile.files[0]?.name || "", "other");
@@ -18267,7 +18594,9 @@ async function analyze() {
         .concat(otherRows);
     }
     state.title = orderResult.title;
-    const jsonRows = state.jsonText ? parseImageJson(state.jsonText) : (clearImageMatchState({ clearExpressions: true }), 0);
+    const jsonRows = state.jsonText && !state.jsonOfficialJson
+      ? parseImageJson(state.jsonText)
+      : (clearImageMatchState({ clearExpressions: true }), 0);
     const savedExpressionRows = mergeSavedExpressionLibrary(state.importedConverterSettings?.expressionLibrary);
     const importedExpressionRows = mergeExpressionLibraryFromRows(combinedRows);
     state.messages = applyMatches(combinedRows);
@@ -18294,15 +18623,22 @@ async function analyze() {
       portraitMatches,
       savedExpressionRows,
       importedExpressionRows,
+      sourceKind: orderResult.sourceKind || "legacy-html",
+      officialImageCount: Number(orderResult.imageCount) || 0,
       matchDetails: { ...state.stats }
     };
     if (jsonRows && !portraitMatches) {
       setStatus(`${combinedRows.length.toLocaleString()}개 메시지와 ${jsonRows.toLocaleString()}개 이미지 행을 읽었지만 포트레이트가 매칭되지 않았습니다. 탭·캐릭터명·대사 형식을 확인해 주세요.`);
     } else {
+      const sourceNote = orderResult.sourceKind === "official-json"
+        ? `공식 JSON · 표정 이미지 ${(orderResult.imageCount || 0).toLocaleString()}종 · 구조화된 판정 반영`
+        : orderResult.sourceKind === "official-html"
+          ? `공식 HTML · 내장 표정 ${(orderResult.imageCount || 0).toLocaleString()}종 반영`
+          : "";
       const bgmNote = importedBgmRestore.restored
         ? `BGM ${importedBgmRestore.restored.toLocaleString()}개 복구${importedBgmRestore.unresolved ? ` · 미해결 ${importedBgmRestore.unresolved.toLocaleString()}개` : ""}`
         : "";
-      updateAnalysisSummaryUi(bgmNote);
+      updateAnalysisSummaryUi([sourceNote, bgmNote].filter(Boolean).join(" · "));
     }
     updateFileUploadSummary("analyzed");
     if (el("fileUploadDetails")) el("fileUploadDetails").open = false;
@@ -18363,24 +18699,48 @@ orderFile.addEventListener("change", async () => {
   state.lastImportedBgmRestore = null;
   state.lastImportedSplitRestore = null;
   state.orderDocument = null;
+  state.orderOfficialJson = null;
+  state.orderEffectiveName = "";
+  state.orderArchiveInfo = null;
   bgmTriggerMap = new Map();
-  const orderText = await readFile(selectedFile);
+  let primarySource;
+  try {
+    primarySource = await readPrimaryLogFile(selectedFile);
+  } catch (error) {
+    if (readSequence !== orderFileReadSequence || (orderFile.files[0] || null) !== selectedFile) return;
+    state.orderText = "";
+    el("analyzeBtn").disabled = !hasPrimaryLogSource();
+    updateUploadCard(orderFile, "orderFileName");
+    updateFileUploadSummary("selected");
+    updateWorkflowUi(false);
+    setStatus(`오류: ${error.message}`);
+    return;
+  }
   if (readSequence !== orderFileReadSequence || (orderFile.files[0] || null) !== selectedFile) return;
-  state.orderText = orderText;
-  state.orderDocument = state.orderText ? parseTrpgSourceDocument(state.orderText) : null;
+  state.orderText = primarySource.text;
+  state.orderEffectiveName = primarySource.effectiveName;
+  state.orderArchiveInfo = primarySource.archiveInfo;
+  state.orderOfficialJson = officialCcfJsonPayload(state.orderText);
+  state.orderDocument = state.orderText && !state.orderOfficialJson ? parseTrpgSourceDocument(state.orderText) : null;
   state.workKey = buildWorkKey(orderFile.files[0], state.orderText);
+  // 공식 JSON은 파싱된 객체만으로 이후 작업이 가능하다. 큰 원문 문자열을 중복 보관하지 않는다.
+  if (state.orderOfficialJson) state.orderText = "";
   state.pendingDraft = loadWorkDraft(state.workKey);
   state.draftDecisionPending = Boolean(state.pendingDraft);
   hideDraftRecovery();
   if (el("exportFilteredOnly")) el("exportFilteredOnly").checked = false;
-  el("analyzeBtn").disabled = !state.orderText;
+  el("analyzeBtn").disabled = !hasPrimaryLogSource();
   state.importedConverterSettings = extractSavedConverterSettings(state.orderDocument || state.orderText);
   const restored = applySavedConverterSettings(state.importedConverterSettings);
   const restoreNote = restored.length ? ` 저장된 ${restored.join(", ")}을 불러왔습니다.` : "";
   updateUploadCard(orderFile, "orderFileName");
   updateFileUploadSummary("selected");
   updateWorkflowUi(false);
-  setStatus(`순서 기준 HTML을 읽었습니다.${restoreNote}`);
+  const sourceLabel = state.orderOfficialJson ? "코코포리아 공식 JSON" : state.orderArchiveInfo ? "코코포리아 HTML ZIP" : "로그 HTML";
+  const unsupportedJson = selectedFile && /\.json$/i.test(selectedFile.name) && !state.orderOfficialJson;
+  setStatus(unsupportedJson
+    ? "이 JSON은 코코포리아 공식 로그 형식이 아닙니다. 북마크릿으로 수집한 구형 표정 정보라면 아래 ‘구형 로그용 표정 보완’ 칸에 넣어 주세요."
+    : `${sourceLabel}을 읽었습니다.${state.orderArchiveInfo ? ` ${state.orderArchiveInfo.selectedName} 선택 · HTML ${state.orderArchiveInfo.htmlCount.toLocaleString()}개 감지.` : ""}${restoreNote}`);
 });
 
 otherFile.addEventListener("change", async () => {
@@ -18391,7 +18751,7 @@ otherFile.addEventListener("change", async () => {
   state.otherText = otherText;
   state.otherDocument = state.otherText ? parseTrpgSourceDocument(state.otherText) : null;
   state.lastAnalysis = null;
-  el("analyzeBtn").disabled = !state.orderText;
+  el("analyzeBtn").disabled = !hasPrimaryLogSource();
   updateUploadCard(otherFile, "otherFileName");
   const details = el("otherUploadDetails");
   const summary = el("otherUploadSummaryState");
@@ -18410,13 +18770,23 @@ jsonFile.addEventListener("change", async () => {
   const jsonText = await readFile(selectedFile);
   if (readSequence !== jsonFileReadSequence || (jsonFile.files[0] || null) !== selectedFile) return;
   state.jsonText = jsonText;
+  state.jsonOfficialJson = officialCcfJsonPayload(state.jsonText);
   state.collectedSequenceRows = [];
   state.lastAnalysis = null;
-  el("analyzeBtn").disabled = !state.orderText;
+  if (!state.orderText && state.jsonOfficialJson) {
+    if (!state.orderOfficialJson) state.workKey = buildWorkKey(selectedFile, state.jsonText);
+    state.pendingDraft = loadWorkDraft(state.workKey);
+    state.draftDecisionPending = Boolean(state.pendingDraft);
+    hideDraftRecovery();
+  }
+  if (state.jsonOfficialJson) state.jsonText = "";
+  el("analyzeBtn").disabled = !hasPrimaryLogSource();
   updateUploadCard(jsonFile, "jsonFileName");
   updateFileUploadSummary("selected");
   updateWorkflowUi(false);
-  setStatus("이미지 정보 파일을 읽었습니다.");
+  setStatus(state.jsonOfficialJson
+    ? "코코포리아 공식 JSON을 감지했습니다. 이 파일을 로그 원본으로 사용합니다."
+    : "구형 로그용 표정 보완 파일을 읽었습니다.");
   scheduleWorkDraftSave();
 });
 
