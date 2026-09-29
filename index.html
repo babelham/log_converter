@@ -644,7 +644,7 @@ label { color: var(--muted); font-size: 13px; }
 .preview-shell[data-preview-device="pc"] > .preview-layout { grid-template-columns: minmax(0,1fr) 6cm; }
 .log-row.has-tab-color, .system-line.has-tab-color, .other-row.has-tab-color { box-shadow: inset 3px 0 0 var(--tab-accent, var(--accent)); }
 .tag.tab-label-chip { color: var(--tab-accent, var(--accent)); border: 1px solid color-mix(in srgb, var(--tab-accent, var(--accent)) 38%, transparent); border-radius: 999px; padding: 0 5px; }
-.log-row.is-info-highlight { box-shadow: inset 3px 0 0 #67c5ff; }
+.log-row.is-info-highlight { background: var(--log-info-bg, rgba(90,177,255,.075)); box-shadow: inset 2px 0 0 var(--log-info-accent, #67c5ff); }
 .dice-final, .dice-final.is-success, .dice-final.is-failure { font-weight: bold; }
 .narrator-line { position: relative; margin: 0; padding: 15px 18px; border-bottom: 1px solid rgba(255,255,255,.06); text-align: center; background: rgba(255,255,255,.018); }
 .narrator-text { max-width: 820px; margin: 0 auto; color: rgba(255,255,255,.82); font-size: var(--font-size); line-height: var(--line-height); font-style: italic; overflow-wrap: anywhere; }
@@ -653,6 +653,7 @@ label { color: var(--muted); font-size: 13px; }
 
 html[data-theme="light"] .narrator-line { background: rgba(15,23,42,.018); border-bottom-color: rgba(15,23,42,.08); }
 html[data-theme="light"] .narrator-text { color: rgba(15,23,42,.8); }
+html[data-theme="light"] .log-row.is-info-highlight { background: var(--log-info-bg, rgba(37,99,166,.065)); }
 .log-row.has-tab-font-size .message { font-size: var(--font-size); }
 .log-row.is-system.has-tab-font-size .message { font-size: calc(var(--font-size) - 1px); }
 .log-row.has-tab-font-size .meta { font-size: 14px; }
@@ -3268,7 +3269,7 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
 .preview-shell .system-line,.preview-shell .narrator-line,.preview-shell .other-row { border-color:var(--log-border-color,rgba(255,255,255,.08)); }
 .preview-shell .system-line:not(.has-tab-background),.preview-shell .narrator-line:not(.has-tab-background),.preview-shell .other-row:not(.has-tab-background) { background:var(--log-special-bg,#292929); }
 .preview-shell .system-line.is-other-tab:not(.has-tab-background):not(.is-search-target),.preview-shell .narrator-line.is-other-tab:not(.has-tab-background):not(.is-search-target) { background:var(--log-special-bg,#292929)!important; background-image:none!important; }
-.preview-shell .log-row.is-info-highlight { box-shadow:inset 3px 0 0 var(--log-accent-color,#67c5ff); }
+.preview-shell .log-row.is-info-highlight:not(.has-tab-background):not(.is-search-target) { background:var(--log-info-bg,var(--log-accent-soft,rgba(90,177,255,.075)))!important; box-shadow:inset 2px 0 0 var(--log-info-accent,var(--log-accent-color,#67c5ff)); }
 .preview-shell[data-preview-device="auto"] > .preview-layout,.preview-shell[data-preview-device="auto"] > .ccfolia-wrap,.preview-shell[data-preview-device="auto"] > .empty-state { width:min(var(--log-max-width,1240px),100%); max-width:var(--log-max-width,1240px); margin-left:auto; margin-right:auto; }
 .preview-shell[data-preview-device="pc"] > .preview-layout,.preview-shell[data-preview-device="pc"] > .ccfolia-wrap,.preview-shell[data-preview-device="pc"] > .empty-state { width:var(--log-max-width,1240px); }
 .preview-shell .ccfolia-wrap,.preview-shell .other-wrap { border-radius:var(--log-radius,8px); }
@@ -11875,7 +11876,7 @@ function otherVisibleRows() {
 
 const DESIGN_PRESETS = {
   dark: { text:"#ededed", page:"#181818", panel:"#2c2c2c", row:"#313131", accent:"#8fc7ff" },
-  light: { text:"#273244", page:"#edf1f5", panel:"#ffffff", row:"#ffffff", accent:"#2563a6" },
+  light: { text:"#273244", page:"#edf1f5", panel:"#ffffff", row:"#ffffff", rowAlt:"#f4f7f9", accent:"#2563a6", infoBg:"#eef5fb", infoAccent:"#9fc3df" },
   warm: { text:"#40362d", page:"#eee7dc", panel:"#fffaf2", row:"#fffaf2", accent:"#95672d" },
   navy: { text:"#e7eef8", page:"#101723", panel:"#172131", row:"#1d293b", accent:"#79b8ff" }
 };
@@ -11959,7 +11960,7 @@ function derivedDesignValues() {
     special = mixHexColors(palette.row,"#000000",lightRow ? .10 : .14);
     auxControl = mixHexColors(palette.row,"#000000",lightRow ? .18 : .28);
   }
-  const rowAlt = auxDirection === "lighter" ? mixHexColors(row,special,.28) : mixHexColors(row,rowTone,lightRow ? .035 : .055);
+  const rowAlt = auxDirection === "lighter" ? mixHexColors(row,special,.28) : (palette.rowAlt || mixHexColors(row,rowTone,lightRow ? .035 : .055));
   const soft = mixHexColors(palette.text,palette.panel,lightPanel ? .18 : .22);
   const muted = mixHexColors(palette.text,palette.panel,lightPanel ? .26 : .46);
   const quiet = mixHexColors(palette.text,palette.panel,lightPanel ? .30 : .58);
@@ -11989,6 +11990,9 @@ function applyStyleControls() {
   root.setProperty("--log-row-pad-y",`${rowPad}px`); root.setProperty("--log-row-aux-pad-y",`${Math.max(6,rowPad-4)}px`); root.setProperty("--log-radius",`${currentCornerRadiusPx()}px`); root.setProperty("--avatar-shape-radius",currentAvatarShapeRadius());
   root.setProperty("--speaker-name-size",`${currentSpeakerNameSizePx()}px`); root.setProperty("--speaker-name-weight",String(currentSpeakerNameWeight())); root.setProperty("--log-max-width",currentLogMaxWidthCss()); root.setProperty("--log-font-family",currentFontFamilyStack());
   root.setProperty("--log-text-color",design.text); root.setProperty("--log-page-bg",design.page); root.setProperty("--log-panel-bg",design.panel); root.setProperty("--log-row-a",design.row); root.setProperty("--log-row-b",design.rowAlt); root.setProperty("--log-text-soft",design.soft); root.setProperty("--log-muted-color",design.muted); root.setProperty("--log-border-color",design.border); root.setProperty("--log-special-bg",design.special); root.setProperty("--log-special-hover",design.specialHover); root.setProperty("--log-aux-control-bg",design.auxControl); root.setProperty("--log-accent-color",design.accent); root.setProperty("--log-accent-soft",design.accentSoft); root.setProperty("--log-chrome",design.chrome); root.setProperty("--log-chrome-strong",design.chromeStrong); root.setProperty("--log-scroll-track",design.scrollTrack); root.setProperty("--log-scroll-thumb",design.scrollThumb); root.setProperty("--log-scroll-thumb-hover",design.scrollThumbHover);
+  for (const [name, value] of [["--log-info-bg",design.infoBg],["--log-info-accent",design.infoAccent]]) {
+    if (value) root.setProperty(name,value); else root.removeProperty(name);
+  }
   syncThemeToggle(uiTheme);
 }
 
@@ -12604,7 +12608,7 @@ function renderRow(message, previous, next, interactive = false, imageAssetIds =
   const avatarHtml = avatarIsHidden
     ? ""
     : (grouped ? `<div class="avatar avatar-spacer" aria-hidden="true"></div>` : renderAvatar(message, imageAssetIds));
-  const toneClass = rowToneClass;
+  const toneClass = specialKind === "info" && !tabDecor.hasBackground ? "" : rowToneClass;
   const specialClass = specialKind === "info" ? " is-info-highlight" : "";
   const groupedLink = bgmLink(bgmTrigger);
   const contentHtml = grouped
@@ -15510,7 +15514,7 @@ function compactExportRuntime(root) {
       const expressionTag = !record.isExtraTab && record.label ? `<span class="expr-tag">${esc(record.label)}</span>` : "";
       const rowTone = record.groupTone ? " group-tone-b" : " group-tone-a";
       const inlineOtherTab = record.lowerTab === "other" && record.kind === "main";
-      const tone = rowTone;
+      const tone = record.specialKind === "info" && !record.tabBackgroundColorEnabled ? "" : rowTone;
       const specialClass = record.specialKind === "info" ? " is-info-highlight" : "";
       const content = record.grouped
         ? `<div class="grouped-line"><div class="text">${messageMarkup(record.text)}</div>${link ? `<div class="grouped-line-tools">${link}</div>` : ""}</div>`
@@ -17811,7 +17815,7 @@ body{background:#edf1f5;color:#172033}
 .trpg-day-jump-list button span{color:rgba(15,23,42,.56)}
 .trpg-virtual-window .log-row:last-child{border-bottom-color:rgba(15,23,42,.1)}
 .log-row.is-search-target,.system-line.is-search-target,.narrator-line.is-search-target,.other-row.is-search-target{outline-color:rgba(37,99,166,.92);background:rgba(37,99,166,.12)!important}
-
+.log-row.is-info-highlight:not(.has-tab-background):not(.is-search-target){background:var(--log-info-bg,rgba(37,99,166,.065))!important}
 .narrator-line{background:rgba(15,23,42,.018);border-bottom-color:rgba(15,23,42,.08)}
 .narrator-text{color:rgba(15,23,42,.8)}
 @media(max-width:700px),(hover:none) and (pointer:coarse){.scene-pager{background:rgba(237,241,245,.94)}.ccfolia-wrap.has-inline-other-index{background-color:#fff;background-image:none;border-right-color:rgba(15,23,42,.12)}.inline-other-summary-row .inline-other-summary,.inline-other-details>summary,.is-inline-other-group-last.has-inline-other-rail .inline-other-rail-hit{background:rgba(15,23,42,.035)!important;border-color:rgba(15,23,42,.07)!important}}`;
@@ -17831,7 +17835,7 @@ function customExportDesignCssRaw() {
   const speakerSize = currentSpeakerNameSizePx();
   const speakerWeight = currentSpeakerNameWeight();
   const maxWidth = currentLogMaxWidthCss();
-  return `:root{--log-text:${d.text};--log-page:${d.page};--log-panel:${d.panel};--log-row-a:${d.row};--log-row-b:${d.rowAlt};--log-soft:${d.soft};--log-muted:${d.muted};--log-border:${d.border};--log-special:${d.special};--log-special-hover:${d.specialHover};--log-aux-control:${d.auxControl};--log-accent:${d.accent};--log-accent-soft:${d.accentSoft};--log-chrome:${d.chrome};--log-chrome-strong:${d.chromeStrong};--log-scroll-track:${d.scrollTrack};--log-scroll-thumb:${d.scrollThumb};--log-scroll-thumb-hover:${d.scrollThumbHover};--log-radius:${radius}px;--avatar-shape-radius:${avatarRadius};--speaker-name-size:${speakerSize}px;--speaker-name-weight:${speakerWeight};--log-row-pad-y:${rowPad}px;--log-row-aux-pad-y:${auxPad}px;--log-max-width:${maxWidth}}
+  return `:root{--log-text:${d.text};--log-page:${d.page};--log-panel:${d.panel};--log-row-a:${d.row};--log-row-b:${d.rowAlt};${d.infoBg ? `--log-info-bg:${d.infoBg};` : ""}${d.infoAccent ? `--log-info-accent:${d.infoAccent};` : ""}--log-soft:${d.soft};--log-muted:${d.muted};--log-border:${d.border};--log-special:${d.special};--log-special-hover:${d.specialHover};--log-aux-control:${d.auxControl};--log-accent:${d.accent};--log-accent-soft:${d.accentSoft};--log-chrome:${d.chrome};--log-chrome-strong:${d.chromeStrong};--log-scroll-track:${d.scrollTrack};--log-scroll-thumb:${d.scrollThumb};--log-scroll-thumb-hover:${d.scrollThumbHover};--log-radius:${radius}px;--avatar-shape-radius:${avatarRadius};--speaker-name-size:${speakerSize}px;--speaker-name-weight:${speakerWeight};--log-row-pad-y:${rowPad}px;--log-row-aux-pad-y:${auxPad}px;--log-max-width:${maxWidth}}
 body{background:var(--log-page);color:var(--log-text);font-family:${font}}
 .trpg-log-app{color:var(--log-text);font-family:${font}}
 .page{max-width:var(--log-max-width)}
@@ -18058,7 +18062,7 @@ html.trpg-host-tistory .trpg-virtual-body,html.trpg-host-tistory .trpg-virtual-w
 .log-row.is-search-target,.system-line.is-search-target,.narrator-line.is-search-target,.other-row.is-search-target{position:relative;z-index:1;outline-color:rgba(143,199,255,.92);background:rgba(143,199,255,.15)!important}
 .log-row.has-tab-color,.system-line.has-tab-color,.other-row.has-tab-color{box-shadow:inset 3px 0 0 var(--tab-accent,#8fc7ff)}
 .tag.tab-label-chip{color:var(--tab-accent,#8fc7ff);border:1px solid rgba(143,199,255,.24);border-radius:999px;padding:0 5px}
-.log-row.is-info-highlight{box-shadow:inset 3px 0 0 #67c5ff}
+.log-row.is-info-highlight:not(.has-tab-background):not(.is-search-target){background:var(--log-info-bg,rgba(90,177,255,.075))!important;box-shadow:inset 2px 0 0 var(--log-info-accent,#67c5ff)}
 .dice-final,.dice-final.is-success,.dice-final.is-failure{font-weight:bold}
 .narrator-line{position:relative;margin:0!important;padding:15px 18px;border-bottom:1px solid rgba(255,255,255,.06);text-align:center;background:rgba(255,255,255,.018)}
 .narrator-text{max-width:820px;margin:0 auto;color:rgba(255,255,255,.82);font-size:var(--font-size);line-height:var(--line-height);font-style:italic;overflow-wrap:anywhere}
