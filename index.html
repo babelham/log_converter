@@ -5314,20 +5314,21 @@ function lightThemeNameColor(value) {
   const original = safeCssColor(value || "#dddddd");
   if (lightNameColorCache.has(original)) return lightNameColorCache.get(original);
   const rgb = cssColorToRgb(original);
-  if (!rgb || contrastAgainstWhite(rgb) >= 1.15) {
+  if (!rgb || contrastAgainstWhite(rgb) >= 4.5) {
     lightNameColorCache.set(original, original);
     return original;
   }
 
-  // Only colors that are nearly indistinguishable from white are adjusted.
-  // Keep the original hue as much as possible and add just enough slate tone
-  // to make the name faintly legible on the light log background.
-  const anchor = [100, 116, 139];
-  let adjusted = rgb;
-  for (let mix = 0.04; mix <= 0.28; mix += 0.02) {
-    adjusted = rgb.map((channel, index) => Math.round(channel * (1 - mix) + anchor[index] * mix));
-    if (contrastAgainstWhite(adjusted) >= 1.32) break;
+  // Re-imported dark-theme names can be neon or almost white. Darken each
+  // channel equally so the hue survives while the light theme stays readable.
+  let low = 0, high = 1;
+  for (let step = 0; step < 12; step += 1) {
+    const scale = (low + high) / 2;
+    const adjusted = rgb.map(channel => Math.round(channel * scale));
+    if (contrastAgainstWhite(adjusted) >= 4.5) low = scale;
+    else high = scale;
   }
+  const adjusted = rgb.map(channel => Math.round(channel * low));
   const result = `rgb(${adjusted[0]}, ${adjusted[1]}, ${adjusted[2]})`;
   lightNameColorCache.set(original, result);
   return result;
@@ -6315,7 +6316,19 @@ function applySavedConverterSettings(settings) {
   if (Array.isArray(settings.expressionLibrary)) {
     mergeSavedExpressionLibrary(settings.expressionLibrary);
   }
-  if (settings.tabStyles) state.tabStyles = normalizeTabStyleEntries(settings.tabStyles, state.tabs);
+  if (settings.tabStyles) {
+    state.tabStyles = normalizeTabStyleEntries(settings.tabStyles, state.tabs);
+    // Earlier exports could save the default dark swatch as an enabled tab
+    // background. Treat that default as theme-following when re-imported.
+    let migratedDefaultBackground = false;
+    for (const style of state.tabStyles.values()) {
+      if (style.backgroundColorEnabled && style.backgroundColor === "#303030") {
+        style.backgroundColorEnabled = false;
+        migratedDefaultBackground = true;
+      }
+    }
+    if (migratedDefaultBackground) restored.push("기본 탭 배경 테마 연동");
+  }
   if (typeof settings.narratorNames === "string" && el("narratorNames")) el("narratorNames").value = settings.narratorNames;
   if (typeof settings.highlightSpecialRows === "boolean" && el("highlightSpecialRows")) {
     const wasDisabled = settings.highlightSpecialRows === false;
@@ -11876,7 +11889,7 @@ function otherVisibleRows() {
 
 const DESIGN_PRESETS = {
   dark: { text:"#ededed", page:"#181818", panel:"#2c2c2c", row:"#313131", accent:"#8fc7ff" },
-  light: { text:"#273244", page:"#edf1f5", panel:"#ffffff", row:"#ffffff", rowAlt:"#f4f7f9", accent:"#2563a6", infoBg:"#eef5fb", infoAccent:"#9fc3df" },
+  light: { text:"#273244", page:"#edf1f5", panel:"#ffffff", row:"#ffffff", rowAlt:"#f4f7f9", special:"#edf2f7", auxControl:"#e4ecf3", accent:"#2563a6", infoBg:"#eef5fb", infoAccent:"#9fc3df" },
   warm: { text:"#40362d", page:"#eee7dc", panel:"#fffaf2", row:"#fffaf2", accent:"#95672d" },
   navy: { text:"#e7eef8", page:"#101723", panel:"#172131", row:"#1d293b", accent:"#79b8ff" }
 };
@@ -11959,6 +11972,8 @@ function derivedDesignValues() {
   } else {
     special = mixHexColors(palette.row,"#000000",lightRow ? .10 : .14);
     auxControl = mixHexColors(palette.row,"#000000",lightRow ? .18 : .28);
+    if (palette.special) special = palette.special;
+    if (palette.auxControl) auxControl = palette.auxControl;
   }
   const rowAlt = auxDirection === "lighter" ? mixHexColors(row,special,.28) : (palette.rowAlt || mixHexColors(row,rowTone,lightRow ? .035 : .055));
   const soft = mixHexColors(palette.text,palette.panel,lightPanel ? .18 : .22);
@@ -12438,6 +12453,7 @@ function renderMainRowsWithSplitBoundaries(pageRows, allMainRows) {
   };
   let previous = null;
   let groupTone = -1;
+  let inlineOtherTone = -1;
   for (let index = 0; index <= pageRows.length; index += 1) {
     const boundaries = boundaryMap.get(index) || [];
     const dayBoundaries = dayMap.get(index) || [];
@@ -12453,11 +12469,15 @@ function renderMainRowsWithSplitBoundaries(pageRows, allMainRows) {
     }
     const row = pageRows[index];
     const grouped = canGroupConsecutiveRows(previous, row);
-    if (!grouped) groupTone += 1;
+    const isInlineOther = !sideOtherEnabled() && normalizedTab(row.tab) === "other";
+    if (!grouped) {
+      if (isInlineOther) inlineOtherTone += 1;
+      else groupTone += 1;
+    }
     const boundaryAfter = boundaryMap.has(index + 1) || dayMap.has(index + 1);
     const next = boundaryAfter ? null : (pageRows[index + 1] || null);
-    const rendered = renderRow(row, previous, next, true, null, groupTone);
-    if (!sideOtherEnabled() && normalizedTab(row.tab) === "other") inlineOtherHtml.push(rendered);
+    const rendered = renderRow(row, previous, next, true, null, isInlineOther ? inlineOtherTone : groupTone);
+    if (isInlineOther) inlineOtherHtml.push(rendered);
     else {
       flushInlineOther();
       output.push(rendered);
@@ -12650,6 +12670,7 @@ function buildPreviewMainVirtualRecords(pageRows, allMainRows) {
   const records = [];
   let previous = null;
   let groupTone = -1;
+  let inlineOtherTone = -1;
   for (let index = 0; index <= pageRows.length; index += 1) {
     const boundaries = boundaryMap.get(index) || [];
     if (boundaries.length) {
@@ -12691,7 +12712,11 @@ function buildPreviewMainVirtualRecords(pageRows, allMainRows) {
     if (index >= pageRows.length) break;
     const message = pageRows[index];
     const grouped = canGroupConsecutiveRows(previous, message);
-    if (!grouped) groupTone += 1;
+    const isInlineOther = !sideOtherEnabled() && normalizedTab(message.tab) === "other";
+    if (!grouped) {
+      if (isInlineOther) inlineOtherTone += 1;
+      else groupTone += 1;
+    }
     const next = (boundaryMap.has(index + 1) || dayMap.has(index + 1)) ? null : (pageRows[index + 1] || null);
     const tab = normalizedTab(message.tab || "main");
     records.push({
@@ -12704,7 +12729,7 @@ function buildPreviewMainVirtualRecords(pageRows, allMainRows) {
       message,
       previous,
       next,
-      groupTone,
+      groupTone: isInlineOther ? inlineOtherTone : groupTone,
       text: String(message.text || ""),
       name: String(message.name || ""),
       isSystemLine: String(message.name || "").toLowerCase() === "system",
@@ -15322,6 +15347,7 @@ function compactExportRuntime(root) {
     const otherRecords = [];
     let previousMain = null;
     let mainGroupOrdinal = -1;
+    let inlineOtherGroupOrdinal = -1;
     let id = 0;
 
     for (let cursor = 0; cursor + 3 < encodedRows.length; cursor += 4) {
@@ -15342,6 +15368,7 @@ function compactExportRuntime(root) {
       const time = String(times[rowOrder] || "");
       const lowerTab = normalizeTabKey(tab);
       const isOther = !!data.s && lowerTab === "other";
+      const isInlineOther = !isOther && lowerTab === "other";
       const isExtraTab = !isOther && lowerTab !== "main" && lowerTab !== "other";
       const isSystemLine = !isOther && name.toLowerCase() === "system";
       const expressionKey = image ? `image:${image}` : `label:${label}`;
@@ -15355,7 +15382,10 @@ function compactExportRuntime(root) {
         && previousMain.expressionKey === expressionKey;
       // system 이름은 isSystemLine으로 이미 분기된다. 이미지가 없다는 이유만으로 일반 화자를 system형으로 만들지 않는다.
       const isSystem = false;
-      if (!isOther && !grouped) mainGroupOrdinal += 1;
+      if (!isOther && !grouped) {
+        if (isInlineOther) inlineOtherGroupOrdinal += 1;
+        else mainGroupOrdinal += 1;
+      }
       const recordKey = uid ? `uid:${uid}` : `order:${rowOrder}`;
       const record = {
         id, uid, order: rowOrder, recordKey, time, tab, lowerTab, name, color, lightColor, imageIndex, image, label, text,
@@ -15366,7 +15396,7 @@ function compactExportRuntime(root) {
         tabBackgroundColor: tabStyle.backgroundColor, tabBackgroundColorEnabled: tabStyle.backgroundColorEnabled,
         tabBackgroundAltColor: tabStyle.backgroundAltColor,
         avatarHidden: hiddenAvatarTabs.has(lowerTab) || (isExtraTab && !image),
-        groupTone: Math.max(0, mainGroupOrdinal) % 2,
+        groupTone: Math.max(0, isInlineOther ? inlineOtherGroupOrdinal : mainGroupOrdinal) % 2,
         hasContinuation: false,
         searchText: normalizeSearch(`${name}\n${tab}\n${text}`)
       };
@@ -18550,6 +18580,7 @@ function buildStaticRowsBody(rows, useSide, { fallback = false, imageAssetIds = 
   }
   let previous = null;
   let groupTone = -1;
+  let inlineOtherTone = -1;
   let rowHtml = "";
   for (let index = 0; index < mainRows.length;) {
     const row = mainRows[index];
@@ -18560,8 +18591,8 @@ function buildStaticRowsBody(rows, useSide, { fallback = false, imageAssetIds = 
       for (let cursor = index; cursor < end; cursor += 1) {
         const otherRow = mainRows[cursor];
         const grouped = canGroupConsecutiveRows(previous, otherRow);
-        if (!grouped) groupTone += 1;
-        groupHtml += renderRow(otherRow, previous, mainRows[cursor + 1] || null, false, imageAssetIds, groupTone);
+        if (!grouped) inlineOtherTone += 1;
+        groupHtml += renderRow(otherRow, previous, mainRows[cursor + 1] || null, false, imageAssetIds, inlineOtherTone);
         previous = otherRow;
       }
       if (foldInlineOther) {
