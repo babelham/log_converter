@@ -3243,6 +3243,8 @@ html[data-theme="light"] .preview-shell .day-boundary { border-top-color: rgba(6
 .design-setting-group .subsection-title { margin:0; }
 .design-setting-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
 .design-color-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 8px; }
+.design-color-heading { margin:13px 0 6px; font-size:12px; font-weight:700; color:var(--text); }
+.design-color-help { margin:0 0 8px; color:var(--muted); font-size:11px; line-height:1.6; }
 .design-color-field { display:grid; grid-template-columns:minmax(0,1fr) 34px; align-items:center; gap:7px; min-width:0; padding:6px 7px; border:1px solid var(--line-soft); border-radius:7px; background:rgba(255,255,255,.022); }
 .design-color-field span { min-width:0; color:var(--muted); font-size:11px; line-height:1.25; }
 .design-color-field input[type="color"] { width:34px; min-width:34px; height:27px; min-height:27px; margin:0; padding:2px; border:1px solid var(--line); border-radius:5px; background:transparent; cursor:pointer; }
@@ -3455,15 +3457,35 @@ html[data-theme] .design-color-field { background:var(--panel-2)!important; }
               </div>
             </div>
             <div class="design-setting-group">
-              <div class="subsection-title"><h3>세부 색상</h3></div>
-              <label>보조 영역 밝기<select id="auxToneDirection" title="잡담과 접기 버튼의 밝기 진행 방향"><option value="darker" selected>점점 어둡게</option><option value="lighter">점점 밝게</option></select></label>
-              <div class="design-color-grid" aria-label="로그 색상">
+              <div class="subsection-title"><h3>세부 색상</h3><button id="reapplyThemeColors" type="button" title="선택한 테마의 기본 색상을 다시 적용">테마 색상 초기화</button></div>
+              <p class="design-color-help">색을 조정하면 ‘직접 조정됨’으로 표시됩니다. 테마를 다시 선택하면 아래 색과 탭별 색을 모두 해당 테마로 바꿉니다.</p>
+              <div class="design-color-heading">전체 화면</div>
+              <div class="design-color-grid" aria-label="전체 화면 색상">
                 <label class="design-color-field"><span>본문 글자</span><input id="logTextColor" type="color" value="#ededed"></label>
                 <label class="design-color-field"><span>바깥 배경</span><input id="logPageColor" type="color" value="#181818"></label>
                 <label class="design-color-field"><span>패널 배경</span><input id="logPanelColor" type="color" value="#2c2c2c"></label>
-                <label class="design-color-field"><span>기준 배경</span><input id="logRowColor" type="color" value="#313131"></label>
-                <label class="design-color-field"><span>강조색</span><input id="logAccentColor" type="color" value="#8fc7ff"></label>
+                <label class="design-color-field"><span>버튼·링크 강조색</span><input id="logAccentColor" type="color" value="#8fc7ff"></label>
               </div>
+              <div class="design-color-heading">메인 대사</div>
+              <div class="design-color-grid" aria-label="메인 대사 색상">
+                <label class="design-color-field"><span>교차 배경 1</span><input id="logRowColor" type="color" value="#313131"></label>
+                <label class="design-color-field"><span>교차 배경 2</span><input id="logRowAltColor" type="color" value="#3c3c3c"></label>
+              </div>
+              <div class="design-color-heading">시스템·정보</div>
+              <div class="design-color-grid" aria-label="시스템·정보 색상">
+                <label class="design-color-field"><span>시스템·나레이션 배경</span><input id="logSystemColor" type="color" value="#2a2a2a"></label>
+                <label class="design-color-field"><span>시스템·나레이션 글자</span><input id="logSystemTextColor" type="color" value="#949494"></label>
+                <label class="design-color-field"><span>정보탭 배경</span><input id="logInfoBgColor" type="color" value="#425565"></label>
+                <label class="design-color-field"><span>정보탭 강조선</span><input id="logInfoAccentColor" type="color" value="#8fc7ff"></label>
+              </div>
+              <div class="design-color-heading">잡담</div>
+              <div class="design-color-grid" aria-label="잡담 색상">
+                <label class="design-color-field"><span>교차 배경 1</span><input id="logOtherRowColor" type="color" value="#2a2a2a"></label>
+                <label class="design-color-field"><span>교차 배경 2</span><input id="logOtherRowAltColor" type="color" value="#323232"></label>
+                <label class="design-color-field"><span>잡담 글자</span><input id="logOtherTextColor" type="color" value="#c3c3c3"></label>
+                <label class="design-color-field"><span>접기 버튼 배경</span><input id="logAuxControlColor" type="color" value="#232323"></label>
+              </div>
+              <label>보조 색상 기본 밝기<select id="auxToneDirection" title="시스템·잡담·접기 버튼의 기본 색상 생성 방향"><option value="darker" selected>더 어둡게</option><option value="lighter">더 밝게</option></select></label>
             </div>
           </div>
         </details>
@@ -3918,12 +3940,19 @@ const BOOKMARKLET_NOTICE_STORAGE_KEY = "trpg-log-converter:bookmarklet-notice";
 const BOOKMARKLET_NOTICE_APP_VERSION = "6.97";
 const PREFERENCE_STORAGE_KEY = "trpg-log-converter:last-preferences";
 const THEME_STORAGE_KEY = "trpg-log-converter:theme";
-const PREFERENCE_SCHEMA_VERSION = 6;
+const PREFERENCE_SCHEMA_VERSION = 7;
 const DEFAULT_PAGE_SIZE = "auto";
 const WORK_DRAFT_SCHEMA_VERSION = 1;
 const WORK_DRAFT_PREFIX = "trpg-log-converter:work-draft:";
+const DESIGN_COLOR_FIELDS = {
+  logTextColor:"text", logPageColor:"page", logPanelColor:"panel", logRowColor:"row", logAccentColor:"accent",
+  logRowAltColor:"rowAlt", logSystemColor:"special", logSystemTextColor:"systemText",
+  logInfoBgColor:"infoBg", logInfoAccentColor:"infoAccent", logOtherRowColor:"otherRow",
+  logOtherRowAltColor:"otherRowAlt", logOtherTextColor:"otherText", logAuxControlColor:"auxControl"
+};
+const DETAILED_COLOR_FIELDS = Object.keys(DESIGN_COLOR_FIELDS).slice(5);
 const PREFERENCE_FIELDS = [
-  "fontFamily", "designPreset", "auxToneDirection", "logTextColor", "logPageColor", "logPanelColor", "logRowColor", "logAccentColor",
+  "fontFamily", "designPreset", "auxToneDirection", ...Object.keys(DESIGN_COLOR_FIELDS),
   "fontSize", "lineHeight", "logMaxWidth", "rowSpacing", "cornerRadius", "avatarSize", "avatarShape", "speakerNameSize", "speakerNameWeight", "pageSize",
   "groupRows", "sideOther", "collapseInlineOther", "showExpression", "hideEmpty", "hideSystem", "highlightSpecialRows", "narratorNames",
   "bgmAutoplay", "bgmScenePages", "splitSize", "generatedBoundaryKind", "lastBoundaryOutputKind", "splitAsPages", "splitOtherAsPages",
@@ -3973,8 +4002,7 @@ function toggleAppTheme() {
   if (!select) return applyAppTheme(normalizeAppTheme(document.documentElement.dataset.theme));
   const next = select.value === "dark" ? "light" : "dark";
   select.value = next;
-  if (el("designPreset")) el("designPreset").value = next;
-  updateStyleOnly();
+  selectDesignPreset(next);
   return next;
 }
 
@@ -4015,6 +4043,7 @@ function loadLastPreferences() {
       el("designPreset").value = migratedTheme;
       saved.designPreset = migratedTheme;
     }
+    seedDetailedDesignColors(saved);
 
     if (savedSchemaVersion < PREFERENCE_SCHEMA_VERSION) {
       saved.__schemaVersion = PREFERENCE_SCHEMA_VERSION;
@@ -4563,6 +4592,7 @@ function applyWorkDraft(draft) {
   state.manualTextOverrides = normalizeTextOverrideEntries(draft.textOverrides);
   applyManualMessageEdits();
   Object.entries(draft.controls || {}).forEach(([id, value]) => writeControlValue(el(id), value));
+  seedDetailedDesignColors(draft.controls || {});
   if (el("exportFilteredOnly")) el("exportFilteredOnly").checked = !!draft.exportFilteredOnly;
   state.splitOrderHints = new Map(Array.isArray(draft.splitOrderHints) ? draft.splitOrderHints : []);
   state.splitUidHints = new Map(Array.isArray(draft.splitUidHints) ? draft.splitUidHints : []);
@@ -6214,6 +6244,36 @@ function compactDaySettingsFromDocument(doc) {
   return recovered;
 }
 
+function recoveredExportDesign(doc) {
+  if (!doc.querySelector(".ccfolia-wrap,[data-trpg-log-data],#trpg-log-data")) return null;
+  const css = [...doc.querySelectorAll("style")].map(node => node.textContent || "").join("\n");
+  const variableFields = {
+    text:"logTextColor", page:"logPageColor", panel:"logPanelColor", "row-a":"logRowColor", "row-b":"logRowAltColor",
+    accent:"logAccentColor", special:"logSystemColor", "system-text":"logSystemTextColor", "info-bg":"logInfoBgColor",
+    "info-accent":"logInfoAccentColor", "other-row-a":"logOtherRowColor", "other-row-b":"logOtherRowAltColor",
+    "other-text":"logOtherTextColor", "aux-control":"logAuxControlColor"
+  };
+  const recovered = {};
+  for (const match of css.matchAll(/--log-([a-z-]+)\s*:\s*(#[0-9a-f]{6})\b/gi)) {
+    const id = variableFields[match[1].toLowerCase()];
+    if (id) recovered[id] = match[2].toLowerCase();
+  }
+  const schemes = [...css.matchAll(/color-scheme\s*:\s*(dark|light)\b/gi)];
+  const sourceTheme = doc.documentElement.dataset.theme || schemes.at(-1)?.[1]?.toLowerCase();
+  if (recovered.logRowColor) {
+    // Without saved controls, preserve the exact colors from the exported CSS.
+    recovered.designPreset = "custom";
+  } else if (["light","dark"].includes(sourceTheme)) recovered.designPreset = sourceTheme;
+  else return null;
+  recovered.exportTheme = sourceTheme || (isLightDesignColor(recovered.logPanelColor || "#2c2c2c") ? "light" : "dark");
+  const data = parsedCompactDataScript(doc.querySelector("[data-trpg-log-data],#trpg-log-data"));
+  if (Array.isArray(data?.e?.t)) recovered.tabStyles = data.e.t.map(entry => [entry[0], {
+    color:entry[1], enabled:!!entry[2], showLabel:!!entry[3], fontScale:entry[4], textColor:entry[5],
+    textColorEnabled:!!entry[6], backgroundColor:entry[7], backgroundColorEnabled:!!entry[8]
+  }]);
+  return recovered;
+}
+
 function extractSavedConverterSettings(source) {
   const doc = parseTrpgSourceDocument(source);
   // 구버전 또는 게시 플랫폼 변형에서 설정 스크립트 일부가 사라져도,
@@ -6244,21 +6304,29 @@ function extractSavedConverterSettings(source) {
     }
     runtimeOptions.push(...runtimeOptionsFromScript(text));
   }
-  if (!settingsList.length && !runtimeOptions.length) return null;
-  return mergedConverterSettings(settingsList, runtimeOptions);
+  const inferred = recoveredExportDesign(doc);
+  if (!settingsList.length && !runtimeOptions.length) return inferred;
+  const settings = mergedConverterSettings(settingsList, runtimeOptions);
+  const hasSavedPalette = ["designPreset",...Object.keys(DESIGN_COLOR_FIELDS)].some(id => settings[id] != null);
+  if (!hasSavedPalette && inferred) return { ...inferred, ...settings, designPreset:inferred.designPreset };
+  if (settings.designPreset === "auto") settings.designPreset = settings.exportTheme || inferred?.exportTheme || "dark";
+  if (!settings.designPreset && hasSavedPalette) settings.designPreset = "custom";
+  return settings;
 }
 
 function applySavedConverterSettings(settings) {
   if (!settings || typeof settings !== "object") return [];
   const restored = [];
-  const designControlIds = ["fontFamily","designPreset","auxToneDirection","logTextColor","logPageColor","logPanelColor","logRowColor","logAccentColor","fontSize","lineHeight","logMaxWidth","rowSpacing","cornerRadius","avatarSize","avatarShape","speakerNameSize","speakerNameWeight"];
+  if (el("auxToneDirection")) el("auxToneDirection").value = settings.auxToneDirection || "darker";
+  const designControlIds = ["fontFamily","designPreset","auxToneDirection",...Object.keys(DESIGN_COLOR_FIELDS),"fontSize","lineHeight","logMaxWidth","rowSpacing","cornerRadius","avatarSize","avatarShape","speakerNameSize","speakerNameWeight"];
   designControlIds.forEach(id => {
     if (settings[id] != null) writeControlValue(el(id), settings[id]);
   });
   const hasSavedDesign = designControlIds.some(id => settings[id] != null);
-  if (!hasSavedDesign && ["dark","light"].includes(String(settings.exportTheme)) && el("designPreset")) {
+  if ((!hasSavedDesign || settings.designPreset === "auto") && ["dark","light"].includes(String(settings.exportTheme)) && el("designPreset")) {
     el("designPreset").value = String(settings.exportTheme);
   }
+  seedDetailedDesignColors(settings);
   if (hasSavedDesign) restored.push("디자인");
   applyStyleControls();
   if (typeof settings.bgmUrl === "string") {
@@ -6316,19 +6384,7 @@ function applySavedConverterSettings(settings) {
   if (Array.isArray(settings.expressionLibrary)) {
     mergeSavedExpressionLibrary(settings.expressionLibrary);
   }
-  if (settings.tabStyles) {
-    state.tabStyles = normalizeTabStyleEntries(settings.tabStyles, state.tabs);
-    // Earlier exports could save the default dark swatch as an enabled tab
-    // background. Treat that default as theme-following when re-imported.
-    let migratedDefaultBackground = false;
-    for (const style of state.tabStyles.values()) {
-      if (style.backgroundColorEnabled && style.backgroundColor === "#303030") {
-        style.backgroundColorEnabled = false;
-        migratedDefaultBackground = true;
-      }
-    }
-    if (migratedDefaultBackground) restored.push("기본 탭 배경 테마 연동");
-  }
+  if (settings.tabStyles) state.tabStyles = normalizeTabStyleEntries(settings.tabStyles, state.tabs);
   if (typeof settings.narratorNames === "string" && el("narratorNames")) el("narratorNames").value = settings.narratorNames;
   if (typeof settings.highlightSpecialRows === "boolean" && el("highlightSpecialRows")) {
     const wasDisabled = settings.highlightSpecialRows === false;
@@ -8981,7 +9037,7 @@ function converterSettingsPayload(exportRows = null) {
   ]);
   return {
     kind: "trpg-log-converter-settings",
-    version: 6,
+    version: 7,
     appVersion: APP_VERSION,
     compactDataVersion: COMPACT_LOG_DATA_VERSION,
     fontFamily: el("fontFamily")?.value || "system",
@@ -8992,6 +9048,7 @@ function converterSettingsPayload(exportRows = null) {
     logPanelColor: el("logPanelColor")?.value || "#2c2c2c",
     logRowColor: el("logRowColor")?.value || "#313131",
     logAccentColor: el("logAccentColor")?.value || "#8fc7ff",
+    ...Object.fromEntries(DETAILED_COLOR_FIELDS.map(id => [id,el(id)?.value])),
     fontSize: el("fontSize")?.value || "15",
     lineHeight: el("lineHeight")?.value || "1.65",
     logMaxWidth: el("logMaxWidth")?.value || "1240",
@@ -11889,7 +11946,7 @@ function otherVisibleRows() {
 
 const DESIGN_PRESETS = {
   dark: { text:"#ededed", page:"#181818", panel:"#2c2c2c", row:"#313131", accent:"#8fc7ff" },
-  light: { text:"#273244", page:"#edf1f5", panel:"#ffffff", row:"#ffffff", rowAlt:"#f4f7f9", special:"#edf2f7", auxControl:"#e4ecf3", accent:"#2563a6", infoBg:"#eef5fb", infoAccent:"#9fc3df" },
+  light: { text:"#273244", page:"#edf1f5", panel:"#ffffff", row:"#ffffff", rowAlt:"#f4f7f9", special:"#edf2f7", systemText:"#64748b", auxControl:"#e4ecf3", otherRow:"#f1f5f8", otherRowAlt:"#eaf0f5", otherText:"#536477", accent:"#2563a6", infoBg:"#eef5fb", infoAccent:"#9fc3df" },
   warm: { text:"#40362d", page:"#eee7dc", panel:"#fffaf2", row:"#fffaf2", accent:"#95672d" },
   navy: { text:"#e7eef8", page:"#101723", panel:"#172131", row:"#1d293b", accent:"#79b8ff" }
 };
@@ -11931,13 +11988,37 @@ function currentLogTheme() {
   return isLightDesignColor(currentDesignPalette().panel) ? "light" : "dark";
 }
 function syncDesignPresetControls() {
-  const palette = designPresetPalette();
-  if (!palette) return;
-  if (el("logTextColor")) el("logTextColor").value = palette.text;
-  if (el("logPageColor")) el("logPageColor").value = palette.page;
-  if (el("logPanelColor")) el("logPanelColor").value = palette.panel;
-  if (el("logRowColor")) el("logRowColor").value = palette.row;
-  if (el("logAccentColor")) el("logAccentColor").value = palette.accent;
+  if (!designPresetPalette()) return;
+  const design = derivedDesignValues({ useDetailedColors:false });
+  for (const [id,key] of Object.entries(DESIGN_COLOR_FIELDS)) {
+    if (el(id)) el(id).value = design[key];
+  }
+}
+function seedDetailedDesignColors(saved = {}) {
+  const design = derivedDesignValues({ useDetailedColors:false });
+  for (const id of DETAILED_COLOR_FIELDS) {
+    if (saved[id] == null && el(id)) el(id).value = design[DESIGN_COLOR_FIELDS[id]];
+  }
+}
+function selectDesignPreset(value) {
+  if (!DESIGN_PRESETS[value]) return;
+  el("designPreset").value = value;
+  el("auxToneDirection").value = "darker";
+  syncDesignPresetControls();
+  const design = derivedDesignValues();
+  for (const [key,style] of state.tabStyles) {
+    Object.assign(style, {
+      enabled:false, textColorEnabled:false, backgroundColorEnabled:false,
+      color:design.accent, textColor:key === "other" ? design.otherText : design.text,
+      backgroundColor:key === "other" ? design.otherRow : design.row
+    });
+  }
+  applyStyleControls();
+  renderTabFilterList();
+  if (state.messages.length) renderPreview({ preserveScroll:true });
+  scheduleStyleLayoutRefresh();
+  saveLastPreferences();
+  scheduleWorkDraftSave();
 }
 function currentDesignPalette() {
   const preset = designPresetPalette();
@@ -11960,14 +12041,14 @@ function currentSpeakerNameWeight() { const value = Number(el("speakerNameWeight
 function currentLogMaxWidthCss() { const value = String(el("logMaxWidth")?.value || "1240"); if (value === "full") return "100%"; const width = Number(value); return `${Math.min(1800, Math.max(720, Number.isFinite(width) ? width : 1240))}px`; }
 function boundedStyleNumber(id, fallback, min, max) { const raw = String(el(id)?.value ?? "").trim(); const value = raw === "" ? fallback : Number(raw); return Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback)); }
 function currentAuxToneDirection() { return String(el("auxToneDirection")?.value || "darker") === "lighter" ? "lighter" : "darker"; }
-function derivedDesignValues() {
+function derivedDesignValues({ useDetailedColors = true } = {}) {
   const palette = currentDesignPalette();
   const lightRow = isLightDesignColor(palette.row), lightPanel = isLightDesignColor(palette.panel);
   const rowTone = lightRow ? "#000000" : "#ffffff", panelTone = lightPanel ? "#000000" : "#ffffff";
   const auxDirection = currentAuxToneDirection();
   let row = palette.row, special, auxControl;
   if (auxDirection === "lighter") {
-    if (lightRow) { row = mixHexColors(palette.row,"#000000",.12); special = mixHexColors(palette.row,"#000000",.06); auxControl = palette.row; }
+    if (lightRow) { special = mixHexColors(palette.row,"#ffffff",.4); auxControl = palette.row; }
     else { special = mixHexColors(palette.row,"#ffffff",.14); auxControl = mixHexColors(palette.row,"#ffffff",.22); }
   } else {
     special = mixHexColors(palette.row,"#000000",lightRow ? .10 : .14);
@@ -11975,17 +12056,28 @@ function derivedDesignValues() {
     if (palette.special) special = palette.special;
     if (palette.auxControl) auxControl = palette.auxControl;
   }
-  const rowAlt = auxDirection === "lighter" ? mixHexColors(row,special,.28) : (palette.rowAlt || mixHexColors(row,rowTone,lightRow ? .035 : .055));
+  const rowAlt = palette.rowAlt || mixHexColors(row,rowTone,lightRow ? .035 : .055);
   const soft = mixHexColors(palette.text,palette.panel,lightPanel ? .18 : .22);
   const muted = mixHexColors(palette.text,palette.panel,lightPanel ? .26 : .46);
   const quiet = mixHexColors(palette.text,palette.panel,lightPanel ? .30 : .58);
   const border = mixHexColors(palette.panel,panelTone,lightPanel ? .15 : .16);
   const chrome = mixHexColors(palette.panel,panelTone,lightPanel ? .04 : .06);
-  return { ...palette,row,rowAlt,soft,muted,quiet,border,special,auxControl,
-    specialHover:mixHexColors(special,rowTone,.055),accentSoft:mixHexColors(palette.accent,palette.panel,.78),
+  const accentSoft = mixHexColors(palette.accent,palette.panel,.78);
+  const design = { ...palette,row,rowAlt,soft,muted,quiet,border,special,auxControl,
+    systemText:palette.systemText || muted, infoBg:palette.infoBg || accentSoft, infoAccent:palette.infoAccent || palette.accent,
+    otherRow:palette.otherRow || special, otherRowAlt:palette.otherRowAlt || mixHexColors(special,rowTone,.035), otherText:palette.otherText || soft,
+    specialHover:mixHexColors(special,rowTone,.055),accentSoft,
     accentHover:mixHexColors(palette.accent,panelTone,.14),chrome,chromeStrong:mixHexColors(palette.panel,panelTone,lightPanel ? .09 : .11),
     field:mixHexColors(palette.panel,panelTone,lightPanel ? .015 : .035),scrollTrack:chrome,
     scrollThumb:mixHexColors(palette.panel,panelTone,.34),scrollThumbHover:mixHexColors(palette.panel,panelTone,.48),auxDirection };
+  if (useDetailedColors && !designPresetPalette()) {
+    for (const id of DETAILED_COLOR_FIELDS) {
+      const key = DESIGN_COLOR_FIELDS[id];
+      design[key] = validHexColor(el(id)?.value, design[key]);
+    }
+    design.specialHover = mixHexColors(design.special,rowTone,.055);
+  }
+  return design;
 }
 function applyStyleControls() {
   if (el("designPreset")?.value !== "custom") syncDesignPresetControls();
@@ -12008,7 +12100,18 @@ function applyStyleControls() {
   for (const [name, value] of [["--log-info-bg",design.infoBg],["--log-info-accent",design.infoAccent]]) {
     if (value) root.setProperty(name,value); else root.removeProperty(name);
   }
+  root.setProperty("--log-system-text",design.systemText);
+  root.setProperty("--log-other-row-a",design.otherRow);
+  root.setProperty("--log-other-row-b",design.otherRowAlt);
+  root.setProperty("--log-other-text",design.otherText);
+  if (!el("detailedLogColorStyle")) {
+    const style = document.createElement("style");
+    style.id = "detailedLogColorStyle";
+    style.textContent = detailedLogColorCss(".preview-shell ");
+    document.head.appendChild(style);
+  }
   syncThemeToggle(uiTheme);
+  if (el("reapplyThemeColors")) el("reapplyThemeColors").disabled = !designPresetPalette();
 }
 
 const scheduleStyleLayoutRefresh = debounce(() => {
@@ -12494,7 +12597,7 @@ function renderOtherRowsWithSplitBoundaries(rows) {
   for (let index = 0; index <= rows.length; index += 1) {
     (boundaryMap.get(index) || []).forEach(entry => output.push(splitBoundaryHtml(entry)));
     (dayMap.get(index) || []).forEach(entry => output.push(dayBoundaryHtml(entry)));
-    if (index < rows.length) output.push(renderOtherRow(rows[index], true));
+    if (index < rows.length) output.push(renderOtherRow(rows[index], true, index));
   }
   return output.join("");
 }
@@ -12558,19 +12661,20 @@ function compactOtherText(value) {
     .join("\n");
 }
 
-function renderOtherRow(message, interactive = false) {
+function renderOtherRow(message, interactive = false, groupTone = 0) {
+  const toneClass = groupTone % 2 ? " group-tone-b" : " group-tone-a";
   const bgmTrigger = bgmTriggerForMessage(message);
   const rowTag = interactive ? "article" : "div";
   const tabDecor = tabRowDecor(message.tab || "other");
   const narrator = isNarratorMessage(message);
   const tabLabel = tabDecor.showLabel ? `<span class="tag tab-label-chip">${escapeHtml(message.tab || "other")}</span>` : "";
   if (narrator) {
-    return `<${rowTag} role="article" class="other-row narrator-line${tabDecor.className}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+    return `<${rowTag} role="article" class="other-row narrator-line${tabDecor.className}${toneClass}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
       ${interactive ? `<div class="other-actions${unifiedBoundaryForMessage(message) || isActiveAutomaticBoundaryMessage(message) ? " has-split" : ""}${messageHasManualEdit(message) ? " has-edit" : ""}">${messageEditButton(message)}${boundaryEditButton(message)}${bgmButton(message)}</div>` : ""}
       <div class="narrator-text">${tabLabel}${messageTextMarkup(compactOtherText(message.text))}${bgmTrigger ? ` ${bgmLink(bgmTrigger)}` : ""}</div>
     </${rowTag}>`;
   }
-  return `<${rowTag} role="article" class="other-row${tabDecor.className}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
+  return `<${rowTag} role="article" class="other-row${tabDecor.className}${toneClass}" style="${tabDecor.style}" data-index="${message.id}" data-uid="${escapeHtml(message.uid || "")}" data-order="${messageOrder(message) ?? ""}">
     <strong class="other-name" style="${nameColorStyle(message.color)}">${escapeHtml(message.name)}</strong>
     ${tabLabel}
     ${bgmLink(bgmTrigger)}
@@ -12785,6 +12889,7 @@ function buildPreviewOtherVirtualRecords(rows) {
       uid: String(message.uid || ""),
       order: Number(messageOrder(message) ?? message.id ?? index),
       virtualKey: previewVirtualKeyForMessage(message, "other"),
+      groupTone: index % 2,
       message,
       text: String(message.text || ""),
       name: String(message.name || ""),
@@ -12903,7 +13008,7 @@ function createPreviewVirtualController(root, pageRows, allMainRows, sideRows, s
   const renderOtherRecord = (record, logicalIndex, isLast, highlighted, synced) => {
     const classes = [highlighted ? "is-search-target" : "", synced ? "is-sync-target" : "", record.virtualKey === activeJumpVirtualKey ? "is-bgm-jump-target" : ""];
     if (record.recordType === "boundary") return addPreviewVirtualIndex(record.boundaryType === "day" ? dayBoundaryHtml(record.entry) : splitBoundaryHtml(record.entry), logicalIndex, isLast, classes);
-    return addPreviewVirtualIndex(renderOtherRow(record.message, true), logicalIndex, isLast, classes);
+    return addPreviewVirtualIndex(renderOtherRow(record.message, true, record.groupTone), logicalIndex, isLast, classes);
   };
 
   class HeightTree {
@@ -15396,7 +15501,7 @@ function compactExportRuntime(root) {
         tabBackgroundColor: tabStyle.backgroundColor, tabBackgroundColorEnabled: tabStyle.backgroundColorEnabled,
         tabBackgroundAltColor: tabStyle.backgroundAltColor,
         avatarHidden: hiddenAvatarTabs.has(lowerTab) || (isExtraTab && !image),
-        groupTone: Math.max(0, isInlineOther ? inlineOtherGroupOrdinal : mainGroupOrdinal) % 2,
+        groupTone: isOther ? otherRecords.length % 2 : Math.max(0, isInlineOther ? inlineOtherGroupOrdinal : mainGroupOrdinal) % 2,
         hasContinuation: false,
         searchText: normalizeSearch(`${name}\n${tab}\n${text}`)
       };
@@ -15554,11 +15659,12 @@ function compactExportRuntime(root) {
 
     function renderOtherRecord(record, logicalIndex, isLast, highlighted, synced) {
       const { tabClass, tabStyle } = recordTabDecoration(record);
+      const toneClass = record.groupTone ? " group-tone-b" : " group-tone-a";
       const tabTag = record.tabLabelVisible ? `<span class="tag tab-label-chip">${esc(record.tab || "other")}</span>` : "";
       if (record.isNarrator) {
-        return `<div role="article" class="other-row narrator-line${tabClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="narrator-text">${tabTag}${messageMarkup(record.text)}${bgmLink(record.order + 1)}</div></div>`;
+        return `<div role="article" class="other-row narrator-line${tabClass}${toneClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><div class="narrator-text">${tabTag}${messageMarkup(record.text)}${bgmLink(record.order + 1)}</div></div>`;
       }
-      return `<div role="article" class="other-row${tabClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${bgmLink(record.order + 1)}<div class="other-text">${withBreaks(record.text)}</div></div>`;
+      return `<div role="article" class="other-row${tabClass}${toneClass}${isLast ? " is-list-last" : ""}${highlighted ? " is-search-target" : ""}${synced ? " is-sync-target" : ""}" style="${tabStyle}" data-index="${record.id}" data-uid="${esc(record.uid)}" data-order="${record.order}" data-virtual-index="${logicalIndex}"><strong class="other-name" style="--name-color:${esc(record.color)};--light-name-color:${esc(record.lightColor)}">${esc(record.name)}</strong>${tabTag}${bgmLink(record.order + 1)}<div class="other-text">${withBreaks(record.text)}</div></div>`;
     }
 
     class HeightTree {
@@ -17855,6 +17961,27 @@ function bgmVolumeCss() {
   return '\n/* Shared BGM controls: compact enough for side panels and touch layouts. */\n.bgm-volume-control{display:flex;align-items:center;gap:4px;width:180px;max-width:100%;margin:3px 0;min-width:0;color:inherit}\n.bgm-volume-label{display:flex;align-items:center;gap:6px;flex:1;min-width:0;white-space:nowrap}\n.bgm-volume-label input[type="range"]{width:100%;min-width:40px;height:24px;min-height:24px;margin:0;padding:0;cursor:pointer;appearance:none;-webkit-appearance:none;background:transparent}\n.bgm-volume-label input[type="range"]::-webkit-slider-runnable-track{height:3px;border-radius:999px;background:rgba(127,127,127,.48)}\n.bgm-volume-label input[type="range"]::-webkit-slider-thumb{width:9px;height:9px;margin-top:-3px;border:0;border-radius:50%;background:var(--log-accent,var(--accent,#8fc7ff));appearance:none;-webkit-appearance:none}\n.bgm-volume-label input[type="range"]::-moz-range-track{height:3px;border:0;border-radius:999px;background:rgba(127,127,127,.48)}\n.bgm-volume-label input[type="range"]::-moz-range-thumb{width:9px;height:9px;border:0;border-radius:50%;background:var(--log-accent,var(--accent,#8fc7ff))}\n.bgm-volume-control .bgm-sound-off{display:none}\n.bgm-volume-control button[data-bgm-mute]{display:inline-flex;align-items:center;justify-content:center;flex:0 0 24px;width:24px;height:24px;min-height:24px;padding:0;border:0;border-radius:4px;background:transparent;color:inherit;box-shadow:none;cursor:pointer}\n.bgm-volume-control button[data-bgm-mute]:hover{background:rgba(127,127,127,.14)}.bgm-volume-control button[aria-pressed="true"] .bgm-sound-waves{display:none}.bgm-volume-control button[aria-pressed="true"] .bgm-sound-off{display:inline}\n.bgm-volume-control :focus-visible{outline:2px solid var(--log-accent,var(--accent,#8fc7ff));outline-offset:2px}\n.bgm-panel button{border:1px solid var(--log-border,var(--line,#555));border-radius:6px;background:var(--log-chrome,var(--control-bg,#343434));color:inherit;cursor:pointer;font-family:inherit}\n.bgm-panel button:disabled{opacity:.5;cursor:wait}\n.bgm-panel-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(64px,38%);align-items:center;gap:8px;min-width:0}\n.bgm-panel-toolbar [data-bgm-enable]{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;padding:4px 6px}\n.bgm-panel-toolbar .bgm-volume-control{width:100%;margin:0}\n.bgm-panel-toolbar .bgm-volume-label input[type="range"]{min-width:0}\n';
 }
 
+function detailedLogColorCss(prefix = "") {
+  const otherRows = [".log-row.is-other-tab", ".system-line.is-other-tab", ".narrator-line.is-other-tab", ".other-row"];
+  const backgroundSelector = tone => otherRows.map(selector => `${prefix}${selector}${tone}:not(.has-tab-background):not(.is-search-target)`).join(",");
+  const otherText = [
+    ".log-row.is-other-tab:not(.has-tab-text-color) .text",
+    ".system-line.is-other-tab:not(.has-tab-text-color) .system-text",
+    ".narrator-line.is-other-tab:not(.has-tab-text-color) .narrator-text",
+    ".other-row:not(.has-tab-text-color) .other-text",
+    ".other-row.narrator-line:not(.has-tab-text-color) .narrator-text"
+  ].map(selector => prefix + selector).join(",");
+  return `
+${backgroundSelector("")}{background:var(--log-other-row-a)!important}
+${backgroundSelector(".group-tone-b")}{background:var(--log-other-row-b)!important}
+${otherText}{color:var(--log-other-text)!important}
+${prefix}.log-row.is-other-tab .message{opacity:1;filter:none}
+${prefix}.other-row.is-sync-target:not(.has-tab-color){box-shadow:inset 2px 0 0 var(--log-accent-color,var(--log-accent))}
+${prefix}.system-line:not(.is-other-tab):not(.has-tab-background):not(.is-search-target),${prefix}.narrator-line:not(.is-other-tab):not(.other-row):not(.has-tab-background):not(.is-search-target){background:var(--log-special-bg,var(--log-special))!important}
+${prefix}.system-line:not(.is-other-tab):not(.has-tab-text-color) .system-text,${prefix}.narrator-line:not(.is-other-tab):not(.other-row):not(.has-tab-text-color) .narrator-text{color:var(--log-system-text)!important}
+`;
+}
+
 function customExportDesignCssRaw() {
   const d = derivedDesignValues();
   const font = currentFontFamilyStack();
@@ -17865,7 +17992,7 @@ function customExportDesignCssRaw() {
   const speakerSize = currentSpeakerNameSizePx();
   const speakerWeight = currentSpeakerNameWeight();
   const maxWidth = currentLogMaxWidthCss();
-  return `:root{--log-text:${d.text};--log-page:${d.page};--log-panel:${d.panel};--log-row-a:${d.row};--log-row-b:${d.rowAlt};${d.infoBg ? `--log-info-bg:${d.infoBg};` : ""}${d.infoAccent ? `--log-info-accent:${d.infoAccent};` : ""}--log-soft:${d.soft};--log-muted:${d.muted};--log-border:${d.border};--log-special:${d.special};--log-special-hover:${d.specialHover};--log-aux-control:${d.auxControl};--log-accent:${d.accent};--log-accent-soft:${d.accentSoft};--log-chrome:${d.chrome};--log-chrome-strong:${d.chromeStrong};--log-scroll-track:${d.scrollTrack};--log-scroll-thumb:${d.scrollThumb};--log-scroll-thumb-hover:${d.scrollThumbHover};--log-radius:${radius}px;--avatar-shape-radius:${avatarRadius};--speaker-name-size:${speakerSize}px;--speaker-name-weight:${speakerWeight};--log-row-pad-y:${rowPad}px;--log-row-aux-pad-y:${auxPad}px;--log-max-width:${maxWidth}}
+  return `:root{--log-text:${d.text};--log-page:${d.page};--log-panel:${d.panel};--log-row-a:${d.row};--log-row-b:${d.rowAlt};--log-system-text:${d.systemText};--log-other-row-a:${d.otherRow};--log-other-row-b:${d.otherRowAlt};--log-other-text:${d.otherText};${d.infoBg ? `--log-info-bg:${d.infoBg};` : ""}${d.infoAccent ? `--log-info-accent:${d.infoAccent};` : ""}--log-soft:${d.soft};--log-muted:${d.muted};--log-border:${d.border};--log-special:${d.special};--log-special-hover:${d.specialHover};--log-aux-control:${d.auxControl};--log-accent:${d.accent};--log-accent-soft:${d.accentSoft};--log-chrome:${d.chrome};--log-chrome-strong:${d.chromeStrong};--log-scroll-track:${d.scrollTrack};--log-scroll-thumb:${d.scrollThumb};--log-scroll-thumb-hover:${d.scrollThumbHover};--log-radius:${radius}px;--avatar-shape-radius:${avatarRadius};--speaker-name-size:${speakerSize}px;--speaker-name-weight:${speakerWeight};--log-row-pad-y:${rowPad}px;--log-row-aux-pad-y:${auxPad}px;--log-max-width:${maxWidth}}
 body{background:var(--log-page);color:var(--log-text);font-family:${font}}
 .trpg-log-app{color:var(--log-text);font-family:${font}}
 .page{max-width:var(--log-max-width)}
@@ -18222,6 +18349,7 @@ function exportCssCacheKey(theme) {
     el("fontFamily")?.value || "system",
     el("designPreset")?.value || "auto",
     currentAuxToneDirection(),
+    ...DETAILED_COLOR_FIELDS.map(id => el(id)?.value || ""),
     el("logTextColor")?.value || "",
     el("logPageColor")?.value || "",
     el("logPanelColor")?.value || "",
@@ -18234,7 +18362,7 @@ function exportDocumentCss(theme = currentExportTheme()) {
   const key = exportCssCacheKey(theme);
   let css = documentExportCssCache.get(key);
   if (!css) {
-    css = exportCssRaw(theme) + bgmVolumeCss();
+    css = exportCssRaw(theme) + detailedLogColorCss() + bgmVolumeCss();
     documentExportCssCache.set(key, css);
     if (documentExportCssCache.size > 8) {
       const oldest = documentExportCssCache.keys().next().value;
@@ -18610,7 +18738,7 @@ function buildStaticRowsBody(rows, useSide, { fallback = false, imageAssetIds = 
     previous = row;
     index += 1;
   }
-  const otherHtml = otherRows.map(row => renderOtherRow(row)).join("");
+  const otherHtml = otherRows.map((row,index) => renderOtherRow(row, false, index)).join("");
   const hasInlineOtherIndex = foldInlineOther && mainRows.some(row => normalizedTab(row.tab) === "other");
   const content = useSide
     ? `<div class="layout" role="group"><div class="ccfolia-wrap">${rowHtml}</div><div class="other-wrap">${otherHtml}</div></div>`
@@ -19384,8 +19512,7 @@ document.addEventListener("keydown", event => {
 });
 el("themePresetToolbar")?.addEventListener("change", event => {
   const value = String(event.target?.value || "dark");
-  if (el("designPreset")) el("designPreset").value = value;
-  updateStyleOnly();
+  selectDesignPreset(value);
 });
 el("portraitReviewBtn")?.addEventListener("click", openPortraitReview);
 el("analysisDiagBtn")?.addEventListener("click", () => {
@@ -19482,9 +19609,10 @@ document.querySelectorAll("[data-copy-youtube-playlist-bookmarklet]").forEach(bu
 document.querySelectorAll("[data-copy-jukebox-playlist-bookmarklet]").forEach(button => button.addEventListener("click", copyJukeboxPlaylistHelperBookmarklet));
 initBookmarkletUpdateNotice();
 el("fontFamily")?.addEventListener("change", updateStyleOnly);
-el("designPreset")?.addEventListener("change", () => { syncDesignPresetControls(); syncThemeToggle(currentLogTheme()); updateStyleOnly(); });
-el("auxToneDirection")?.addEventListener("change", updateStyleOnly);
-["logTextColor","logPageColor","logPanelColor","logRowColor","logAccentColor"].forEach(id => {
+el("designPreset")?.addEventListener("change", event => selectDesignPreset(event.target.value));
+el("reapplyThemeColors")?.addEventListener("click", () => selectDesignPreset(el("designPreset").value));
+el("auxToneDirection")?.addEventListener("change", () => { seedDetailedDesignColors(); updateStyleOnly(); });
+Object.keys(DESIGN_COLOR_FIELDS).forEach(id => {
   el(id)?.addEventListener("input", () => {
     if (el("designPreset")?.value !== "custom") el("designPreset").value = "custom";
     syncThemeToggle(currentLogTheme());
